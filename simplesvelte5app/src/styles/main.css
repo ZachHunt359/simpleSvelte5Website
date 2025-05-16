@@ -1,0 +1,31 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #291f1f;
+}
+
+img {
+    max-width:90%;
+    margin: auto;   
+    display: block;
+}
+
+nav ul, nav li {
+    list-style: none;
+    padding: 0 1%;
+}
+
+nav ul {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+nav {
+    visibility: visible;
+}
+
+nav:hover {
+    visibility: visible;
+}
