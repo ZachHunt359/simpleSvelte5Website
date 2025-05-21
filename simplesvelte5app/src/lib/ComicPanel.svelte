@@ -115,7 +115,7 @@
         display: block;
         margin: 0;
         object-fit: contain;
-        border: solid 1px red;
+        border: none;
         box-sizing: border-box;
         transition: opacity 0.2s;
         grid-area: 1 / 1 / 2 / 2; /* Overlap both elements */
