@@ -2,12 +2,8 @@
     import { onMount } from 'svelte';
     import { browser } from '$app/environment';
 
-    
-    /**
-	 * @type {string | any[]}
-	 */
-    let panels = [];
-    let currentPanel = 0;
+    export let panels = [];
+    export let currentPanel = 0;
 
     // Fetch panels from the server
     onMount(async () => {
