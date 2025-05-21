@@ -12,7 +12,7 @@
     // Fetch panels from the server
     onMount(async () => {
         if (browser) {
-            const res = await fetch('/api/panels');
+            const res = await fetch('/panels.json');
             panels = await res.json();
         }
     });
