@@ -7,6 +7,7 @@
 
     let panels = [];
     let currentPanel = 0;
+    let lastScroll = 0;
 
     // Fetch panels from the server
     onMount(async () => {
@@ -17,22 +18,29 @@
     });
 
     function next() {
+        lastScroll = window.scrollY;
         if (currentPanel < panels.length - 1) currentPanel += 1;
     }
     function prev() {
+        lastScroll = window.scrollY;
         if (currentPanel > 0) currentPanel -= 1;
+    }
+    function first() {
+        lastScroll = window.scrollY;
+        currentPanel = 0;
     }
 </script>
 
 <TopNav />
 <main>
-    <ComicPanel {panels} bind:currentPanel />
+    <ComicPanel {panels} bind:currentPanel {lastScroll} onNext={next} />
 </main>
 <BottomNav
     canGoBack={currentPanel > 0}
     canGoForward={currentPanel < panels.length - 1}
     onBack={prev}
     onForward={next}
+    onFirst={first}
 />
 
 <style>

@@ -14,10 +14,35 @@
     on:mouseleave={() => show = false}
 >
     <ul>
-        <li><a href="/#">Discord</a></li>
-        <li><a href="/#">Patreon</a></li>
-        <li><a href="/#">PARANOiD</a></li>
-        <li><a href="/#">Notifs</a></li>
-        <li><a href="/#">Inquiry</a></li>
+        <li>
+            <a href="/#">
+                <!-- Discord -->
+                <iconify-icon icon="mdi:discord"></iconify-icon>
+            </a>
+        </li>
+        <li>
+            <a href="/#">
+                <!-- Patreon -->
+                <iconify-icon icon="simple-icons:patreon"></iconify-icon>
+            </a>
+        </li>
+        <li>
+            <a href="/#">
+                <!-- PARANOiD (webcomic title, logo to come) -->
+                 PARANOiD
+            </a>
+        </li>
+        <li>
+            <a href="/#">
+                <!-- Notifs -->
+                <iconify-icon icon="mdi:bell-outline"></iconify-icon>
+            </a>
+        </li>
+        <li>
+            <a href="/#">
+                <!-- Inquiry -->
+                <iconify-icon icon="mdi:email-outline"></iconify-icon>
+            </a>
+        </li>
     </ul>
 </nav>

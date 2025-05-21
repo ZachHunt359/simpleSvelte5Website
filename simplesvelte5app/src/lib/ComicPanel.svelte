@@ -1,22 +1,15 @@
 <script>
+// @ts-nocheck
+
     import { onMount } from 'svelte';
     import { browser } from '$app/environment';
 
     export let panels = [];
     export let currentPanel = 0;
+    export let lastScroll = 0;
+    export let onNext = () => {};
 
-    // Fetch panels from the server
-    onMount(async () => {
-        if (browser) {
-            const res = await fetch('/api/panels');
-            panels = await res.json();
-        }
-    });
-
-    /**
-     * Preload images for the next panels
-	 * @param {number} currentPanel
-	 */
+    // Preload images/videos for the next panels
     function preloadImages(currentPanel) {
         if (!browser || panels.length === 0) return;
         for (let i = currentPanel; i < currentPanel + 3 && i < panels.length; i++) {
@@ -36,23 +29,6 @@
 
     $: preloadImages(currentPanel);
 
-    function next() {
-        // Save the current scroll position
-        lastScroll = window.scrollY;
-        if (currentPanel < panels.length - 1) currentPanel += 1;
-    }
-
-    /**
-	 * @param {{ target: { closest: (arg0: string) => any; }; }} event
-	 */
-    function handleClick(event) {
-        if (event.target.closest('nav')) return;
-        next();
-    }
-
-    
-    let lastScroll = 0;
-
     let imageLoaded = true;
 
     function handleImageLoad() {
@@ -67,6 +43,14 @@
     $: if (panels.length > 0 && !/\.(webm)$/i.test(panels[currentPanel])) {
         imageLoaded = false;
     }
+
+    /**
+     * @param {{ target: { closest: (arg0: string) => any; }; }} event
+     */
+    function handleClick(event) {
+        if (event.target.closest('nav')) return;
+        onNext();
+    }
 </script>
 
 <button class="comic-area" type="button" on:click={handleClick} disabled={panels.length === 0 || !imageLoaded}>
@@ -78,6 +62,7 @@
             class:inactive={/\.(webm)$/i.test(panels[currentPanel]) || !imageLoaded}
             on:load={handleImageLoad}
         />
+        <!-- svelte-ignore a11y_media_has_caption -->
         <video
             src={panels[currentPanel]}
             autoplay

@@ -6,7 +6,8 @@ body {
 }
 
 img, video {
-    max-width:90%;
+    width:90%;
+    max-width: 1000px;
     display: block;
     margin: auto;   
     object-fit: contain;
@@ -23,27 +24,49 @@ nav ul {
     justify-content: center;
 }
 
+nav a, nav a:visited {
+    text-decoration: none;
+    color: yellow;
+}
+
 .top-nav,
 .bottom-nav {
     position: fixed;
-    width: 100%;
+    width: 80%;
     background-color: black;
     color: yellow;
     z-index: 1000;
     pointer-events: auto;
     overflow: visible;
     transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+    border: 2px solid yellow;
+    border-radius: 1.5rem;
+    /* Add some spacing from the edge if you want: */
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    box-sizing: border-box;
 }
 
 /* Start navs fully off-screen */
 .top-nav {
     top: 0;
     transform: translateY(-100%);
+    border-bottom-left-radius: 1.5rem;
+    border-bottom-right-radius: 1.5rem;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top: none;
 }
 
 .bottom-nav {
     bottom: 0;
     transform: translateY(100%);
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: none;
 }
 
 /* Slide in navs on hover or .show */
@@ -92,4 +115,12 @@ nav ul {
     z-index: 1100;
     opacity: 0;
     pointer-events: auto;
+}
+iconify-icon {
+    display: inline-block;
+    font-size: 2rem;
+    vertical-align: middle;
+    color: yellow;
+    /* For SVG fill (for most icon sets): */
+    --iconify-icon-color: yellow;
 }

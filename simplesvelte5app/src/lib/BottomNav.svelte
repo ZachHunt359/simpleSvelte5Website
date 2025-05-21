@@ -1,8 +1,10 @@
 <script>
+    
     export let canGoBack = false;
     export let canGoForward = false;
     export let onBack = () => {};
     export let onForward = () => {};
+    export let onFirst = () => {};
     let show = false;
 </script>
 
@@ -18,7 +20,12 @@
     on:mouseleave={() => show = false}
 >
 	<ul>
-		<li><a href="/#">Chapter Start</a></li>
+		<li>
+            <a href="/#" on:click|preventDefault={onFirst}>
+				<!-- Page 1 of Chapter -->
+                <iconify-icon icon="icon-park-outline:to-left"></iconify-icon>
+            </a>
+        </li>
 		<li>
 			<a
 				href="#"
@@ -26,9 +33,17 @@
 				on:click|preventDefault={() => canGoBack && onBack()}
 				aria-disabled={!canGoBack}
 				tabindex={canGoBack ? 0 : -1}
-			>Back 1 Step</a>
+			>
+				<!-- Back 1 Step -->
+                <iconify-icon icon="icon-park-outline:left-two"></iconify-icon>
+            </a>
 		</li>
-		<li><a href="/#">Chapter Select</a></li>
+		<li>
+            <a href="/#">
+				<!-- Chapter Select -->
+                <iconify-icon icon="uil:books"></iconify-icon>
+            </a>
+        </li>
 		<li>
 			<a
 				href="#"
@@ -36,9 +51,17 @@
 				on:click|preventDefault={() => canGoForward && onForward()}
 				aria-disabled={!canGoForward}
 				tabindex={canGoForward ? 0 : -1}
-			>Forward 1 Step</a>
+			>
+				<!-- Forward 1 Step -->
+                <iconify-icon icon="icon-park-outline:right-two"></iconify-icon>
+            </a>
 		</li>
-		<li><a href="/#">Save</a></li>
+		<li>
+            <a href="/#">
+				<!-- Save -->
+                <iconify-icon icon="bi:floppy"></iconify-icon>
+            </a>
+        </li>
 	</ul>
 </nav>
 
