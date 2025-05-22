@@ -51,9 +51,32 @@
         if (event.target.closest('nav')) return;
         onNext();
     }
+
+    export let onSwipeUp = () => {};
+    export let onSwipeDown = () => {};
+
+    let touchStartY = null;
+
+    function handleTouchStart(e) {
+        touchStartY = e.touches[0].clientY;
+    }
+    function handleTouchEnd(e) {
+        if (touchStartY === null) return;
+        const touchEndY = e.changedTouches[0].clientY;
+        if (touchStartY - touchEndY > 40) {
+            // Swipe up
+            onSwipeUp();
+        } else if (touchEndY - touchStartY > 40) {
+            // Swipe down
+            onSwipeDown();
+        }
+        touchStartY = null;
+    }
 </script>
 
-<button class="comic-area" type="button" on:click={handleClick} disabled={panels.length === 0 || !imageLoaded}>
+<button class="comic-area" type="button" on:click={handleClick} disabled={panels.length === 0 || !imageLoaded}
+    on:touchstart={handleTouchStart}
+    on:touchend={handleTouchEnd}>
     {#if panels.length > 0}
         <img
             src={panels[currentPanel]}
@@ -68,7 +91,7 @@
             autoplay
             loop
             playsinline
-            controls
+            
             class:active={/\.(webm)$/i.test(panels[currentPanel])}
             class:inactive={!/\.(webm)$/i.test(panels[currentPanel])}
             on:loadeddata={handleVideoLoaded}

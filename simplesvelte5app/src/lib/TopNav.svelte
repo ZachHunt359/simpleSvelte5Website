@@ -1,18 +1,11 @@
 <script>
-    let show = false;
+    export let show = false;
+    export let onHover = () => {};
+    export let onUnhover = () => {};
 </script>
 
-<!-- Hover zone at the top -->
-<div
-    class="nav-hover-zone top"
-    on:mouseenter={() => show = true}
-    on:mouseleave={() => show = false}
-></div>
 
-<nav class="top-nav" class:show={show}
-    on:mouseenter={() => show = true}
-    on:mouseleave={() => show = false}
->
+<nav class="top-nav" class:show={show}>
     <ul>
         <li>
             <a href="/#">

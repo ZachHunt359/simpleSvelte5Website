@@ -31,11 +31,11 @@ nav a, nav a:visited {
 
 .top-nav,
 .bottom-nav {
-    position: fixed;
+    position: absolute;
     width: 80%;
     background-color: black;
     color: yellow;
-    z-index: 1000;
+    z-index: 101;
     pointer-events: auto;
     overflow: visible;
     transition: transform 0.3s cubic-bezier(.4,0,.2,1);
@@ -70,12 +70,12 @@ nav a, nav a:visited {
 }
 
 /* Slide in navs on hover or .show */
-.top-nav:hover,
+
 .top-nav.show {
     transform: translateY(0);
 }
 
-.bottom-nav:hover,
+
 .bottom-nav.show {
     transform: translateY(0);
 }
@@ -97,24 +97,20 @@ nav a, nav a:visited {
 
 .nav-hover-zone.top {
     position: fixed;
-    top: 0;
     left: 0;
-    width: 100vw;
-    height: 24px;
-    z-index: 1100;
-    opacity: 0;
-    pointer-events: auto;
+    right: 0;
+    top: 0;
+    height: 128px; /* nav height + extra hover area */
+    z-index: 100;
 }
 
 .nav-hover-zone.bottom {
     position: fixed;
-    bottom: 0;
     left: 0;
-    width: 100vw;
-    height: 24px;
-    z-index: 1100;
-    opacity: 0;
-    pointer-events: auto;
+    right: 0;
+    bottom: 0;
+    height: 128px; /* nav height + extra hover area */
+    z-index: 100;
 }
 iconify-icon {
     display: inline-block;
