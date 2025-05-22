@@ -91,7 +91,6 @@
             autoplay
             loop
             playsinline
-            
             class:active={/\.(webm)$/i.test(panels[currentPanel])}
             class:inactive={!/\.(webm)$/i.test(panels[currentPanel])}
             on:loadeddata={handleVideoLoaded}

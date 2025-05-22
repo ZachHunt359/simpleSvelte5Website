@@ -31,11 +31,11 @@ nav a, nav a:visited {
 
 .top-nav,
 .bottom-nav {
-    position: absolute;
+    position: fixed;
     width: 80%;
     background-color: black;
     color: yellow;
-    z-index: 101;
+    z-index: 1000;
     pointer-events: auto;
     overflow: visible;
     transition: transform 0.3s cubic-bezier(.4,0,.2,1);

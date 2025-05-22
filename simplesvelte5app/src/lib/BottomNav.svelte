@@ -58,24 +58,6 @@
 
 
 <style>
-    .nav-hover-zone.bottom {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 128px; /* nav height + extra hover area */
-        z-index: 100;
-        /* Optionally add background: transparent; */
-    }
-    .bottom-nav {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 64px; /* nav height */
-        z-index: 101;
-        pointer-events: auto;
-    }
     a.disabled, a[aria-disabled="true"] {
         color: #888;
         pointer-events: none;
