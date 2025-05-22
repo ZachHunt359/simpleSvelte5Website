@@ -31,17 +31,17 @@ nav a, nav a:visited {
 
 .top-nav,
 .bottom-nav {
-    position: absolute;
+    position: fixed;
     width: 80%;
     background-color: black;
     color: yellow;
-    z-index: 101;
+    z-index: 1000;
     pointer-events: auto;
     overflow: visible;
     transition: transform 0.3s cubic-bezier(.4,0,.2,1);
     border: 2px solid yellow;
     border-radius: 1.5rem;
-    /* Add some spacing from the edge if you want: */
+    
     left: 0;
     right: 0;
     margin: 0 auto;
@@ -80,6 +80,7 @@ nav a, nav a:visited {
     transform: translateY(0);
 }
 
+
 /* Shared ul styles */
 .top-nav ul,
 .bottom-nav ul {
@@ -100,7 +101,7 @@ nav a, nav a:visited {
     left: 0;
     right: 0;
     top: 0;
-    height: 128px; /* nav height + extra hover area */
+    height: 64px; /* match your nav height */
     z-index: 100;
 }
 
@@ -109,7 +110,7 @@ nav a, nav a:visited {
     left: 0;
     right: 0;
     bottom: 0;
-    height: 128px; /* nav height + extra hover area */
+    height: 64px; /* or whatever matches your nav height */
     z-index: 100;
 }
 iconify-icon {
