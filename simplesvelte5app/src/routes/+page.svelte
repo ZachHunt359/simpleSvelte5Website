@@ -4,8 +4,13 @@
     import ComicPanel from '$lib/ComicPanel.svelte';
     import { onMount } from 'svelte';
     import { browser } from '$app/environment';
+    //import panelsData from '$lib/panels.json'; // or from static if needed
 
+    let chapters = [];
     let panels = [];
+    let currentChapter = 0;
+
+
     let currentPanel = 0;
     let lastScroll = 0;
 
@@ -22,14 +27,15 @@
     onMount(async () => {
         if (browser) {
             const res = await fetch('/panels.json');
-            panels = await res.json();
+            chapters = await res.json();
         }
         isDesktop = typeof window !== 'undefined' && !window.matchMedia('(pointer: coarse)').matches;
+        panels=isDesktop ? chapters[currentChapter]?.desktop : chapters[currentChapter]?.mobile
     });
 
     function next() {
         lastScroll = window.scrollY;
-        if (currentPanel < panels.length - 1) {
+        if (currentPanel < (panels?.length ?? 0) - 1) {
             currentPanel += 1;
             return true;
         }
@@ -96,6 +102,11 @@
         };
     }
 
+    function selectChapter(index) {
+        currentChapter = index;
+        currentPanel = 0;
+    }
+
     $: console.log('showBottomNav', showBottomNav);
 </script>
 
@@ -114,8 +125,8 @@
 
 <main>
     <ComicPanel
-        {panels}
-        bind:currentPanel
+        panels={panels}
+        {currentPanel}
         {lastScroll}
         onNext={next}
         onSwipeUp={handleSwipeUp}
