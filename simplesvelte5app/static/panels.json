@@ -23,38 +23,32 @@
       "/panels/chapter-1/mobile/Story7.png",
       "/panels/chapter-1/mobile/Story8.png",
       "/panels/chapter-1/mobile/Story9.webm"
-    ]
+    ],
+    "thumbnail": "/panels/chapter-1/chapter-1.thumb.jpg"
   },
   {
     "title": "chapter-2",
     "slug": "chapter-2",
     "desktop": [
       "/panels/chapter-2/desktop/Story1.png",
-      "/panels/chapter-2/desktop/Story2.png",
+      "/panels/chapter-2/desktop/Story2.1.png",
+      "/panels/chapter-2/desktop/Story2.2.png",
+      "/panels/chapter-2/desktop/Story2.3.png",
       "/panels/chapter-2/desktop/Story3.png",
-      "/panels/chapter-2/desktop/Story4.webm",
+      "/panels/chapter-2/desktop/Story4.png",
       "/panels/chapter-2/desktop/Story5.png",
-      "/panels/chapter-2/desktop/Story6.webm",
-      "/panels/chapter-2/desktop/Story7.png",
-      "/panels/chapter-2/desktop/Story8.png",
-      "/panels/chapter-2/desktop/Story9.webm"
+      "/panels/chapter-2/desktop/Story6.png"
     ],
     "mobile": [
       "/panels/chapter-2/mobile/Story1.png",
-      "/panels/chapter-2/mobile/Story2.png",
+      "/panels/chapter-2/mobile/Story2.1.png",
+      "/panels/chapter-2/mobile/Story2.2.png",
+      "/panels/chapter-2/mobile/Story2.3.png",
       "/panels/chapter-2/mobile/Story3.png",
-      "/panels/chapter-2/mobile/Story4.webm",
+      "/panels/chapter-2/mobile/Story4.png",
       "/panels/chapter-2/mobile/Story5.png",
-      "/panels/chapter-2/mobile/Story6.webm",
-      "/panels/chapter-2/mobile/Story7.png",
-      "/panels/chapter-2/mobile/Story8.png",
-      "/panels/chapter-2/mobile/Story9.webm"
-    ]
-  },
-  {
-    "title": "Spread4",
-    "slug": "Spread4",
-    "desktop": [],
-    "mobile": []
+      "/panels/chapter-2/mobile/Story6.png"
+    ],
+    "thumbnail": "/panels/chapter-2/chapter-2.thumb.jpg"
   }
 ]

@@ -77,7 +77,7 @@
 <button class="comic-area" type="button" on:click={handleClick} disabled={panels.length === 0 || !imageLoaded}
     on:touchstart={handleTouchStart}
     on:touchend={handleTouchEnd}>
-    {#if panels.length > 0}
+    {#if panels.length > 0 && currentPanel >= 0 && currentPanel < panels.length}
         <img
             src={panels[currentPanel]}
             alt="Comic Panel"
@@ -134,5 +134,14 @@
         opacity: 0;
         pointer-events: none;
         visibility: hidden;
+    }
+
+    .comic-area:focus:not(:focus-visible) {
+        outline: none;
+        box-shadow: none;
+        background-color: transparent;
+    }
+    .comic-area::-moz-focus-inner {
+        border: 0;
     }
 </style>
