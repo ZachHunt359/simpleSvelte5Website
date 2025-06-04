@@ -4,8 +4,18 @@
     import ComicPanel from '$lib/ComicPanel.svelte';
     import { onMount } from 'svelte';
     import { browser } from '$app/environment';
+    //import panelsData from '$lib/panels.json'; // or from static if needed
 
+    let chapters = [];
     let panels = [];
+
+    $: panels = isDesktop
+        ? chapters[currentChapter]?.desktop ?? []
+        : chapters[currentChapter]?.mobile ?? [];
+
+    let currentChapter = 0;
+
+
     let currentPanel = 0;
     let lastScroll = 0;
 
@@ -18,19 +28,29 @@
 
     let isDesktop = false;
 
+    let showChapterModal = false;
+
     // Fetch panels from the server
     onMount(async () => {
         if (browser) {
             const res = await fetch('/panels.json');
-            panels = await res.json();
+            chapters = await res.json();
         }
         isDesktop = typeof window !== 'undefined' && !window.matchMedia('(pointer: coarse)').matches;
+        panels=isDesktop ? chapters[currentChapter]?.desktop : chapters[currentChapter]?.mobile
     });
 
     function next() {
         lastScroll = window.scrollY;
-        if (currentPanel < panels.length - 1) {
+        if (currentPanel < (panels?.length ?? 0) - 1) {
             currentPanel += 1;
+            blurActiveElement();
+            return true;
+        }
+        if (currentChapter < chapters.length - 1) {
+            currentChapter += 1;
+            currentPanel = 0;
+            blurActiveElement();
             return true;
         }
         return false;
@@ -39,6 +59,16 @@
         lastScroll = window.scrollY;
         if (currentPanel > 0) {
             currentPanel -= 1;
+            blurActiveElement();
+            return true;
+        }
+        if (currentChapter > 0) {
+            currentChapter -= 1;
+            const prevPanels = isDesktop
+                ? chapters[currentChapter]?.desktop ?? []
+                : chapters[currentChapter]?.mobile ?? [];
+            currentPanel = prevPanels.length - 1;
+            blurActiveElement();
             return true;
         }
         return false;
@@ -47,6 +77,7 @@
         lastScroll = window.scrollY;
         if (currentPanel !== 0) {
             currentPanel = 0;
+            blurActiveElement();
             return true;
         }
         return false;
@@ -62,7 +93,7 @@
                 if (nav && nav.contains(document.activeElement)) {
                     (document.activeElement as HTMLElement).blur();
                 }
-                console.log('BottomNav auto-hid');
+                //('BottomNav auto-hid');
             }, 5000);
         } else {
             if (topNavTimeout) clearTimeout(topNavTimeout);
@@ -72,7 +103,7 @@
                 if (nav && nav.contains(document.activeElement)) {
                     (document.activeElement as HTMLElement).blur();
                 }
-                console.log('TopNav auto-hid');
+                //console.log('TopNav auto-hid');
             }, 5000);
         }
     }
@@ -96,7 +127,50 @@
         };
     }
 
-    $: console.log('showBottomNav', showBottomNav);
+    function selectChapter(index) {
+      currentChapter = index;
+      currentPanel = 0;
+      showChapterModal = false;
+      // Reset scroll position when changing chapter
+      if (typeof window !== 'undefined') {
+        window.scrollTo(0, 0);
+      }
+    }
+    // Reset scroll position when changing chapter
+    $: if (currentPanel === 0 && typeof window !== 'undefined') {
+        window.scrollTo(0, 0);
+    }
+
+    $: isLastPanelOfLastChapter =
+        currentChapter === chapters.length - 1 &&
+        currentPanel === (panels?.length ?? 0) - 1;
+
+    $: canGoForward = !isLastPanelOfLastChapter;
+
+    //$: console.log('showBottomNav', showBottomNav);
+
+    function blurActiveElement() {
+        if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+    }
+
+    let prevChapter = currentChapter;
+    let prevPanel = currentPanel;
+
+    $: {
+        // Only scroll to top if chapter changed, or panel changed to 0
+        if (
+            (currentChapter !== prevChapter) ||
+            (currentPanel === 0 && prevPanel !== 0)
+        ) {
+            if (typeof window !== 'undefined') {
+                window.scrollTo(0, 0);
+            }
+        }
+        prevChapter = currentChapter;
+        prevPanel = currentPanel;
+    }
 </script>
 
 {#if isDesktop}
@@ -114,12 +188,12 @@
 
 <main>
     <ComicPanel
-        {panels}
-        bind:currentPanel
-        {lastScroll}
-        onNext={next}
-        onSwipeUp={handleSwipeUp}
-        onSwipeDown={handleSwipeDown}
+      panels={isDesktop ? chapters[currentChapter]?.desktop : chapters[currentChapter]?.mobile}
+      {currentPanel}
+      {lastScroll}
+      onNext={next}
+      onSwipeUp={handleSwipeUp}
+      onSwipeDown={handleSwipeDown}
     />
 </main>
 
@@ -132,22 +206,43 @@
     >
         <BottomNav
             bind:show={showBottomNav}
-            canGoBack={currentPanel > 0}
-            canGoForward={currentPanel < panels.length - 1}
+            canGoBack={currentPanel > 0 || currentChapter > 0}
+            canGoForward={currentPanel < panels.length - 1 || currentChapter < chapters.length - 1}
             onFirst={withNavTimer(first, 'bottom')}
             onBack={withNavTimer(prev, 'bottom')}
             onForward={withNavTimer(next, 'bottom')}
+            onChapterSelect={() => showChapterModal = true}
         />
     </div>
 {:else}
     <BottomNav
         bind:show={showBottomNav}
-        canGoBack={currentPanel > 0}
-        canGoForward={currentPanel < panels.length - 1}
+        canGoBack={currentPanel > 0 || currentChapter > 0}
+        canGoForward={currentPanel < panels.length - 1 || currentChapter < chapters.length - 1}
         onFirst={withNavTimer(first, 'bottom')}
         onBack={withNavTimer(prev, 'bottom')}
         onForward={withNavTimer(next, 'bottom')}
+        onChapterSelect={() => showChapterModal = true}
     />
+{/if}
+
+{#if showChapterModal}
+    <div class="chapter-modal-backdrop" on:click={() => showChapterModal = false}>
+        <div class="chapter-modal" on:click|stopPropagation>
+            <h2>Select Chapter</h2>
+            <div class="chapter-thumbnails">
+                {#each chapters as chapter, idx}
+                    <figure class="chapter-thumb" on:click={() => { selectChapter(idx); showChapterModal = false; }}>
+                        <img
+                            src={chapter.thumbnail}
+                            alt={chapter.title}
+                        />
+                        <figcaption>{chapter.title}</figcaption>
+                    </figure>
+                {/each}
+            </div>
+        </div>
+    </div>
 {/if}
 
 <style>
@@ -158,4 +253,52 @@
         overflow-x: hidden;
         overflow-y: auto;
     }
+    .chapter-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .chapter-modal {
+        background: #222;
+        padding: 2rem;
+        border-radius: 1rem;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: auto;
+    }
+    .chapter-thumbnails {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: center;
+    }
+    .chapter-thumb {
+        width: 100px;
+        cursor: pointer;
+        background: #111;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        text-align: center;
+        transition: box-shadow 0.2s;
+    }
+    .chapter-thumb:hover {
+        box-shadow: 0 0 0 2px #fff;
+    }
+    .chapter-thumb img {
+        width: 100%;
+        aspect-ratio: 2/3;
+        object-fit: cover;
+        display: block;
+    }
+    .chapter-thumb figcaption {
+        font-size: 0.8rem;
+        color: #fff;
+        padding: 0.25rem 0.5rem;
+        background: rgba(0,0,0,0.5);
+    }
 </style>
+

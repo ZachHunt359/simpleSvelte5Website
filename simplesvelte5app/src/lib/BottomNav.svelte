@@ -7,6 +7,7 @@
     export let show = false;
     export let onHover = () => {};
     export let onUnhover = () => {};
+    export let onChapterSelect = () => {};
 </script>
 
 <nav class="bottom-nav" class:show={show}>
@@ -31,10 +32,10 @@
             </a>
         </li>
         <li>
-            <a href="/#">
+            <button type="button" on:click={onChapterSelect} aria-label="Select Chapter">
                 <!-- Chapter Select -->
                 <iconify-icon icon="uil:books"></iconify-icon>
-            </a>
+            </button>
         </li>
         <li>
             <a
@@ -64,5 +65,11 @@
         cursor: default;
         text-decoration: none;
         opacity: 0.5;
+    }
+    button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: inherit;
     }
 </style>
