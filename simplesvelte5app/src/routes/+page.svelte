@@ -2,7 +2,7 @@
     import TopNav from '$lib/TopNav.svelte';
     import BottomNav from '$lib/BottomNav.svelte';
     import ComicPanel from '$lib/ComicPanel.svelte';
-    import { onMount } from 'svelte';
+    import { onMount, tick } from 'svelte';
     import { browser } from '$app/environment';
     //import panelsData from '$lib/panels.json'; // or from static if needed
 
@@ -41,24 +41,25 @@
     });
 
     function next() {
-        lastScroll = window.scrollY;
         if (currentPanel < (panels?.length ?? 0) - 1) {
             currentPanel += 1;
+            lastScroll = window.scrollY;
             blurActiveElement();
             return true;
         }
         if (currentChapter < chapters.length - 1) {
             currentChapter += 1;
             currentPanel = 0;
+            lastScroll = 0; // <-- Add this
             blurActiveElement();
             return true;
         }
         return false;
     }
     function prev() {
-        lastScroll = window.scrollY;
         if (currentPanel > 0) {
             currentPanel -= 1;
+            lastScroll = window.scrollY;
             blurActiveElement();
             return true;
         }
@@ -68,15 +69,16 @@
                 ? chapters[currentChapter]?.desktop ?? []
                 : chapters[currentChapter]?.mobile ?? [];
             currentPanel = prevPanels.length - 1;
+            lastScroll = 0; // <-- Or set to previous scroll if you want
             blurActiveElement();
             return true;
         }
         return false;
     }
     function first() {
-        lastScroll = window.scrollY;
         if (currentPanel !== 0) {
             currentPanel = 0;
+            lastScroll = 0; // <-- Add this
             blurActiveElement();
             return true;
         }
@@ -130,15 +132,8 @@
     function selectChapter(index) {
       currentChapter = index;
       currentPanel = 0;
+      lastScroll = 0; // <-- Add this
       showChapterModal = false;
-      // Reset scroll position when changing chapter
-      if (typeof window !== 'undefined') {
-        window.scrollTo(0, 0);
-      }
-    }
-    // Reset scroll position when changing chapter
-    $: if (currentPanel === 0 && typeof window !== 'undefined') {
-        window.scrollTo(0, 0);
     }
 
     $: isLastPanelOfLastChapter =
@@ -158,19 +153,20 @@
     let prevChapter = currentChapter;
     let prevPanel = currentPanel;
 
-    $: {
+    $: (async () => {
         // Only scroll to top if chapter changed, or panel changed to 0
         if (
             (currentChapter !== prevChapter) ||
             (currentPanel === 0 && prevPanel !== 0)
         ) {
             if (typeof window !== 'undefined') {
+                await tick();
                 window.scrollTo(0, 0);
             }
         }
         prevChapter = currentChapter;
         prevPanel = currentPanel;
-    }
+    })();
 </script>
 
 {#if isDesktop}

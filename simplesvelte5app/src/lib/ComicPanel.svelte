@@ -35,7 +35,6 @@
         imageLoaded = true;
         setTimeout(() => window.scrollTo({ top: lastScroll }), 0);
     }
-
     function handleVideoLoaded() {
         setTimeout(() => window.scrollTo({ top: lastScroll }), 0);
     }
@@ -136,6 +135,7 @@
         visibility: hidden;
     }
 
+    /* Trying to prevent the comic page being highlighted */
     .comic-area:focus:not(:focus-visible) {
         outline: none;
         box-shadow: none;
