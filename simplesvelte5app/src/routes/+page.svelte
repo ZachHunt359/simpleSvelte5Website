@@ -266,6 +266,11 @@
         max-height: 90vh;
         overflow: auto;
     }
+    .chapter-modal h2 {
+        text-align: center;
+        color: yellow;
+        margin-bottom: 1rem;
+    }
     .chapter-thumbnails {
         display: flex;
         flex-wrap: wrap;
