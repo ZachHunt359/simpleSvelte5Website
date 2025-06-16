@@ -9,6 +9,8 @@
     export let lastScroll = 0;
     export let onNext = () => {};
 
+    //console.log('ComicPanel received panels:', panels, 'currentPanel:', currentPanel);
+
     // Preload images/videos for the next panels
     function preloadImages(currentPanel) {
         if (!browser || panels.length === 0) return;
