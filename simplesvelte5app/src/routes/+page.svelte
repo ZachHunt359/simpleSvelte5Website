@@ -4,19 +4,18 @@
     import ComicPanel from '$lib/ComicPanel.svelte';
     import { onMount, tick } from 'svelte';
     import { browser } from '$app/environment';
-    //import panelsData from '$lib/panels.json'; // or from static if needed
+
 
     let chapters = [];
     let panels = [];
-
-    $: panels = isDesktop
-        ? chapters[currentChapter]?.desktop ?? []
-        : chapters[currentChapter]?.mobile ?? [];
-
     let currentChapter = 0;
-
-
     let currentPanel = 0;
+    let isDesktop = false;
+
+    
+
+
+    
     let lastScroll = 0;
 
     let showTopNav = false;
@@ -26,23 +25,57 @@
     let bottomNavTimeout: ReturnType<typeof setTimeout> | null = null;
     let topNavTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    let isDesktop = false;
-
     let showChapterModal = false;
 
     // Fetch panels from the server
-    onMount(async () => {
-        if (browser) {
+    onMount(() => {
+        // Device detection
+        updateIsDesktop();
+        window.addEventListener('resize', updateIsDesktop);
+        window.addEventListener('orientationchange', updateIsDesktop);
+
+        // Fetch panels.json asynchronously
+        (async () => {
             const res = await fetch('/panels.json');
             chapters = await res.json();
-        }
-        isDesktop = typeof window !== 'undefined' && !window.matchMedia('(pointer: coarse)').matches;
-        panels=isDesktop ? chapters[currentChapter]?.desktop : chapters[currentChapter]?.mobile
+            //console.log('Fetched chapters:', chapters);
+        })();
+
+        // Cleanup listeners on destroy
+        return () => {
+            window.removeEventListener('resize', updateIsDesktop);
+            window.removeEventListener('orientationchange', updateIsDesktop);
+        };
     });
 
+    $: panels = chapters.length > 0 
+        ? (isDesktop
+            ? chapters[currentChapter]?.desktop ?? []
+            : chapters[currentChapter]?.mobile ?? [])
+        : [];
+    //$: console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
+
+    //Clamp currentPanel to valid range, in case Mobile or Desktop is shorter than the other
+    $: {
+        if (panels.length === 0) {
+            currentPanel = 0;
+        } else if (currentPanel < 0) {
+            currentPanel = 0;
+        } else if (currentPanel >= panels.length) {
+            currentPanel = panels.length - 1;
+        }
+    }
+
+    function updateIsDesktop() {
+        isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 801px)').matches;
+        console.log('isDesktop:', isDesktop);
+    }
+
+    
     function next() {
         if (currentPanel < (panels?.length ?? 0) - 1) {
             currentPanel += 1;
+            //console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
             lastScroll = window.scrollY;
             blurActiveElement();
             return true;
@@ -50,6 +83,7 @@
         if (currentChapter < chapters.length - 1) {
             currentChapter += 1;
             currentPanel = 0;
+            //console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
             lastScroll = 0; // <-- Add this
             blurActiveElement();
             return true;
@@ -59,6 +93,7 @@
     function prev() {
         if (currentPanel > 0) {
             currentPanel -= 1;
+           // console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
             lastScroll = window.scrollY;
             blurActiveElement();
             return true;
@@ -69,6 +104,7 @@
                 ? chapters[currentChapter]?.desktop ?? []
                 : chapters[currentChapter]?.mobile ?? [];
             currentPanel = prevPanels.length - 1;
+            //console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
             lastScroll = 0; // <-- Or set to previous scroll if you want
             blurActiveElement();
             return true;
@@ -78,6 +114,7 @@
     function first() {
         if (currentPanel !== 0) {
             currentPanel = 0;
+            //console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
             lastScroll = 0; // <-- Add this
             blurActiveElement();
             return true;
@@ -167,25 +204,6 @@
         prevChapter = currentChapter;
         prevPanel = currentPanel;
     })();
-
-    function updateIsDesktop() {
-        isDesktop = typeof window !== 'undefined' && !window.matchMedia('(pointer: coarse)').matches;
-    }
-
-    onMount(() => {
-        updateIsDesktop();
-        window.addEventListener('resize', updateIsDesktop);
-        // Also listen for orientation changes (for mobile devices)
-        window.addEventListener('orientationchange', updateIsDesktop);
-        return () => {
-            window.removeEventListener('resize', updateIsDesktop);
-            window.removeEventListener('orientationchange', updateIsDesktop);
-        };
-    });
-
-    $: if (currentPanel >= panels.length) {
-        currentPanel = panels.length - 1;
-    }
 </script>
 
 {#if isDesktop}
@@ -202,14 +220,18 @@
 {/if}
 
 <main>
-    <ComicPanel
-      {panels}
-      {currentPanel}
-      {lastScroll}
-      onNext={next}
-      onSwipeUp={handleSwipeUp}
-      onSwipeDown={handleSwipeDown}
-    />
+    {#if panels.length > 0}
+        <ComicPanel
+            {panels}
+            {currentPanel}
+            {lastScroll}
+            onNext={next}
+            onSwipeUp={handleSwipeUp}
+            onSwipeDown={handleSwipeDown}
+        />
+    {:else}
+        <div class="loading"><p>Loading...</p></div>
+    {/if}
 </main>
 
 {#if isDesktop}
