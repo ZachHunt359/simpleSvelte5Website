@@ -167,6 +167,25 @@
         prevChapter = currentChapter;
         prevPanel = currentPanel;
     })();
+
+    function updateIsDesktop() {
+        isDesktop = typeof window !== 'undefined' && !window.matchMedia('(pointer: coarse)').matches;
+    }
+
+    onMount(() => {
+        updateIsDesktop();
+        window.addEventListener('resize', updateIsDesktop);
+        // Also listen for orientation changes (for mobile devices)
+        window.addEventListener('orientationchange', updateIsDesktop);
+        return () => {
+            window.removeEventListener('resize', updateIsDesktop);
+            window.removeEventListener('orientationchange', updateIsDesktop);
+        };
+    });
+
+    $: if (currentPanel >= panels.length) {
+        currentPanel = panels.length - 1;
+    }
 </script>
 
 {#if isDesktop}
@@ -184,7 +203,7 @@
 
 <main>
     <ComicPanel
-      panels={isDesktop ? chapters[currentChapter]?.desktop : chapters[currentChapter]?.mobile}
+      {panels}
       {currentPanel}
       {lastScroll}
       onNext={next}
