@@ -14,6 +14,7 @@
     let currentChapter = 0;
     let currentPanel = 0;
     let isDesktop = false;
+    let isSaved = false;
 
     let lastScroll = 0;
 
@@ -34,6 +35,11 @@
         const params = $page.params;
         chapterParam = params.chapter;
         panelParam = params.panel;
+
+        //Find out if current panel is saved in localStorage
+        if (typeof window !== 'undefined') {
+            isSaved = localStorage.getItem('comic-last-url') === window.location.pathname;
+        }
     }
 
     // Fetch panels from the server
@@ -274,6 +280,13 @@
             goto(`/${chapterSlug}/${panelFile}`, { replaceState: true, keepfocus: true, noscroll: true });
         }
     }
+
+    function saveLocation() {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('comic-last-url', window.location.pathname);
+            isSaved = true;
+        }
+    }
 </script>
 
 {#if isDesktop}
@@ -319,6 +332,9 @@
             onBack={withNavTimer(prev, 'bottom')}
             onForward={withNavTimer(next, 'bottom')}
             onChapterSelect={() => showChapterModal = true}
+            isSaved={isSaved}
+            onSave={saveLocation}
+            
         />
     </div>
 {:else}
@@ -330,6 +346,8 @@
         onBack={withNavTimer(prev, 'bottom')}
         onForward={withNavTimer(next, 'bottom')}
         onChapterSelect={() => showChapterModal = true}
+        isSaved={isSaved}
+        onSave={saveLocation}
     />
 {/if}
 
