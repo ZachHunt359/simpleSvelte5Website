@@ -8,6 +8,8 @@
     export let onHover = () => {};
     export let onUnhover = () => {};
     export let onChapterSelect = () => {};
+    export let onSave = () => {};
+    export let isSaved = false;
 </script>
 
 <nav class="bottom-nav" class:show={show}>
@@ -49,10 +51,16 @@
             </a>
         </li>
         <li>
-            <a href="/#">
                 <!-- Save -->
+            <button
+                type="button"
+                on:click={onSave}
+                aria-label="Save Location"
+                class:saved={isSaved}
+                disabled={isSaved}
+            >
                 <iconify-icon icon="bi:floppy"></iconify-icon>
-            </a>
+            </button>
         </li>
     </ul>
 </nav>
@@ -71,5 +79,10 @@
         border: none;
         cursor: pointer;
         color: inherit;
+    }
+    button.saved {
+        color: #888;
+        opacity: 0.5;
+        cursor: default;
     }
 </style>
