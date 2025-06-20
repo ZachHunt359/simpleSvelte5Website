@@ -1,11 +1,28 @@
 <script>
     export let show = false;
-    export let onHover = () => {};
-    export let onUnhover = () => {};
+    export let isDesktop = false; // This will be isPointerDesktop from parent
+    import { createEventDispatcher } from 'svelte';
+    const dispatch = createEventDispatcher();
 </script>
 
 
-<nav class="top-nav" class:show={show}>
+<nav
+    class="top-nav"
+    class:show={show}
+    on:mouseenter={() => {
+        if (isDesktop) {
+            show = true;
+            dispatch('show', true);
+        }
+    }}
+    on:mouseleave={() => {
+        if (isDesktop) {
+            show = false;
+            dispatch('show', false);
+        }
+    }}
+    style="pointer-events: {show ? 'auto' : 'none'}"
+>
     <ul>
         <li>
             <a href="/#">
