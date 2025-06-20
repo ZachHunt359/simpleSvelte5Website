@@ -95,24 +95,6 @@ nav a, nav a:visited {
     transform: none;
     transition: none;
 }
-
-.nav-hover-zone.top {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 64px; /* match your nav height */
-    z-index: 100;
-}
-
-.nav-hover-zone.bottom {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 64px; /* or whatever matches your nav height */
-    z-index: 100;
-}
 iconify-icon {
     display: inline-block;
     font-size: 2rem;
