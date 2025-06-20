@@ -13,13 +13,15 @@
     let panels = [];
     let currentChapter = 0;
     let currentPanel = 0;
-    let isDesktop = false;
+    let isDesktop = false; // For image layout
+    let isPointerDesktop = false; // For nav behavior
     let isSaved = false;
 
     let lastScroll = 0;
 
     let showTopNav = false;
     let showBottomNav = false;
+    let prevIsDesktop = isDesktop;
 
     let navTimeout: ReturnType<typeof setTimeout> | null = null;
     let bottomNavTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -83,23 +85,25 @@
 
     function updateIsDesktop() {
         isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 801px)').matches;
-        console.log('isDesktop:', isDesktop);
+        updateIsPointerDesktop();
+        console.log('isDesktop:', isDesktop, ' isPointerDesktop:', isPointerDesktop);
+    }
+    function updateIsPointerDesktop() {
+        isPointerDesktop = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches;
     }
 
     
     function next() {
         if (currentPanel < (panels?.length ?? 0) - 1) {
-            currentPanel += 1;
-            //console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
             lastScroll = window.scrollY;
+            currentPanel += 1;
             blurActiveElement();
             return true;
         }
         if (currentChapter < chapters.length - 1) {
             currentChapter += 1;
             currentPanel = 0;
-            //console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
-            lastScroll = 0; // <-- Add this
+            lastScroll = 0; // Scroll to top at beginning of new chapter. TODO: beginning of new PAGE, separate from chapter
             blurActiveElement();
             return true;
         }
@@ -107,9 +111,8 @@
     }
     function prev() {
         if (currentPanel > 0) {
-            currentPanel -= 1;
-           // console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
             lastScroll = window.scrollY;
+            currentPanel -= 1;
             blurActiveElement();
             return true;
         }
@@ -119,8 +122,7 @@
                 ? chapters[currentChapter]?.desktop ?? []
                 : chapters[currentChapter]?.mobile ?? [];
             currentPanel = prevPanels.length - 1;
-            //console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
-            lastScroll = 0; // <-- Or set to previous scroll if you want
+            lastScroll = 0; // Scroll to top at beginning of new chapter. TODO: beginning of new PAGE, separate from chapter
             blurActiveElement();
             return true;
         }
@@ -130,7 +132,7 @@
         if (currentPanel !== 0) {
             currentPanel = 0;
             //console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
-            lastScroll = 0; // <-- Add this
+            lastScroll = 0; // Scroll to top at beginning of new chapter. TODO: beginning of new PAGE, separate from chapter
             blurActiveElement();
             return true;
         }
@@ -184,7 +186,7 @@
     function selectChapter(index) {
       currentChapter = index;
       currentPanel = 0;
-      lastScroll = 0; // <-- Add this
+      lastScroll = 0;
       showChapterModal = false;
     }
 
@@ -206,14 +208,11 @@
     let prevPanel = currentPanel;
 
     $: (async () => {
-        // Only scroll to top if chapter changed, or panel changed to 0
-        if (
-            (currentChapter !== prevChapter) ||
-            (currentPanel === 0 && prevPanel !== 0)
-        ) {
+        // Only scroll to top if we just navigated to the first panel of a chapter
+        if (currentPanel === 0 && prevPanel !== 0) {
             if (typeof window !== 'undefined') {
                 await tick();
-                window.scrollTo(0, 0);
+                //window.scrollTo(0, 0);
             }
         }
         prevChapter = currentChapter;
@@ -287,20 +286,34 @@
             isSaved = true;
         }
     }
+
+    $: if (typeof window !== 'undefined') {
+        // When switching between desktop and mobile, hide navs
+        showTopNav = false;
+        showBottomNav = false;
+    }
+
+    
+    $: if (isDesktop !== prevIsDesktop) {
+        showTopNav = false;
+        showBottomNav = false;
+        prevIsDesktop = isDesktop;
+    }
 </script>
 
-{#if isDesktop}
+{#if isPointerDesktop}
     <div
         class="nav-hover-zone top"
-        role="presentation"
         on:mouseenter={() => showTopNav = true}
         on:mouseleave={() => showTopNav = false}
-    >
-        <TopNav bind:show={showTopNav} />
-    </div>
-{:else}
-    <TopNav bind:show={showTopNav} />
+    ></div>
 {/if}
+
+<TopNav
+    bind:show={showTopNav}
+    isDesktop={isPointerDesktop}
+    on:show={e => showTopNav = e.detail}
+/>
 
 <main>
     {#if panels.length > 0}
@@ -317,29 +330,17 @@
     {/if}
 </main>
 
-{#if isDesktop}
+{#if isPointerDesktop}
     <div
         class="nav-hover-zone bottom"
-        role="presentation"
         on:mouseenter={() => showBottomNav = true}
         on:mouseleave={() => showBottomNav = false}
-    >
-        <BottomNav
-            bind:show={showBottomNav}
-            canGoBack={currentPanel > 0 || currentChapter > 0}
-            canGoForward={currentPanel < panels.length - 1 || currentChapter < chapters.length - 1}
-            onFirst={withNavTimer(first, 'bottom')}
-            onBack={withNavTimer(prev, 'bottom')}
-            onForward={withNavTimer(next, 'bottom')}
-            onChapterSelect={() => showChapterModal = true}
-            isSaved={isSaved}
-            onSave={saveLocation}
-            
-        />
-    </div>
-{:else}
-    <BottomNav
+    ></div>
+{/if}
+
+<BottomNav
         bind:show={showBottomNav}
+        isDesktop={isPointerDesktop}
         canGoBack={currentPanel > 0 || currentChapter > 0}
         canGoForward={currentPanel < panels.length - 1 || currentChapter < chapters.length - 1}
         onFirst={withNavTimer(first, 'bottom')}
@@ -348,8 +349,8 @@
         onChapterSelect={() => showChapterModal = true}
         isSaved={isSaved}
         onSave={saveLocation}
+        on:show={e => showBottomNav = e.detail}
     />
-{/if}
 
 {#if showChapterModal}
     <div class="chapter-modal-backdrop" on:click={() => showChapterModal = false}>
@@ -430,5 +431,21 @@
         padding: 0.25rem 0.5rem;
         background: rgba(0,0,0,0.5);
     }
+    .nav-hover-zone {
+        position: fixed;
+        width: 100vw;
+        height: 60px;
+        z-index: 100;
+    }
+    .nav-hover-zone.top {
+        top: 0;
+        left: 0;
+    }
+    .nav-hover-zone.bottom {
+        bottom: 0;
+        left: 0;
+    }
 </style>
+
+
 

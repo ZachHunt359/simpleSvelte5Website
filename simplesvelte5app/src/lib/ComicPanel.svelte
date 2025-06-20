@@ -1,7 +1,7 @@
 <script>
 // @ts-nocheck
 
-    import { onMount } from 'svelte';
+    import { onMount, tick } from 'svelte';
     import { browser } from '$app/environment';
 
     export let panels = [];
@@ -11,13 +11,44 @@
 
     //console.log('ComicPanel received panels:', panels, 'currentPanel:', currentPanel);
 
-    // Preload images/videos for the next panels
+    // The panel currently displayed in the DOM
+    let displayedPanelIndex = currentPanel;
+    let preloading = false;
+
+    let lastPanelHeight = null;
+    let panelEl;
+
+    // Flicker-free display: only update displayedPanelIndex after image/video is ready
+    $: if (
+        panels.length > 0 &&
+        currentPanel !== displayedPanelIndex &&
+        panels[currentPanel]
+    ) {
+        const url = panels[currentPanel];
+        preloading = true;
+
+        if (/\.(webm)$/i.test(url)) {
+            // For video, swap immediately (preloading is unreliable for videos)
+            displayedPanelIndex = currentPanel;
+            preloading = false;
+        } else {
+            // For images, preload before swapping
+            const img = new window.Image();
+            img.onload = () => {
+                displayedPanelIndex = currentPanel;
+                preloading = false;
+            };
+            img.src = url;
+        }
+    }
+
+    // Preload images/videos for the next panels (1 behind, 3 ahead)
     function preloadImages(currentPanel) {
         if (!browser || panels.length === 0) return;
-        for (let i = currentPanel; i < currentPanel + 3 && i < panels.length; i++) {
+        for (let i = currentPanel - 1; i < currentPanel + 3 && i < panels.length; i++) {
             const url = panels[i];
             if (/\.(webm)$/i.test(url)) {
-                // Preload video
+                // Preload video (not always effective, but doesn't hurt)
                 const video = document.createElement('video');
                 video.src = url;
                 video.preload = 'auto';
@@ -31,19 +62,45 @@
 
     $: preloadImages(currentPanel);
 
-    let imageLoaded = true;
+    /* let displayedPanelIndex = currentPanel;
+    let preloadedUrl = null;
+    // Preload the next panel's image/video
+    $: if (panels.length > 0 && currentPanel !== displayedPanelIndex) {
+        const url = panels[currentPanel];
+        if (/\.(webm)$/i.test(url)) {
+            // Preload video (optional, browsers may not fully preload)
+            preloadedUrl = url;
+            displayedPanelIndex = currentPanel; // For videos, swap immediately
+        } else {
+            // Preload image
+            const img = new window.Image();
+            img.onload = () => {
+                preloadedUrl = url;
+                displayedPanelIndex = currentPanel;
+            };
+            img.src = url;
+        }
+    } */
 
-    function handleImageLoad() {
-        imageLoaded = true;
-        setTimeout(() => window.scrollTo({ top: lastScroll }), 0);
-    }
-    function handleVideoLoaded() {
-        setTimeout(() => window.scrollTo({ top: lastScroll }), 0);
+    //let imageLoaded = true;
+
+    async function handleMediaLoad() {
+        //console.log('handleMediaLoad', { currentPanel, lastScroll, scrollY: window.scrollY });
+        await tick();
+        if (panelEl) {//Holding space for the next panel
+            lastPanelHeight = panelEl.offsetHeight;
+        }
+        if (typeof window !== 'undefined') {
+            // Only scroll if not already at the desired position
+            if (lastScroll && window.scrollY !== lastScroll) {
+                window.scrollTo({ top: lastScroll });
+            }
+        }
     }
 
-    $: if (panels.length > 0 && !/\.(webm)$/i.test(panels[currentPanel])) {
-        imageLoaded = false;
-    }
+    /* $: if (panels.length > 0 && !/\.(webm)$/i.test(panels[currentPanel])) {
+        //imageLoaded = false;
+    } */
 
     /**
      * @param {{ target: { closest: (arg0: string) => any; }; }} event
@@ -73,30 +130,42 @@
         }
         touchStartY = null;
     }
+
+    
+
+    
 </script>
 
-<button class="comic-area" type="button" on:click={handleClick} disabled={panels.length === 0 || !imageLoaded}
+<button 
+    class="comic-area"
+    type="button"
+    style="min-height: {lastPanelHeight ? `${lastPanelHeight}px` : 'auto'}"
+    on:click={handleClick}
+    disabled={preloading}
     on:touchstart={handleTouchStart}
     on:touchend={handleTouchEnd}>
-    {#if panels.length > 0 && currentPanel >= 0 && currentPanel < panels.length}
-        <img
-            src={panels[currentPanel]}
-            alt="Comic Panel"
-            class:active={!/\.(webm)$/i.test(panels[currentPanel]) && imageLoaded}
-            class:inactive={/\.(webm)$/i.test(panels[currentPanel]) || !imageLoaded}
-            on:load={handleImageLoad}
-        />
-        <!-- svelte-ignore a11y_media_has_caption -->
-        <video
-            src={panels[currentPanel]}
+    {#if panels.length > 0 && displayedPanelIndex >= 0 && displayedPanelIndex < panels.length}
+        {#if /\.(webm)$/i.test(panels[displayedPanelIndex])}
+            <video
+            src={panels[displayedPanelIndex]}
             autoplay
             loop
             playsinline
-            class:active={/\.(webm)$/i.test(panels[currentPanel])}
-            class:inactive={!/\.(webm)$/i.test(panels[currentPanel])}
-            on:loadeddata={handleVideoLoaded}
-        ></video>
+            style="max-width: 100%; max-height: 100%; display: block;"
+            on:loadeddata={handleMediaLoad}
+            />
+        {:else}
+            <img
+            src={panels[displayedPanelIndex]}
+            alt="Comic Panel"
+            style="max-width: 100%; max-height: 100%; display: block;"
+            draggable="false"
+            on:load={handleMediaLoad}
+            />
+        {/if}
     {/if}
+
+    
 </button>
 
 <style>
