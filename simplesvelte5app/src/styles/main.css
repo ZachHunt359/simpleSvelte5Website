@@ -103,3 +103,10 @@ iconify-icon {
     /* For SVG fill (for most icon sets): */
     --iconify-icon-color: yellow;
 }
+button.logo {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: yellow;
+}

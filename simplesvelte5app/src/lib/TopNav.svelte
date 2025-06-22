@@ -1,6 +1,7 @@
 <script>
     export let show = false;
     export let isDesktop = false; // This will be isPointerDesktop from parent
+    export let onChapterSelect = () => {};
     import { createEventDispatcher } from 'svelte';
     const dispatch = createEventDispatcher();
 </script>
@@ -37,10 +38,10 @@
             </a>
         </li>
         <li>
-            <a href="/#">
+            <button class="logo" type="button" on:click={onChapterSelect} aria-label="Select Chapter">
                 <!-- PARANOiD (webcomic title, logo to come) -->
-                 PARANOiD
-            </a>
+                PARANOiD
+            </button>
         </li>
         <li>
             <a href="/#">
