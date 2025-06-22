@@ -313,6 +313,7 @@
     bind:show={showTopNav}
     isDesktop={isPointerDesktop}
     on:show={e => showTopNav = e.detail}
+    onChapterSelect={() => showChapterModal = true}
 />
 
 <main>
