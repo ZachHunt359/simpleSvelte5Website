@@ -1,9 +1,13 @@
 <script>
+    import { createEventDispatcher } from 'svelte';
+    const dispatch = createEventDispatcher();
+
     export let show = false;
     export let isDesktop = false; // This will be isPointerDesktop from parent
     export let onChapterSelect = () => {};
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
+    export let canGoForward = false;
+    export let onInquiry = () => {};
+    export let hasUnreadReplies = false;
 </script>
 
 
@@ -44,16 +48,42 @@
             </button>
         </li>
         <li>
-            <a href="/#">
-                <!-- Notifs -->
-                <iconify-icon icon="mdi:bell-outline"></iconify-icon>
+            <!-- Notifs -->
+            <a href="javascript:void(0)"
+                class:notify={hasUnreadReplies}
+                on:click={() => hasUnreadReplies && dispatch('showNotifications')}
+                aria-label="Notifications">
+                    <iconify-icon icon="mdi:bell-outline"></iconify-icon>
             </a>
         </li>
         <li>
-            <a href="/#">
+            <a
+                href="javascript:void(0)"
+                class:disabled={canGoForward}
+                aria-disabled={canGoForward}
+                tabindex={canGoForward ? -1 : 0}
+                on:click={() => !canGoForward && onInquiry()}
+            >
                 <!-- Inquiry -->
-                <iconify-icon icon="mdi:email-outline"></iconify-icon>
+                <iconify-icon icon="lineicons:question-mark"></iconify-icon>
             </a>
         </li>
     </ul>
 </nav>
+<style>
+.disabled,
+a[aria-disabled="true"] {
+    color: #888;
+    pointer-events: none;
+    cursor: default;
+    opacity: 0.5;
+}
+.notify iconify-icon {
+    animation: wiggle 0.5s infinite alternate;
+    color: gold;
+}
+@keyframes wiggle {
+    0% { transform: rotate(-10deg);}
+    100% { transform: rotate(10deg);}
+}
+</style>
