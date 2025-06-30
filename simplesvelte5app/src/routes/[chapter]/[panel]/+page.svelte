@@ -29,6 +29,10 @@
 
     let showChapterModal = false;
 
+    let userReplies = [];
+    let hasUnreadReplies = false;
+    let showNotifications = false;
+
     // Params from the page url
     let chapterParam = '';
     let panelParam = '';
@@ -299,6 +303,99 @@
         showBottomNav = false;
         prevIsDesktop = isDesktop;
     }
+
+    // Inquiry/Prompt handling
+    let inquiryText = '';
+    let userEmail = '';
+    let showInquiryModal = false;
+    let showEmailPrompt = false;
+    let lastInquiryId = null;
+
+    async function submitInquiry() {
+        const userId = getOrCreateUserId();
+        const res = await fetch('/api/inquiry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: inquiryText, userId })
+        });
+        const data = await res.json();
+        if (data.id) {
+            lastInquiryId = data.id;
+            showInquiryModal = false;
+            showEmailPrompt = true;
+            inquiryText = '';
+        }
+    }
+
+    async function submitEmail() {
+        if (lastInquiryId && userEmail) {
+            const userId = getOrCreateUserId();
+            await fetch('/api/inquiry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: lastInquiryId, email: userEmail, userId })
+            });
+        }
+        showEmailPrompt = false;
+        userEmail = '';
+        lastInquiryId = null;
+    }
+
+    function getOrCreateUserId() {
+        let userId = localStorage.getItem('comic-user-id');
+        if (!userId) {
+            userId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now();
+            localStorage.setItem('comic-user-id', userId);
+        }
+        return userId;
+    }
+
+    async function checkForReplies() {
+        const userId = getOrCreateUserId();
+        const res = await fetch('/inquiries.json');
+        const allInquiries = await res.json();
+        userReplies = allInquiries.filter(
+            (inq) => inq.userId === userId 
+                && inq.reply 
+                && !inq.seen
+        );
+        hasUnreadReplies = userReplies.length > 0;
+    }
+
+    // Check for replies on mount and whenever the page is shown
+    onMount(checkForReplies);
+
+    async function clearReplies() {
+        const userId = getOrCreateUserId();
+        const inquiryIds = userReplies.map(r => r.id);
+        if (inquiryIds.length === 0) return;
+
+        await fetch('/api/inquiry/clear', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, inquiryIds })
+        });
+
+        // Update UI immediately
+        userReplies = [];
+        hasUnreadReplies = false;
+        showNotifications = false;
+        // Optionally, re-fetch to update the bell
+        await checkForReplies();
+    }
+    async function clearSingleReply(id) {
+        const userId = getOrCreateUserId();
+        await fetch('/api/inquiry/clear', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, inquiryIds: [id] })
+        });
+
+        // Remove from UI immediately
+        userReplies = userReplies.filter(r => r.id !== id);
+        hasUnreadReplies = userReplies.length > 0;
+        if (!hasUnreadReplies) showNotifications = false;
+    }
 </script>
 
 {#if isPointerDesktop}
@@ -314,6 +411,10 @@
     isDesktop={isPointerDesktop}
     on:show={e => showTopNav = e.detail}
     onChapterSelect={() => showChapterModal = true}
+    canGoForward={currentPanel < panels.length - 1 || currentChapter < chapters.length - 1}
+    onInquiry={() => showInquiryModal = true}
+    hasUnreadReplies={hasUnreadReplies}
+    on:showNotifications={() => showNotifications = true}
 />
 
 <main>
@@ -353,6 +454,7 @@
         on:show={e => showBottomNav = e.detail}
     />
 
+
 {#if showChapterModal}
     <div class="chapter-modal-backdrop" on:click={() => showChapterModal = false}>
         <div class="chapter-modal" on:click|stopPropagation>
@@ -372,6 +474,57 @@
     </div>
 {/if}
 
+{#if showInquiryModal}
+    <div class="modal-backdrop" on:click={() => showInquiryModal = false}>
+        <div class="modal" on:click|stopPropagation>
+            <h3>Submit a Question or Statement</h3>
+            <textarea bind:value={inquiryText} rows="4" placeholder="Type your question or statement here..."></textarea>
+            <div class="modal-actions">
+                <button on:click={submitInquiry}>Submit</button>
+                <button on:click={() => showInquiryModal = false}>Cancel</button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+{#if showEmailPrompt}
+    <div class="modal-backdrop" on:click={() => showEmailPrompt = false}>
+        <div class="modal" on:click|stopPropagation>
+            <button class="close-x" on:click={() => showEmailPrompt = false} aria-label="Close">&times;</button>
+            <h3>Email Address</h3>
+            <input type="email" bind:value={userEmail} placeholder="Enter your email (optional)" />
+            <div class="modal-actions">
+                <button on:click={submitEmail}>Submit</button>
+                <button on:click={() => showEmailPrompt = false}>No thanks</button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+{#if showNotifications}
+    <div class="modal-backdrop" on:click={() => showNotifications = false}>
+        <div class="modal" on:click|stopPropagation>
+            <button class="close-x" on:click={() => showNotifications = false} aria-label="Close">&times;</button>
+            <h3>Your Replies</h3>
+            {#if userReplies.length === 0}
+                <p>No new replies.</p>
+            {:else}
+                <ul>
+                    {#each userReplies as reply (reply.id)}
+                        <li>
+                            <strong>Q:</strong> {reply.message}<br>
+                            <strong>A:</strong> {reply.reply}
+                            <br>
+                            <button class="btn btn-warning btn-xs" on:click={() => clearSingleReply(reply.id)}>Clear</button>
+                        </li>
+                    {/each}
+                </ul>
+                <button class="btn btn-warning" on:click={clearReplies}>Clear All</button>
+            {/if}
+        </div>
+    </div>
+{/if}
+
 <style>
     main {
         position: relative;
@@ -380,7 +533,7 @@
         overflow-x: hidden;
         overflow-y: auto;
     }
-    .chapter-modal-backdrop {
+    .chapter-modal-backdrop, .modal-backdrop {
         position: fixed;
         inset: 0;
         background: rgba(0,0,0,0.7);
@@ -389,13 +542,39 @@
         align-items: center;
         justify-content: center;
     }
-    .chapter-modal {
+    .chapter-modal, .modal {
         background: #222;
         padding: 2rem;
         border-radius: 1rem;
         max-width: 90vw;
         max-height: 90vh;
         overflow: auto;
+        border: 2px solid yellow;
+        color: yellow;
+    }
+     .modal textarea, .modal input {
+        width: 100%;
+        margin: 1em 0;
+        padding: 0.5em;
+        border-radius: 0.5em;
+        border: 1px solid #444;
+        background: #111;
+        color: #fff;
+    }
+    .modal-actions {
+        display: flex;
+        gap: 1em;
+        justify-content: center;
+    }
+    .close-x {
+        position: absolute;
+        top: 0.5em;
+        right: 0.5em;
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 2em;
+        cursor: pointer;
     }
     .chapter-modal h2 {
         text-align: center;
