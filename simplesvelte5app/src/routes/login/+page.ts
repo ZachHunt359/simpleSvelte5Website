@@ -3,6 +3,6 @@ import type { PageLoadEvent } from "./$types";
 
 export async function load(event: PageLoadEvent) {
 	const { user } = await event.parent();
-	if (user) throw redirect(303, "/");
+	if (user) throw redirect(303, "/dashboard");
 	return { title: "Log In" };
 }
