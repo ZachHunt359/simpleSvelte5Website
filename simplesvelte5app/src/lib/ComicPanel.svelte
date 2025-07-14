@@ -151,14 +151,12 @@
             autoplay
             loop
             playsinline
-            style="max-width: 100%; max-height: 100%; display: block;"
             on:loadeddata={handleMediaLoad}
             />
         {:else}
             <img
             src={panels[displayedPanelIndex]}
             alt="Comic Panel"
-            style="max-width: 100%; max-height: 100%; display: block;"
             draggable="false"
             on:load={handleMediaLoad}
             />
@@ -185,6 +183,7 @@
     .comic-area img,
     .comic-area video {
         width: 90vw;
+        max-height: 100vh;
         display: block;
         margin: 0;
         object-fit: contain;
