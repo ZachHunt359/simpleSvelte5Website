@@ -1,7 +1,9 @@
 <script lang="ts">
     import '../styles/main.css';
-	let { children } = $props();
+    export let data;
+    import { session } from "$lib/stores/session";
+    $: session.user = data.user;
 </script>
 
 
-{@render children()}
+<slot />

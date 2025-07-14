@@ -1,6 +1,6 @@
 import { auth } from "$lib/auth";
 import { AUTH_TOKEN_EXPIRY_SECONDS } from "$lib/constants.server";
-import { fail, redirect } from "@sveltejs/kit";
+import { redirect, fail } from "@sveltejs/kit";
 import type { Actions } from "./$types";
 import debug from "debug";
 
@@ -31,7 +31,6 @@ export const actions: Actions = {
 		log("user:", user);
 
 		if (user && user.token) {
-			// TODO: duplicated in login page
 			event.cookies.set("auth_token", `${user.id}:${user.token}`, {
 				path: "/",
 				maxAge: AUTH_TOKEN_EXPIRY_SECONDS,
@@ -42,6 +41,7 @@ export const actions: Actions = {
 
 		delete user.token;
 
-		return { user };
+		// Redirect to dashboard after login
+		throw redirect(303, "/dashboard");
 	},
 };

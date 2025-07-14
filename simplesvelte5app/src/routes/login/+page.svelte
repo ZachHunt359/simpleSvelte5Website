@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { applyAction, enhance } from "$app/forms";
-	import { goto } from "$app/navigation";
 	import { session } from "$lib/stores/session";
 	import { faWarning } from "@fortawesome/free-solid-svg-icons";
 	import debug from "debug";
@@ -26,19 +25,10 @@
 		method="POST"
 		use:enhance={() =>
 			async ({ result }) => {
-				log("form result:", result);
-
+				// No need to manually update session or goto
 				await applyAction(result);
-
-				// TODO: this is kinda a hack since redirecting in the
-				// action doesn't work because we can't also update page
-				// data.
-				if (result.type === "success") {
-					const user = result.data?.user;
-					if (user) $session.user = user;
-					await goto("/dashboard");
-				}
-			}}
+			}
+		}
 	>
 		{#if form?.error}
 			<div class="alert alert-error">
