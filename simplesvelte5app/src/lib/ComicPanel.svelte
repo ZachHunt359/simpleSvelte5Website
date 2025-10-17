@@ -146,13 +146,16 @@
     on:touchend={handleTouchEnd}>
     {#if panels.length > 0 && displayedPanelIndex >= 0 && displayedPanelIndex < panels.length}
         {#if /\.(webm)$/i.test(panels[displayedPanelIndex])}
+            <!-- decorative animated panel: mark as non-interactive for assistive tech -->
             <video
-            src={panels[displayedPanelIndex]}
-            autoplay
-            loop
-            playsinline
-            on:loadeddata={handleMediaLoad}
-            />
+                src={panels[displayedPanelIndex]}
+                autoplay
+                loop
+                playsinline
+                aria-hidden="true"
+                tabindex="-1"
+                on:loadeddata={handleMediaLoad}
+            ></video>
         {:else}
             <img
             src={panels[displayedPanelIndex]}
@@ -193,13 +196,13 @@
         grid-area: 1 / 1 / 2 / 2; /* Overlap both elements */
     }
 
-    .active {
+    :global(.active) {
         opacity: 1;
         pointer-events: auto;
         visibility: visible;
     }
 
-    .inactive {
+    :global(.inactive) {
         opacity: 0;
         pointer-events: none;
         visibility: hidden;

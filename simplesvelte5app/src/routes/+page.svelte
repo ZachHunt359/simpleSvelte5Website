@@ -1,9 +1,10 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
-    import { onMount } from 'svelte';
+    import { onMount, tick } from 'svelte';
 
-    onMount(() => {
+    onMount(async () => {
         if (typeof window !== 'undefined' && window.location.pathname === '/') {
+            await tick(); // Wait for SvelteKit to finish initial setup
             const lastUrl = localStorage.getItem('comic-last-url');
             if (lastUrl && lastUrl !== '/') {
                 goto(lastUrl, { replaceState: true });

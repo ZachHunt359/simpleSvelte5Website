@@ -9,6 +9,7 @@
     //export let onHover = () => {};
     //export let onUnhover = () => {};
     export let onChapterSelect = () => {};
+    export let chaptersCount = 1;
     export let onSave = () => {};
     export let isSaved = false;
     import { createEventDispatcher } from 'svelte';
@@ -30,44 +31,50 @@
             dispatch('show', false);
         }
     }}
-    style="pointer-events: {show ? 'auto' : 'none'}"
+    
 >
     <ul>
         <li>
-            <a
-                on:click|preventDefault={(event) => { onFirst(); event.currentTarget.blur(); }}
-            >
-                <!-- Page 1 of Chapter -->
+            <button type="button" on:click={(event) => { onFirst(); event.currentTarget.blur(); }} aria-label="Go to first panel">
                 <iconify-icon icon="icon-park-outline:to-left"></iconify-icon>
-            </a>
+            </button>
         </li>
         <li>
-            <a
+            <button
+                type="button"
                 class:disabled={!canGoBack}
-                on:click|preventDefault={(event) => { if (canGoBack) onBack(); event.currentTarget.blur(); }}
+                on:click={(event) => { if (canGoBack) onBack(); event.currentTarget.blur(); }}
                 aria-disabled={!canGoBack}
                 tabindex={canGoBack ? 0 : -1}
+                aria-label="Back one panel"
             >
-                <!-- Back 1 Step -->
                 <iconify-icon icon="icon-park-outline:left-two"></iconify-icon>
-            </a>
+            </button>
         </li>
         <li>
-            <button type="button" on:click={onChapterSelect} aria-label="Select Chapter">
+            <button
+                type="button"
+                class:disabled={chaptersCount <= 1}
+                on:click={(event) => { if (chaptersCount > 1) { onChapterSelect(); } event.currentTarget.blur(); }}
+                aria-disabled={chaptersCount <= 1}
+                tabindex={chaptersCount > 1 ? 0 : -1}
+                aria-label="Select Chapter"
+            >
                 <!-- Chapter Select -->
                 <iconify-icon icon="uil:books"></iconify-icon>
             </button>
         </li>
         <li>
-            <a
+            <button
+                type="button"
                 class:disabled={!canGoForward}
-                on:click|preventDefault={(event) => { if (canGoForward) onForward(); event.currentTarget.blur(); }}
+                on:click={(event) => { if (canGoForward) onForward(); event.currentTarget.blur(); }}
                 aria-disabled={!canGoForward}
                 tabindex={canGoForward ? 0 : -1}
+                aria-label="Forward one panel"
             >
-                <!-- Forward 1 Step -->
                 <iconify-icon icon="icon-park-outline:right-two"></iconify-icon>
-            </a>
+            </button>
         </li>
         <li>
                 <!-- Save -->
@@ -86,7 +93,7 @@
 
 
 <style>
-    a.disabled, a[aria-disabled="true"] {
+    :global(.bottom-nav a.disabled), :global(.bottom-nav a[aria-disabled="true"]) {
         color: #888;
         pointer-events: none;
         cursor: default;
