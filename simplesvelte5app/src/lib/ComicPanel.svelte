@@ -146,19 +146,20 @@
     on:touchend={handleTouchEnd}>
     {#if panels.length > 0 && displayedPanelIndex >= 0 && displayedPanelIndex < panels.length}
         {#if /\.(webm)$/i.test(panels[displayedPanelIndex])}
+            <!-- decorative animated panel: mark as non-interactive for assistive tech -->
             <video
-            src={panels[displayedPanelIndex]}
-            autoplay
-            loop
-            playsinline
-            style="max-width: 100%; max-height: 100%; display: block;"
-            on:loadeddata={handleMediaLoad}
-            />
+                src={panels[displayedPanelIndex]}
+                autoplay
+                loop
+                playsinline
+                aria-hidden="true"
+                tabindex="-1"
+                on:loadeddata={handleMediaLoad}
+            ></video>
         {:else}
             <img
             src={panels[displayedPanelIndex]}
             alt="Comic Panel"
-            style="max-width: 100%; max-height: 100%; display: block;"
             draggable="false"
             on:load={handleMediaLoad}
             />
@@ -185,6 +186,7 @@
     .comic-area img,
     .comic-area video {
         width: 90vw;
+        max-height: 100vh;
         display: block;
         margin: 0;
         object-fit: contain;
@@ -194,13 +196,13 @@
         grid-area: 1 / 1 / 2 / 2; /* Overlap both elements */
     }
 
-    .active {
+    :global(.active) {
         opacity: 1;
         pointer-events: auto;
         visibility: visible;
     }
 
-    .inactive {
+    :global(.inactive) {
         opacity: 0;
         pointer-events: none;
         visibility: hidden;

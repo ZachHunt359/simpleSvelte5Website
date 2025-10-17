@@ -2,13 +2,35 @@
     import type { PageData } from "./$types";
     export let data: PageData;
 
+    // Strongly-typed inquiries to avoid 'unknown' errors from PageData
+    interface Inquiry {
+        id: string;
+        userId: string;
+        message: string;
+        email?: string | null;
+        reply?: string | null;
+        timestamp: number; // epoch seconds
+        pageSentFrom?: string | null;
+    }
+
+    // reactive local copy typed as Inquiry[]; keeps the template typesafe
+    let inquiries: Inquiry[] = [];
+    $: inquiries = (data.inquiries ?? []) as Inquiry[];
+
     let replyText: Record<string, string> = {};
     let sending: Record<string, boolean> = {};
     let error: Record<string, string> = {};
     let editing: Record<string, boolean> = {};
 
-    function formatDate(iso: string) {
-        const d = new Date(iso);
+    function pageSentFromToHref(s?: string | null) {
+        if (!s) return '#';
+        const trimmed = s.replace(/^\/+/, '').replace(/\/+$/, '');
+        return '/' + encodeURI(trimmed);
+    }
+
+    function formatDate(ts: number | string) {
+        // server returns epoch seconds; handle both numbers and ISO strings
+        const d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
         return d.toLocaleString(undefined, {
             year: "numeric",
             month: "short",
@@ -18,45 +40,57 @@
         });
     }
 
-    async function saveReply(id: string, email: string | null) {
-        sending[id] = true;
-        error[id] = '';
+    async function saveReply(id: string, email?: string | null) {
+        // mark sending and clear previous error (reassign to trigger Svelte reactivity)
+        sending = { ...sending, [id]: true };
+        error = { ...error, [id]: '' };
+
         const res = await fetch('/api/inquiry/reply', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, reply: replyText[id] })
         });
+
         const result = await res.json();
-        sending[id] = false;
-        if (!result.success) error[id] = result.error || 'Failed to save';
-        else {
-            // Update the reply in the local data
-            const inquiry = data.inquiries.find((inq) => inq.id === id);
-            if (inquiry) {
-                inquiry.reply = replyText[id];
-            }
-            editing[id] = false;
+        sending = { ...sending, [id]: false };
+
+        if (!result.success) {
+            error = { ...error, [id]: result.error || 'Failed to save' };
+        } else {
+            // Update the reply in the local data (make a shallow copy so Svelte updates)
+            inquiries = inquiries.map((inq) => inq.id === id ? { ...inq, reply: replyText[id] } : inq);
+            // mark editing false reactively
+            editing = { ...editing, [id]: false };
         }
     }
 
-    function startEditReply(id: string, currentReply: string) {
-        replyText[id] = currentReply;
-        editing[id] = true;
+    function startEditReply(id: string, currentReply: string | null | undefined) {
+        replyText = { ...replyText, [id]: currentReply ?? '' };
+        editing = { ...editing, [id]: true };
     }
 
-    async function sendEmailAndDelete(id: string, email: string, message: string, reply: string) {
+    async function sendEmailAndDelete(id: string, email?: string | null, message?: string, reply?: string | null) {
+        if (!email) {
+            alert('No email address available for this inquiry.');
+            return;
+        }
+
+        // If the admin is currently editing a reply (unsaved), prefer that live value.
+        const liveReply = replyText[id] !== undefined ? replyText[id] : reply ?? '';
+
         const res = await fetch('/api/inquiry/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, email, message, reply })
+            credentials: 'same-origin',
+            body: JSON.stringify({ id, email, message, reply: liveReply })
         });
         const result = await res.json();
-        if (result.success) {
-            // Remove from UI immediately
-            data.inquiries = data.inquiries.filter(inq => inq.id !== id);
-        } else {
-            alert(result.error || "Failed to send email.");
-        }
+            if (result.success) {
+                // Remove from UI immediately when send succeeds
+                inquiries = inquiries.filter(inq => inq.id !== id);
+            } else {
+                alert(result.error || "Failed to send email.");
+            }
     }
 
     // File upload handling
@@ -76,11 +110,18 @@
             uploadError = '';
             uploadSuccess = '';
             loadingExisting = true;
-            // Fetch existing files from the server
-            const res = await fetch('http://localhost:5174/api/panels/list');
+
+            // Use same-origin API path (don't hardcode port) and send cookies
+            const res = await fetch('/api/panels/list', { credentials: 'same-origin' });
+            if (!res.ok) {
+                loadingExisting = false;
+                uploadError = `Failed to fetch existing files: ${res.status}`;
+                return;
+            }
+
             existingFiles = await res.json(); // Array of relative paths
             loadingExisting = false;
-            
+
             // Remove duplicates
             filesToUpload = selectedFiles.filter(file => {
                 let relPath = file.webkitRelativePath || file.name;
@@ -107,12 +148,22 @@
             formData.append('files', file, relPath);
             formData.append('relativePaths', relPath);
         }
-        const res = await fetch('http://localhost:5174/api/panels/upload', {
+
+        // Use same-origin API path and send cookies
+        const res = await fetch('/api/panels/upload', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         });
-        const result = await res.json();
+
         uploading = false;
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            uploadError = `Upload failed: ${res.status} ${text}`;
+            return;
+        }
+
+        const result = await res.json();
         if (result.success) {
             uploadSuccess = 'Upload complete!';
             selectedFiles = [];
@@ -123,61 +174,9 @@
     }
 </script>
 
-<div class="dashboard-header">
-    <span class="username">{data.user?.email}</span>
-    <form method="POST" action="?/logout" style="display:inline;">
-        <button class="btn btn-error btn-sm" type="submit">Logout</button>
-    </form>
-</div>
+<!-- header moved to layout -->
 
-<section class="prose upload-section">
-    <h2>Upload New Panels</h2>
-    <form on:submit|preventDefault={handleUpload}>
-        <input
-            type="file"
-            webkitdirectory
-            directory
-            multiple
-            on:change={handleFileSelect}
-            class="input input-bordered"
-        />
-        <button class="btn btn-primary" type="submit" disabled={uploading || !selectedFiles.length}>
-            {uploading ? 'Uploading...' : 'Upload All'}
-        </button>
-    </form>
-    {#if uploadError}
-        <div class="error">{uploadError}</div>
-    {/if}
-    {#if uploadSuccess}
-        <div class="success">{uploadSuccess}</div>
-    {/if}
-    {#if filesToUpload.length}
-        <div class="file-list-preview">
-            <strong>Files to upload (after removing duplicates):</strong>
-            {#if filesToUpload.length <= 6 || showAllFiles}
-                <ul>
-                    {#each filesToUpload as file}
-                        <li>{file.webkitRelativePath || file.name}</li>
-                    {/each}
-                </ul>
-                {#if filesToUpload.length > 6 && showAllFiles}
-                    <button class="btn btn-xs" on:click={() => showAllFiles = false}>Show less</button>
-                {/if}
-            {:else}
-                <ul>
-                    {#each filesToUpload.slice(0, 3) as file}
-                        <li>{file.webkitRelativePath || file.name}</li>
-                    {/each}
-                    <li>…</li>
-                    {#each filesToUpload.slice(-3) as file}
-                        <li>{file.webkitRelativePath || file.name}</li>
-                    {/each}
-                </ul>
-                <button class="btn btn-xs" on:click={() => showAllFiles = true}>Show all {filesToUpload.length} files</button>
-            {/if}
-        </div>
-    {/if}
-</section>
+<!-- Upload moved to /upload -->
 
 <section class="prose inbox">
     <h1>Inbox</h1>
@@ -185,10 +184,13 @@
         <p>No inquiries yet.</p>
     {:else}
         <div class="inbox-list">
-            {#each data.inquiries as inquiry (inquiry.id)}
+            {#each inquiries as inquiry (inquiry.id)}
                 <div class="inquiry-card">
                     <div class="inquiry-header">
                         <span class="user-id">User: <code>{inquiry.userId}</code></span>
+                        {#if inquiry.pageSentFrom}
+                            <span class="from">from: <a href={pageSentFromToHref(inquiry.pageSentFrom)} target="_blank" rel="noopener noreferrer"><code>{inquiry.pageSentFrom}</code></a></span>
+                        {/if}
                         <span class="timestamp">{formatDate(inquiry.timestamp)}</span>
                     </div>
                     <div class="inquiry-meta">
@@ -243,26 +245,6 @@
 </section>
 
 <style>
-.dashboard-header {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 1em;
-    margin-bottom: 1.5em;
-}
-.username {
-    font-weight: bold;
-    color: #ffd700;
-}
-.file-list-preview ul {
-    margin: 0.5em 0 0.5em 1.5em;
-    padding: 0;
-    font-size: 0.95em;
-    text-align: left;
-}
-.file-list-preview button {
-    margin-top: 0.5em;
-}
 .inbox {
     margin: auto;
     max-width: 60%;

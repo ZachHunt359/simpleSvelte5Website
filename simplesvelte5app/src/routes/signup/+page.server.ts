@@ -1,31 +1,30 @@
 import { auth } from "$lib/auth";
-import { AUTH_TOKEN_EXPIRY_SECONDS } from "$lib/constants.server";
 import { fail, redirect } from "@sveltejs/kit";
 import type { Actions } from "./$types";
 
 export const actions: Actions = {
-	async default(event) {
-		const data = await event.request.formData();
-		const email = data.get("email") as string;
-		const password = data.get("password") as string;
-		const password_confirm = data.get("password-confirm") as string;
+	default: async (event) => {
+		const form = await event.request.formData();
+		const email = (form.get("email") as string || "").trim();
+		const password = (form.get("password") as string || "").trim();
+		const password_confirm = (form.get("password-confirm") as string || "").trim();
 
 		if (!email)
 			return fail(422, { email, error: "An email address is required." });
 		if (!password)
-			return invalid(422, { email, error: "A password is required." });
+			return fail(422, { email, error: "A password is required." });
 		if (password.length < 8)
-			return invalid(422, {
+			return fail(422, {
 				email,
 				error: "Password must be at least 8 characters long.",
 			});
 		if (password.length > 32)
-			return invalid(422, {
+			return fail(422, {
 				email,
 				error: "Password cannot be more than 32 characters long.",
 			});
 		if (password !== password_confirm)
-			return invalid(422, {
+			return fail(422, {
 				email,
 				error: "Your passwords must match.",
 			});
@@ -42,7 +41,7 @@ export const actions: Actions = {
 				String(signup_resp.error) ??
 				"There was an issue creating your account. Please try again."
 			).trim();
-			return invalid(500, { email, error });
+			return fail(500, { email, error });
 		}
 
 		// Sign the user in immediately
@@ -56,7 +55,7 @@ export const actions: Actions = {
 			const error = (
 				String(login_resp.error) ?? "Could not sign you in. Please try again."
 			).trim();
-			return invalid(500, { email, error });
+			return fail(500, { email, error });
 		}
 
 		const user = login_resp.value;
@@ -70,6 +69,7 @@ export const actions: Actions = {
 
 		delete user.token;
 
-		return { user };
+		// success: auth.login set the cookie; redirect to dashboard
+		throw redirect(303, "/dashboard");
 	},
 };
