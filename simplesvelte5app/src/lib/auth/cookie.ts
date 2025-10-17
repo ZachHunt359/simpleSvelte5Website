@@ -1,115 +1,107 @@
 /**
- * NOTE: You don't want to actually store the user in the cookie
- * we're doing this for demo purposes only so we don't need a database.
+ * DB-backed session adapter.
+ * - sessions stored in Sessions table
+ * - admin users in AdminUsers table
  */
 import type { Cookies } from "@sveltejs/kit";
 import debug from "debug";
 import { err, ok } from "neverthrow";
+import { getDb, get, run } from "$lib/db";
+import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 
 const log = debug("app:lib:auth:cookie");
 
-const seed_user: User = {
-	id: "seed-user-id",
-	email: "a@b.com",
-	password: "password",
-	token: "seed-user-sesion-token",
-};
-
-const one_day = 60 * 60 * 24;
-const maxAge = one_day * 365;
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days in seconds
 
 export const cookie: AuthAdapter = {
-	async validate_session({ token, opts }) {
-		const [_, session_token] = token.split(":");
+  async validate_session({ token, opts }) {
+    if (!opts?.cookies) throw new Error("must pass cookies in to options");
+    if (!token) return err(new Error("no token provided"));
 
-		// TODO: add Zod
-		if (!opts?.cookies) throw new Error("must pass cookies in to options");
-		if (!token) return err(new Error("no token provided"));
+    const parts = token.split(":");
+    if (parts.length !== 2) return err(new Error("invalid token format"));
+    const [userId, sessionToken] = parts;
 
-		const users = get_users(opts.cookies);
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      console.log('[auth] validate_session parts:', { userId, sessionToken });
+      const session = await get("SELECT Token, UserId, CreatedAt, ExpiresAt FROM Sessions WHERE Token = ? AND UserId = ?", [sessionToken, userId]);
+      console.log('[auth] session row:', session);
 
-		log("users:", users);
+      if (!session) return err(new Error("no session found"));
 
-		const user = users.find((user: User) => user.token === session_token);
+      if (session.ExpiresAt && session.ExpiresAt < now) {
+        await run("DELETE FROM Sessions WHERE Token = ?", [sessionToken]);
+        return err(new Error("session expired"));
+      }
 
-		if (!user) return err(new Error("no user found"));
+      const userRow = await get("SELECT Id, Email FROM AdminUsers WHERE Id = ? OR lower(Email) = lower(?)", [userId, userId]);
+      console.log('[auth] userRow:', userRow);
+      if (!userRow) return err(new Error("no user found"));
 
-		return ok(user);
-	},
-	async login({ email, password, opts }) {
-		// TODO: add Zod
-		if (!opts?.cookies)
-			return err(new Error("must pass cookies in to options"));
-		if (!email) return err(new Error("email is required"));
-		if (!password) return err(new Error("password is required"));
+      const user = { id: String(userRow.Id), email: userRow.Email, isAdmin: true };
+      return ok(user);
+    } catch (e) {
+      console.error('[auth] validate_session exception:', e);
+      return err(new Error('server error'));
+    }
+  },
 
-		const users = get_users(opts.cookies);
-		const user = users.find(
-			(u) => u.email === email && u.password === password
-		);
+  async login({ email, password, opts }) {
+    if (!opts?.cookies) return err(new Error("must pass cookies in to options"));
+    if (!email) return err(new Error("email is required"));
+    if (!password) return err(new Error("password is required"));
 
-		if (!user) return err(new Error("no user found"));
+    try {
+  const row = await get("SELECT Id, Email, PasswordHash FROM AdminUsers WHERE lower(Email) = lower(?)", [email]);
+      if (!row) return err(new Error("no user found"));
 
-		user.token = generate_token();
+      const matches = bcrypt.compareSync(password, row.PasswordHash);
+      if (!matches) return err(new Error("invalid credentials"));
 
-		set_users(
-			opts.cookies,
-			users.map((u) => {
-				if (u.id === user.id) u.token = user.token ?? "";
-				return u;
-			})
-		);
+      // create session token
+      const sessionToken = randomBytes(32).toString("hex");
+      const epoch = Math.floor(Date.now() / 1000);
+      const expiresAt = epoch + SESSION_MAX_AGE;
 
-		return ok(user);
-	},
+      await run("INSERT OR REPLACE INTO Sessions (Token, UserId, CreatedAt, ExpiresAt) VALUES (?, ?, ?, ?)", [sessionToken, String(row.Id), epoch, expiresAt]);
 
-	async signup({ email, password, password_confirm, opts }) {
-		// TODO: add Zod
-		if (!opts?.cookies)
-			return err(new Error("must pass cookies in to options"));
-		if (!email) return err(new Error("email is required"));
-		if (!password) return err(new Error("password is required"));
-		if (password !== password_confirm)
-			return err(new Error("passwords do not match"));
+      // set cookie as "<userId>:<sessionToken>"
+      opts.cookies.set("auth_token", `${row.Id}:${sessionToken}`, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: SESSION_MAX_AGE
+      });
 
-		const token = generate_token();
-		const user = { id: generate_token(), email, password, token };
-		const users = get_users(opts.cookies);
+      const user = { id: String(row.Id), email: row.Email, isAdmin: true };
+      return ok(user);
+    } catch (e) {
+      log("login error:", e);
+      return err(new Error("server error"));
+    }
+  },
 
-		set_users(opts.cookies, [...users, user]);
+  async signup({ email, password, password_confirm, opts }) {
+    // For admins, you probably use invite/registration flow instead.
+    return err(new Error("signup not supported via cookie adapter"));
+  },
 
-		return ok(user);
-	},
-
-	async logout({ token, opts }) {
-		if (!opts?.cookies)
-			return err(new Error("must pass cookies in to options"));
-		//  const token = cookies.get("auth_token") as string;
-		opts.cookies.delete("auth_token", { path: "/" });
-
-		// Remove token from the user
-		set_users(
-			opts.cookies,
-			get_users(opts.cookies).map((u) => {
-				if (u.token === token) u.token = undefined;
-				return u;
-			})
-		);
-
-		return;
-	},
+  async logout({ token, opts }) {
+    if (!opts?.cookies) return err(new Error("must pass cookies in to options"));
+    if (token) {
+      const parts = token.split(":");
+      if (parts.length === 2) {
+        const [, sessionToken] = parts;
+        try {
+          await run("DELETE FROM Sessions WHERE Token = ?", [sessionToken]);
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+    opts.cookies.delete("auth_token", { path: "/" });
+    return;
+  }
 };
-
-function get_users(cookies: Cookies): User[] {
-	const stored = cookies.get("users");
-	if (stored) return JSON.parse(stored);
-	return [seed_user];
-}
-
-function set_users(cookies: Cookies, users: User[]) {
-	cookies.set("users", JSON.stringify(users), { path: "/", maxAge });
-}
-
-function generate_token() {
-	return Math.random().toString(36).slice(2);
-}

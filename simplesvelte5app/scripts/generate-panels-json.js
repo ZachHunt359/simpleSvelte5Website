@@ -1,14 +1,17 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { pathToFileURL } from 'url';
 import { execSync } from 'child_process';
 
 
 
 export function generatePanelsJson({ regenThumbnails = false, log = false } = {}) {
   console.log('Script running');
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const panelsDir = path.resolve(__dirname, '../static/panels');
+  // Use the project root (process.cwd()) so runtime imports from the built server
+  // still resolve to the real project's static/panels directory instead of
+  // the compiled .svelte-kit output path.
+  const projectRoot = process.cwd();
+  const panelsDir = path.resolve(projectRoot, 'static', 'panels');
 
   // Check if ffmpeg is installed
   const hasFFmpeg = checkFFmpeg(log);
@@ -131,11 +134,12 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
     };
   });
 
-  fs.writeFileSync(
-    path.resolve(__dirname, '../static/panels.json'),
-    JSON.stringify(data, null, 2)
-  );
-  console.log('Writing panels.json with data:', JSON.stringify(data, null, 2));
+  const outFile = path.resolve(projectRoot, 'static', 'panels.json');
+  const tmpFile = outFile + '.tmp';
+  const json = JSON.stringify(data, null, 2);
+  fs.writeFileSync(tmpFile, json, 'utf8');
+  fs.renameSync(tmpFile, outFile);
+  console.log('Atomically wrote panels.json with data:', json);
 
 }
 

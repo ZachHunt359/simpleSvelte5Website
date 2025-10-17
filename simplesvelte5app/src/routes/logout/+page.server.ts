@@ -1,10 +1,12 @@
+import type { PageServerLoad } from './$types';
+import { auth } from '$lib/auth';
 import { redirect } from '@sveltejs/kit';
-import type { Actions } from './$types';
 
-export const actions: Actions = {
-    default: async ({ cookies }) => {
-        cookies.delete('auth_token', { path: '/' });
-        // Add any other cleanup if needed
-        throw redirect(303, '/login');
-    }
+export const load: PageServerLoad = async ({ cookies }) => {
+  try {
+    await auth.logout({ token: cookies.get('auth_token'), opts: { cookies } });
+  } catch (err) {
+    console.error('[logout] error', err);
+  }
+  throw redirect(303, '/login');
 };

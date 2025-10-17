@@ -1,7 +1,9 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import { logError } from '$lib/logger';
 
 export const GET: RequestHandler = (event) => {
+	try {
 	/**
 	 * NOTE: You may want to do a different authentication system for API routes.
 	 * For example, you may want to check for an auth token or similar, that case,
@@ -10,9 +12,14 @@ export const GET: RequestHandler = (event) => {
 	 * This is just checking to see if they have a cookie set with their session token and
 	 * then authenticates them that way, the same as the client.
 	 */
-	const user = event.locals?.user;
+		const user = event.locals?.user;
 
-	if (!user) return json({ error: "not authorized" }, { status: 401 });
+		if (!user) return json({ error: "not authorized" }, { status: 401 });
 
-	return json({ id: user.id, email: user.email });
+		return json({ id: user.id, email: user.email });
+	} catch (err: any) {
+		const stack = err && err.stack ? err.stack : String(err);
+		logError('[api/me] GET error', { stack });
+		return json({ error: 'Server error', __fallbackError: 'Failed to load user (see server logs)' }, { status: 500 });
+	}
 };

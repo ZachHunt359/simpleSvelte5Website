@@ -14,12 +14,6 @@
 </script>
 
 <section class="max-w-sm mx-auto">
-	<div class="prose">
-		<h1 class="">Log In</h1>
-		<p>
-			Use email <code>a@b.com</code> and password <code>asdfasdf</code> to login.
-		</p>
-	</div>
 	<form
 		class="flex flex-col gap-6 my-6"
 		method="POST"
