@@ -1,6 +1,7 @@
 import { auth } from "$lib/auth";
 import { fail, redirect } from "@sveltejs/kit";
 import type { Actions } from "./$types";
+import { AUTH_TOKEN_EXPIRY_SECONDS } from "$lib/constants.server";
 
 export const actions: Actions = {
 	default: async (event) => {
@@ -64,6 +65,9 @@ export const actions: Actions = {
 			event.cookies.set("auth_token", `${user.id}:${user.token}`, {
 				path: "/",
 				maxAge: AUTH_TOKEN_EXPIRY_SECONDS,
+				httpOnly: true,
+				sameSite: 'lax',
+				secure: process.env.NODE_ENV === 'production'
 			});
 		}
 

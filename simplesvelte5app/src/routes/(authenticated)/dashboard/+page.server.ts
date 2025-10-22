@@ -2,9 +2,14 @@ import { auth } from '$lib/auth';
 import { redirect } from '@sveltejs/kit';
 import { query } from '$lib/db';
 import { logError } from '$lib/logger';
+import { isAdmin } from '$lib/auth/helpers';
 
-export async function load() {
+export async function load(event) {
     try {
+      // Defense-in-depth: ensure caller is admin before returning inquiries
+      const admin = await isAdmin(event.cookies);
+      if (!admin) throw redirect(303, '/login');
+
       const rows = await query(`
         SELECT
           Id as id,
@@ -22,9 +27,14 @@ export async function load() {
   `);
       return { inquiries: rows };
     } catch (err: any) {
+      // If the error is a redirect thrown above, rethrow so SvelteKit handles it.
+      if (err && typeof err === 'object' && 'status' in err && typeof err.status === 'number' && err.status >= 300 && err.status < 400) {
+        throw err;
+      }
       const stack = err && err.stack ? err.stack : String(err);
       logError('[dashboard] load error', { stack });
-      return { inquiries: [], __fallbackError: 'Failed to load inquiries (see server logs)' };
+      // For non-redirect failures, do not return inquiries: throw redirect to login
+      throw redirect(303, '/login');
     }
 }
 

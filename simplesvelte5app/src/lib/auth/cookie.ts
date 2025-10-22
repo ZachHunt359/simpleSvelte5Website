@@ -72,7 +72,8 @@ export const cookie: AuthAdapter = {
         path: "/",
         httpOnly: true,
         sameSite: "lax",
-        maxAge: SESSION_MAX_AGE
+        maxAge: SESSION_MAX_AGE,
+        secure: process.env.NODE_ENV === 'production'
       });
 
       const user = { id: String(row.Id), email: row.Email, isAdmin: true };
