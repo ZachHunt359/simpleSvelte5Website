@@ -6,10 +6,12 @@ import { isAdmin, getUserFromCookies } from '$lib/auth/helpers';
 import { logError, logInfo } from '$lib/logger';
 import { env } from '$env/dynamic/private';
 
+const smtpPort = Number(env.SMTP_PORT ?? 587);
 const transporter = nodemailer.createTransport({
   host: env.SMTP_HOST ?? 'smtp.gmail.com',
-  port: Number(env.SMTP_PORT ?? 587),
-  secure: Number(env.SMTP_PORT ?? 587) === 465,
+  port: smtpPort,
+  secure: smtpPort === 465,
+  requireTLS: smtpPort === 587,
   auth:
     env.SMTP_USER && env.SMTP_PASS
       ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
@@ -44,7 +46,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     let emailSent = true;
     try {
       await transporter.sendMail({
-        from: process.env.SMTP_FROM || '"Comic Invites" <no-reply@local>',
+        from: process.env.SMTP_FROM || env.SMTP_USER || '"Comic Invites" <no-reply@local>',
         to: email,
         subject: 'Admin invite',
         text: `You were invited as an admin. Register: ${registerUrl}\nCode: ${code}`,

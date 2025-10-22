@@ -28,15 +28,14 @@ if (!fs.existsSync(envPath)) {
   process.exit(1);
 }
 const env = parseEnv(fs.readFileSync(envPath, 'utf8'));
-const user = env.SMTP_USER;
-const pass = env.SMTP_PASS;
+const user = env.IMAP_USER || env.SMTP_USER;
+const pass = env.IMAP_PASS || env.SMTP_PASS;
 if (!user || !pass) {
-  console.error('SMTP_USER or SMTP_PASS missing in .env');
+  console.error('IMAP_USER/IMAP_PASS (or SMTP_USER/SMTP_PASS) missing in .env');
   process.exit(1);
 }
-
-const host = 'imap.gmail.com';
-const port = 993;
+const host = env.IMAP_HOST || 'imap.gmail.com';
+const port = Number(env.IMAP_PORT || 993);
 
 function sendCmd(socket, tag, cmd) {
   return new Promise((resolve, reject) => {
@@ -62,7 +61,9 @@ function imapLogin(socket, tag) {
 }
 
 async function trySelectSent(socket) {
-  const candidates = ['"[Gmail]/Sent Mail"', '"Sent"', '"Sent Items"', '"INBOX.Sent"'];
+  const fromEnv = (env.IMAP_SENT_CANDIDATES || '').split(',').map(s => s.trim()).filter(Boolean);
+  const defaults = ['"[Gmail]/Sent Mail"', '"Sent"', '"Sent Items"', '"INBOX.Sent"'];
+  const candidates = fromEnv.length ? fromEnv : defaults;
   for (let i = 0; i < candidates.length; i++) {
     const tag = `ASEL${i}`;
     try {
@@ -131,7 +132,23 @@ async function main() {
   const { folder } = await trySelectSent(socket);
   console.log('Selected Sent folder:', folder);
 
-  const targets = ['Khayyin359@gmail.com', 'ZachDHunt@gmail.com'];
+  const cliTargets = process.argv.slice(2).filter(Boolean);
+  const targets = cliTargets.length ? cliTargets : [];
+  if (targets.length === 0) {
+    // No targets provided: show last few sent message envelopes as a basic smoke check
+    const tag = 'ALATEST';
+    const searchResp = await sendCmd(socket, tag, `${tag} SEARCH ALL`);
+    const ids = parseSearchIds(searchResp);
+    console.log(`\nNo specific TO target provided. Found ${ids.length} messages in Sent. Showing up to 10 most recent:`);
+    const last = ids.slice(-10);
+    for (const id of last) {
+      const ftag = `AFETCH${id}`;
+      const fetchResp = await sendCmd(socket, ftag, `${ftag} FETCH ${id} (ENVELOPE)`);
+      const env = parseFetchEnvelope(fetchResp);
+      console.log('UID', id, 'subject:', env?.subject, 'message-id:', env?.messageId);
+    }
+  }
+
   for (const t of targets) {
     const tag = `ASEARCH${t.replace(/[^A-Za-z0-9]/g,'')}`;
     const searchCmd = `${tag} SEARCH TO "${t}"`;
