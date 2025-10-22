@@ -18,6 +18,11 @@ Thumbs.db
 !.env.example
 !.env.test
 
+# PM2 / local runtime configs (may contain secrets)
+ecosystem*.cjs
+ecosystem*.config.*
+pm2*.json
+
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
