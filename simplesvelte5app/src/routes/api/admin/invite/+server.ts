@@ -6,16 +6,18 @@ import { isAdmin, getUserFromCookies } from '$lib/auth/helpers';
 import { logError, logInfo } from '$lib/logger';
 import { env } from '$env/dynamic/private';
 
-const smtpPort = Number(env.SMTP_PORT ?? 587);
+// Sanitize env inputs to avoid stray CR/LF or spaces causing DNS/SMTP issues
+const rawHost = (env.SMTP_HOST ?? 'smtp.gmail.com').toString().trim();
+const smtpPort = Number((env.SMTP_PORT ?? 587).toString().trim());
+const smtpUser = env.SMTP_USER ? env.SMTP_USER.toString().trim() : undefined;
+const smtpPass = env.SMTP_PASS ? env.SMTP_PASS.toString().trim() : undefined;
+
 const transporter = nodemailer.createTransport({
-  host: env.SMTP_HOST ?? 'smtp.gmail.com',
+  host: rawHost,
   port: smtpPort,
   secure: smtpPort === 465,
   requireTLS: smtpPort === 587,
-  auth:
-    env.SMTP_USER && env.SMTP_PASS
-      ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
-      : undefined
+  auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined
 });
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
@@ -45,8 +47,9 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
     let emailSent = true;
     try {
+      const fromHeader = (process.env.SMTP_FROM || env.SMTP_USER || '"Comic Invites" <no-reply@local>').toString().trim();
       await transporter.sendMail({
-        from: process.env.SMTP_FROM || env.SMTP_USER || '"Comic Invites" <no-reply@local>',
+        from: fromHeader,
         to: email,
         subject: 'Admin invite',
         text: `You were invited as an admin. Register: ${registerUrl}\nCode: ${code}`,
@@ -55,7 +58,13 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     } catch (sendErr: any) {
       emailSent = false;
       try {
-        await logError('[invite] email send failed', { message: sendErr?.message ?? String(sendErr) });
+        await logError('[invite] email send failed', {
+          message: sendErr?.message ?? String(sendErr),
+          code: sendErr?.code ?? null,
+          command: sendErr?.command ?? null,
+          host: rawHost,
+          port: smtpPort
+        });
       } catch {}
       // do not fail the request if email fails; admins can copy the link manually
     }
