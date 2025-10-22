@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 import { get, run } from '$lib/db';
-import { logError } from '$lib/logger';
+import { logError, logInfo } from '$lib/logger';
 
 // If SMTP credentials were not provided in the environment, attempt to read a local
 // .env file (useful in dev when the server was started before env was available).
@@ -34,16 +34,19 @@ if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
 
 let transporter;
 if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-  console.log('Using SMTP transport for nodemailer', process.env.SMTP_HOST || 'smtp.gmail.com', 'user=', process.env.SMTP_USER);
+  // Trim/sanitize env inputs to avoid stray CR/LF or whitespace causing DNS/SMTP errors
+  const smtpHost = (process.env.SMTP_HOST || 'smtp.gmail.com').toString().trim();
+  const smtpPort = Number((process.env.SMTP_PORT || 587).toString().trim());
+  const smtpUser = process.env.SMTP_USER.toString().trim();
+  const smtpPass = process.env.SMTP_PASS.toString().trim();
+
+  console.log('Using SMTP transport for nodemailer', smtpHost, 'user=', smtpUser);
   transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: Number(process.env.SMTP_PORT) === 465,
-    requireTLS: Number(process.env.SMTP_PORT) === 587,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    },
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    requireTLS: smtpPort === 587,
+    auth: { user: smtpUser, pass: smtpPass },
     logger: true,
     debug: true
   });
@@ -73,12 +76,26 @@ export const POST: RequestHandler = async ({ request }) => {
       logError('[send-email] rate-limit check failed', { err: e && e.stack ? e.stack : String(e), id, email });
     }
 
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Comic Replies" <no-reply@local>',
-      to: email,
-      subject: 'Reply to your inquiry',
-      text: `Your question:\n${message}\n\nOur reply:\n${reply}`
-    });
+    const fromHeader = (process.env.SMTP_FROM || process.env.SMTP_USER || '"Comic Replies" <no-reply@local>').toString().trim();
+    let info;
+    try {
+      info = await transporter.sendMail({
+        from: fromHeader,
+        to: email,
+        subject: 'Reply to your inquiry',
+        text: `Your question:\n${message}\n\nOur reply:\n${reply}`
+      });
+    } catch (e: any) {
+      // Log with richer details for diagnosis
+      logError('[send-email] sendMail failed', {
+        message: e?.message ?? String(e),
+        code: e?.code ?? null,
+        command: e?.command ?? null,
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: process.env.SMTP_PORT || 587
+      });
+      throw e;
+    }
 
     try {
       // mark as seen/handled and persist messageId
