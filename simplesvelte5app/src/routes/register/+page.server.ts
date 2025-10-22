@@ -46,8 +46,8 @@ export const actions: Actions = {
     // Normalize insert id across mysql and sqlite
     const newAdminId = (info && (info.insertId ?? info.lastInsertRowid)) || null;
 
-    // mark invite used
-    await run('UPDATE InviteCodes SET Used = 1, UsedBy = ?, UsedAt = ? WHERE Code = ?', [newAdminId ?? email, epoch, code]);
+  // mark invite used; record which admin id used it (AdminUsed), and timestamp
+  await run('UPDATE InviteCodes SET Used = 1, AdminUsed = ?, UsedAt = ? WHERE Code = ?', [newAdminId, epoch, code]);
 
     // redirect to login (or dashboard)
     throw redirect(303, '/login');

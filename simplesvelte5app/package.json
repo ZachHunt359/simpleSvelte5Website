@@ -14,7 +14,9 @@
 		"lint": "prettier --check .",
 		"generate:panels": "node scripts/generate-panels-json.js",
 		"update-panels": "node scripts/generate-panels-json.js",
-		"migrate": "node scripts/apply-migrations.js"
+		"migrate": "node scripts/apply-migrations.js",
+		"seed:admin": "node scripts/seed-admin-mysql.js test.admin@example.com Password123!",
+		"test:login": "node scripts/test-login-http.js http://localhost:5173 test.admin@example.com Password123!"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-vercel": "^5.7.2",

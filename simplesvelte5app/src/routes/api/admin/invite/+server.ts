@@ -27,7 +27,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
     const code = randomBytes(24).toString('hex'); // 48-char hex, hard to brute-force
     const epoch = Math.floor(Date.now() / 1000);
-  await run('INSERT INTO InviteCodes (Code, Used, CreatedAt) VALUES (?, 0, ?)', [code, epoch]);
+    await run('INSERT INTO InviteCodes (Code, Used, CreatedAt) VALUES (?, 0, ?)', [code, epoch]);
 
     // audit log: who created the invite
     try {
@@ -41,15 +41,27 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     const origin = env.SITE_ORIGIN ?? 'http://localhost:5173';
     const registerUrl = `${origin}/register?code=${encodeURIComponent(code)}`;
 
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Comic Invites" <no-reply@local>',
-      to: email,
-      subject: 'Admin invite',
-      text: `You were invited as an admin. Register: ${registerUrl}\nCode: ${code}`,
-      html: `<p>You were invited as an admin.</p><p><a href="${registerUrl}">Register</a></p><p>Code: <strong>${code}</strong></p>`
-    });
+    let emailSent = true;
+    try {
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"Comic Invites" <no-reply@local>',
+        to: email,
+        subject: 'Admin invite',
+        text: `You were invited as an admin. Register: ${registerUrl}\nCode: ${code}`,
+        html: `<p>You were invited as an admin.</p><p><a href="${registerUrl}">Register</a></p><p>Code: <strong>${code}</strong></p>`
+      });
+    } catch (sendErr: any) {
+      emailSent = false;
+      try {
+        await logError('[invite] email send failed', { message: sendErr?.message ?? String(sendErr) });
+      } catch {}
+      // do not fail the request if email fails; admins can copy the link manually
+    }
 
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    return new Response(
+      JSON.stringify({ success: true, code, registerUrl, emailSent }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
   } catch (err: any) {
     try {
       logError('[invite] error', { message: err?.message ?? String(err), stack: err?.stack ?? null });
