@@ -181,6 +181,16 @@
         border: none;
         padding: 0;
         margin: 0;
+        /* Mobile tap/click highlight suppression */
+        -webkit-tap-highlight-color: transparent;
+        /* Avoid accidental text/image selection highlighting */
+        -webkit-user-select: none;
+        user-select: none;
+        /* iOS callout on long-press */
+        -webkit-touch-callout: none;
+        /* Normalize button appearance across browsers */
+        -webkit-appearance: none;
+        appearance: none;
     }
 
     .comic-area img,
@@ -194,6 +204,10 @@
         box-sizing: border-box;
         transition: opacity 0.2s;
         grid-area: 1 / 1 / 2 / 2; /* Overlap both elements */
+        /* Prevent selection/blue highlight on media elements too */
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
     }
 
     :global(.active) {
@@ -208,7 +222,7 @@
         visibility: hidden;
     }
 
-    /* Trying to prevent the comic page being highlighted */
+    /* Hide focus ring for mouse/touch interactions only; keep it for keyboard users */
     .comic-area:focus:not(:focus-visible) {
         outline: none;
         box-shadow: none;
