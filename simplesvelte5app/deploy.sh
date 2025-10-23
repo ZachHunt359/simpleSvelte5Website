@@ -137,39 +137,23 @@ npm run build
 log "Restarting the server with PM2"
 export PATH="$HOME/.local/bin:$PATH"
 
-# Determine node version capability for --env-file
-NODE_V="$(node -v | sed 's/^v//')"
-NODE_MAJOR="${NODE_V%%.*}"
-NODE_MINOR_PATCH="${NODE_V#*.}"
-NODE_MINOR="${NODE_MINOR_PATCH%%.*}"
-
-USE_ENV_FILE=0
-if [[ "$NODE_MAJOR" -ge "$NODE_MIN_ENVFILE_MAJOR" ]]; then
-  if [[ "$NODE_MAJOR" -gt "$NODE_MIN_ENVFILE_MAJOR" || "$NODE_MINOR" -ge "$NODE_MIN_ENVFILE_MINOR" ]]; then
-    USE_ENV_FILE=1
-  fi
+# Always use dotenv/register for PM2 (PM2 may use a different Node without --env-file support)
+# Ensure dotenv is available
+if ! node -e "require('dotenv');" >/dev/null 2>&1; then
+  log "Installing dotenv for production runtime env loading"
+  npm install dotenv --save --omit=dev
 fi
 
-# Prepare start command
-if [[ "$USE_ENV_FILE" == "1" ]]; then
-  START_CMD=(node --env-file=.env build)
-  log "Using node --env-file to load .env (Node $NODE_V)"
-else
-  # Fallback: use dotenv/register (ensure dependency exists)
-  if ! node -e "require('dotenv');" >/dev/null 2>&1; then
-    log "Installing dotenv for production runtime env loading"
-    npm install dotenv --save --omit=dev
-  fi
-  START_CMD=(node -r dotenv/config build)
-  export DOTENV_CONFIG_PATH="$(pwd)/.env"
-  log "Using dotenv/register to load .env (Node $NODE_V)"
-fi
+export DOTENV_CONFIG_PATH="$(pwd)/.env"
+NODE_ARGS="-r dotenv/config"
+ENTRY="build/index.js"
 
 set +e
 $PM2_BIN delete "$APP_NAME" >/dev/null 2>&1
 set -e
 
-$PM2_BIN start "${START_CMD[@]}" --name "$APP_NAME"
+# Use PM2's --node-args so preloading works regardless of PM2's Node version
+$PM2_BIN start "$ENTRY" --name "$APP_NAME" --node-args "$NODE_ARGS"
 $PM2_BIN save
 
 # Optional smoke test
