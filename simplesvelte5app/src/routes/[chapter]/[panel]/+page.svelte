@@ -57,15 +57,31 @@
 
         // Fetch panels.json asynchronously
         (async () => {
-            const res = await fetch('/panels.json');
+            const res = await fetch('/panels.json', { cache: 'no-store' });
             chapters = await res.json();
             //console.log('Fetched chapters:', chapters);
         })();
+
+        // Also refresh panels.json when the tab becomes visible again (helps admins see updates without full reload)
+        const onVisibility = async () => {
+            try {
+                if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+                    const res = await fetch('/panels.json', { cache: 'no-store' });
+                    const latest = await res.json();
+                    // Update only if changed
+                    if (JSON.stringify(latest) !== JSON.stringify(chapters)) {
+                        chapters = latest;
+                    }
+                }
+            } catch (e) {/* ignore */}
+        };
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
 
         // Cleanup listeners on destroy
         return () => {
             window.removeEventListener('resize', updateIsDesktop);
             window.removeEventListener('orientationchange', updateIsDesktop);
+            if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility);
         };
     });
 
@@ -83,6 +99,14 @@
             if (chosen) out.push(chosen);
         }
         return out;
+    }
+
+    function basenameNoExt(url: string | undefined | null): string | undefined {
+        if (!url) return undefined;
+        const noQuery = url.split('?')[0];
+        const base = noQuery.split('/').pop();
+        if (!base) return undefined;
+        return base.replace(/\.[^/.]+$/, '');
     }
 
     $: panels = chapters.length > 0 ? buildPanelsForChapter(currentChapter, isDesktop) : [];
@@ -239,8 +263,8 @@
         currentChapter >= 0 &&
         currentPanel >= 0
     ) {
-        const chapterSlug = chapters[currentChapter]?.slug;
-        const panelFile = panels[currentPanel]?.split('/').pop()?.replace(/\.[^/.]+$/, '');
+    const chapterSlug = chapters[currentChapter]?.slug;
+    const panelFile = basenameNoExt(panels[currentPanel]);
         const url = `/${chapterSlug}/${panelFile}`;
         if (typeof window !== 'undefined' && window.location?.pathname !== url) {
             goto(url, { replaceState: true, keepFocus: true, noScroll: true });
@@ -286,7 +310,7 @@
 
     function updateUrl() {
         const chapterSlug = chapters[currentChapter]?.slug;
-        const panelFile = panels[currentPanel]?.split('/').pop()?.replace(/\.[^/.]+$/, '');
+        const panelFile = basenameNoExt(panels[currentPanel]);
         if (chapterSlug && panelFile) {
             goto(`/${chapterSlug}/${panelFile}`, { replaceState: true, keepFocus: true, noScroll: true });
         }

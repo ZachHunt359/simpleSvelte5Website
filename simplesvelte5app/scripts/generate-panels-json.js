@@ -71,7 +71,10 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
       if (fs.statSync(filePath).isDirectory()) {
         results = results.concat(findFilesRecursive(filePath));
       } else if (/\.(png|jpg|jpeg|gif|webm)$/i.test(file)) {
-        results.push(`/panels/${relPath}`);
+        // Append a cache-busting version parameter based on mtime so clients fetch changed files immediately
+        const st = fs.statSync(filePath);
+        const v = Math.floor(st.mtimeMs);
+        results.push(`/panels/${relPath}?v=${v}`);
       }
     }
     return results;
@@ -121,7 +124,9 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
         }
       }
       if (fs.existsSync(thumbAbs)) {
-        thumbnail = thumbRel;
+        const st = fs.statSync(thumbAbs);
+        const v = Math.floor(st.mtimeMs);
+        thumbnail = `${thumbRel}?v=${v}`;
       }
     }
 
