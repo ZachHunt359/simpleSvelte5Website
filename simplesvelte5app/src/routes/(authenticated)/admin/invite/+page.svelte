@@ -113,16 +113,22 @@
       </tbody>
     </table>
     <style>
-      .invites-table{border-collapse:collapse;margin-top:0.5rem;width:100%}
-      .invites-table th,.invites-table td{border:1px solid #ccc;padding:0.4rem 0.6rem;text-align:left}
-      .invites-table tr.even{background:#fff}
-      .invites-table tr.odd{background:#f7f7f7}
-      .invites-table thead th{background:#eee}
-        .code-cell{display:flex;align-items:center;gap:0.5rem}
-        .copy-btn{background:transparent;border:0;cursor:pointer;padding:0.15rem 0.3rem;border-radius:3px}
-        .copy-btn:hover{background:#e6e6e6}
-  .delete-btn{background:transparent;border:0;cursor:pointer;padding:0.15rem 0.3rem;border-radius:3px}
-  .delete-btn:hover{background:#ffecec}
+      /* Dark theme table styling to match admin area */
+      .invites-table{border-collapse:collapse;margin-top:0.5rem;width:100%; color:#e6e6e6; background:transparent}
+      .invites-table th,.invites-table td{border:1px solid #333; padding:0.5rem 0.65rem; text-align:left}
+      .invites-table thead th{background:#222; color:#f3f4f6; font-weight:600}
+      .invites-table tr.even{background:#121212}
+      .invites-table tr.odd{background:#0d0d0d}
+      .invites-table tbody tr:hover{background:#1a1a1a}
+
+      .code-cell{display:flex;align-items:center;gap:0.5rem}
+      .code-cell code{background:#0f0f0f; color:#cbd5e1; padding:0.15rem 0.35rem; border:1px solid #2a2a2a; border-radius:4px}
+
+      .copy-btn{background:transparent; color:#cbd5e1; border:0; cursor:pointer; padding:0.2rem 0.35rem; border-radius:4px}
+      .copy-btn:hover{background:#2a2a2a}
+
+      .delete-btn{background:transparent; color:#fca5a5; border:0; cursor:pointer; padding:0.2rem 0.35rem; border-radius:4px}
+      .delete-btn:hover{background:#3a1f1f}
     </style>
   {:else}
     <p>No invites yet.</p>
