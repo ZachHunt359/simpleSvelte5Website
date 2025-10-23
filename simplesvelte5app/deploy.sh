@@ -140,8 +140,8 @@ export PATH="$HOME/.local/bin:$PATH"
 # Always use dotenv/register for PM2 (PM2 may use a different Node without --env-file support)
 # Ensure dotenv is available
 if ! node -e "require('dotenv');" >/dev/null 2>&1; then
-  log "Installing dotenv for production runtime env loading"
-  npm install dotenv --save --omit=dev
+  log "Installing dotenv for production runtime env loading (no-save)"
+  npm install dotenv --no-save --omit=dev
 fi
 
 export DOTENV_CONFIG_PATH="$(pwd)/.env"
@@ -160,10 +160,12 @@ $PM2_BIN save
 if [[ "$SMOKE" == "1" ]]; then
   sleep 1
   PORT="${PORT:-3000}"
-  log "Smoke: GET http://127.0.0.1:$PORT/api/panels/list"
+  # Use a public endpoint for smoke test (no auth required)
+  SMOKE_URL="http://127.0.0.1:$PORT/api/whoami"
+  log "Smoke: GET $SMOKE_URL"
   if command -v curl >/dev/null 2>&1; then
     set +e
-    curl -fsS "http://127.0.0.1:$PORT/api/panels/list" >/dev/null
+    curl -fsS "$SMOKE_URL" >/dev/null
     RC=$?
     set -e
     if [[ $RC -eq 0 ]]; then
