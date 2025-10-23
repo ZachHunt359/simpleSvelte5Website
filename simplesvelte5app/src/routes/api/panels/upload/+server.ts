@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { mkdirSync, existsSync } from 'fs';
 import { isAdmin } from '$lib/auth/helpers';
-import { logError } from '$lib/logger';
+import { logError, logInfo } from '$lib/logger';
 
 const PANELS_DIR = path.resolve('static/panels');
 
@@ -20,9 +20,17 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   }
 
   try {
+    // Log how many files we received for traceability
+    try { logInfo('[panels:upload] received files', { count: files.length }); } catch {}
+
     for (const file of files) {
       // @ts-ignore
-      const relPath = file.name;
+      let relPath = (file.name || '').toString().trim();
+      if (!relPath) throw new Error('Missing filename');
+      // normalize and prevent directory traversal
+      relPath = path.posix.normalize(relPath).replace(/^\/+/, '');
+      if (relPath.includes('..')) throw new Error('Invalid path: contains ..');
+
       const destPath = path.join(PANELS_DIR, relPath);
       const destDir = path.dirname(destPath);
       if (!existsSync(destDir)) mkdirSync(destDir, { recursive: true });
