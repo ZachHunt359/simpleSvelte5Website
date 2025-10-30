@@ -1,57 +1,109 @@
 #!/usr/bin/env node
 // Seed or update an admin user in MySQL/MariaDB using DATABASE_URL
-// Usage (PowerShell):
-//   $env:DATABASE_URL="mysql://user:pass@127.0.0.1:3306/paranoid_DB"; node scripts/seed-admin-mysql.js test.admin@example.com Password123!
+// Usage examples:
+//   node scripts/seed-admin-mysql.js test.admin@example.com Password123!
+//   node scripts/seed-admin-mysql.js --env development test.admin@example.com Password123!
+//   node scripts/seed-admin-mysql.js --url mysql://user:pass@host:3306/db test.admin@example.com Password123!
 import mysql from 'mysql2/promise';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 
-function tryLoadDotenv() {
-  // Lightweight .env parser for local runs if DATABASE_URL not set
-  if (process.env.DATABASE_URL) return;
-  try {
-    const envPath = path.resolve(process.cwd(), '.env');
-    if (fs.existsSync(envPath)) {
-      const raw = fs.readFileSync(envPath, 'utf8');
-      for (const line of raw.split(/\r?\n/)) {
-        const l = line.trim();
-        if (!l || l.startsWith('#')) continue;
-        const eq = l.indexOf('=');
-        if (eq === -1) continue;
-        const key = l.slice(0, eq).trim();
-        let val = l.slice(eq + 1).trim();
-        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-          val = val.slice(1, -1);
-        }
-        if (!process.env[key]) process.env[key] = val;
-      }
-      console.log('[seed-admin] loaded .env');
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const result = { env: null, url: null, email: null, password: null };
+  
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--env' && i + 1 < args.length) {
+      result.env = args[i + 1];
+      i++; // skip next arg as it's the value
+    } else if (args[i] === '--url' && i + 1 < args.length) {
+      result.url = args[i + 1];
+      i++; // skip next arg as it's the value
+    } else if (!result.email) {
+      result.email = args[i];
+    } else if (!result.password) {
+      result.password = args[i];
     }
-  } catch (e) {
-    console.warn('[seed-admin] could not read .env:', e && e.message ? e.message : e);
+  }
+  
+  return result;
+}
+
+function tryLoadDotenv(mode = null) {
+  // Load environment files in Vite/SvelteKit order:
+  // 1. .env (always loaded)
+  // 2. .env.local (always loaded, gitignored)
+  // 3. .env.[mode] (only if mode specified)
+  // 4. .env.[mode].local (only if mode specified, gitignored)
+  
+  const files = ['.env'];
+  if (fs.existsSync('.env.local')) files.push('.env.local');
+  if (mode) {
+    if (fs.existsSync(`.env.${mode}`)) files.push(`.env.${mode}`);
+    if (fs.existsSync(`.env.${mode}.local`)) files.push(`.env.${mode}.local`);
+  }
+  
+  for (const file of files) {
+    try {
+      const envPath = path.resolve(process.cwd(), file);
+      if (fs.existsSync(envPath)) {
+        const raw = fs.readFileSync(envPath, 'utf8');
+        for (const line of raw.split(/\r?\n/)) {
+          const l = line.trim();
+          if (!l || l.startsWith('#')) continue;
+          const eq = l.indexOf('=');
+          if (eq === -1) continue;
+          const key = l.slice(0, eq).trim();
+          let val = l.slice(eq + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          // Later files override earlier ones, but existing env vars have highest priority
+          if (!process.env[key]) process.env[key] = val;
+        }
+        console.log(`[seed-admin] loaded ${file}`);
+      }
+    } catch (e) {
+      console.warn(`[seed-admin] could not read ${file}:`, e && e.message ? e.message : e);
+    }
   }
 }
 
-tryLoadDotenv();
+const args = parseArgs();
 
-const email = (process.argv[2] || '').trim().toLowerCase();
-const password = process.argv[3] || '';
-
-if (!email || !password) {
-  console.error('Usage: node scripts/seed-admin-mysql.js <email> <password>');
+if (!args.email || !args.password) {
+  console.error('Usage: node scripts/seed-admin-mysql.js [--env development|production|staging] [--url database_url] <email> <password>');
+  console.error('Examples:');
+  console.error('  node scripts/seed-admin-mysql.js test@example.com Pass123!');
+  console.error('  node scripts/seed-admin-mysql.js --env development test@example.com Pass123!');
+  console.error('  node scripts/seed-admin-mysql.js --url mysql://user:pass@host:3306/db test@example.com Pass123!');
   process.exit(1);
 }
 
-const dbUrl = process.env.DATABASE_URL;
+// Load environment files based on mode
+tryLoadDotenv(args.env);
+
+// Set NODE_ENV if specified via --env parameter
+if (args.env && !process.env.NODE_ENV) {
+  process.env.NODE_ENV = args.env === 'development' ? 'development' : 'production';
+}
+
+const email = args.email.trim().toLowerCase();
+const password = args.password;
+const dbUrl = args.url || process.env.DATABASE_URL;
+
 if (!dbUrl) {
-  console.error('[seed-admin] DATABASE_URL is not set. Please set it in your environment or .env');
+  console.error('[seed-admin] DATABASE_URL is not set. Please set it in your environment, .env file, or use --url parameter');
+  console.error(`[seed-admin] Mode: ${args.env || 'auto-detect'}`);
   process.exit(2);
 }
 
 async function main() {
   console.log('[seed-admin] email:', email);
   console.log('[seed-admin] password length:', password.length);
+  console.log('[seed-admin] mode:', args.env || 'auto-detect');
+  console.log('[seed-admin] database URL:', dbUrl.replace(/:\/\/[^@]+@/, '://***:***@')); // mask credentials
   const u = new URL(dbUrl);
   const connection = await mysql.createConnection({
     host: u.hostname,

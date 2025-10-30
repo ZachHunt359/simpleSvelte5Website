@@ -16,7 +16,11 @@
 		"update-panels": "node scripts/generate-panels-json.js",
 		"migrate": "node scripts/apply-migrations.js",
 		"seed:admin": "node scripts/seed-admin-mysql.js test.admin@example.com Password123!",
-		"test:login": "node scripts/test-login-http.js http://localhost:5173 test.admin@example.com Password123!"
+		"seed:admin:dev": "node scripts/seed-admin-mysql.js --env development test.admin@example.com DevPassword123!",
+		"seed:admin:staging": "node scripts/seed-admin-mysql.js --env staging test.admin@example.com StagingPassword123!",
+		"seed:admin:prod": "node scripts/seed-admin-mysql.js --env production test.admin@example.com Password123!",
+		"test:login": "node scripts/test-login-http.js http://localhost:5173 test.admin@example.com Password123!",
+		"test:login:dev": "node scripts/test-login-http.js http://localhost:5173 test.admin@example.com DevPassword123!"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-vercel": "^5.7.2",

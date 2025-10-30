@@ -3,27 +3,27 @@
     "title": "chapter-1",
     "slug": "chapter-1",
     "desktop": [
-      "/panels/chapter-1/desktop/Story1.png",
-      "/panels/chapter-1/desktop/Story2.png",
-      "/panels/chapter-1/desktop/Story3.png",
-      "/panels/chapter-1/desktop/Story4gif.png",
-      "/panels/chapter-1/desktop/Story5.png",
-      "/panels/chapter-1/desktop/Story6gif.png",
-      "/panels/chapter-1/desktop/Story7.png",
-      "/panels/chapter-1/desktop/Story8.png",
-      "/panels/chapter-1/desktop/Story9gif.png"
+      "/panels/chapter-1/desktop/Story1.png?v=1761138120228",
+      "/panels/chapter-1/desktop/Story2.png?v=1761138120228",
+      "/panels/chapter-1/desktop/Story3.png?v=1761138120235",
+      "/panels/chapter-1/desktop/Story4gif.png?v=1761138120241",
+      "/panels/chapter-1/desktop/Story5.png?v=1761138120248",
+      "/panels/chapter-1/desktop/Story6gif.png?v=1761138120255",
+      "/panels/chapter-1/desktop/Story7.png?v=1761138120262",
+      "/panels/chapter-1/desktop/Story8.png?v=1761138120269",
+      "/panels/chapter-1/desktop/Story9gif.png?v=1761138120276"
     ],
     "mobile": [
-      "/panels/chapter-1/mobile/Story1.png",
-      "/panels/chapter-1/mobile/Story2.png",
-      "/panels/chapter-1/mobile/Story3.png",
-      "/panels/chapter-1/mobile/Story4.webm",
-      "/panels/chapter-1/mobile/Story5.png",
-      "/panels/chapter-1/mobile/Story6.webm",
-      "/panels/chapter-1/mobile/Story7.png",
-      "/panels/chapter-1/mobile/Story8.png",
-      "/panels/chapter-1/mobile/Story9.webm"
+      "/panels/chapter-1/mobile/Story1.png?v=1761138120276",
+      "/panels/chapter-1/mobile/Story2.png?v=1761138120276",
+      "/panels/chapter-1/mobile/Story3.png?v=1761138120283",
+      "/panels/chapter-1/mobile/Story4.webm?v=1761138120283",
+      "/panels/chapter-1/mobile/Story5.png?v=1761138120290",
+      "/panels/chapter-1/mobile/Story6.webm?v=1761138120290",
+      "/panels/chapter-1/mobile/Story7.png?v=1761138120296",
+      "/panels/chapter-1/mobile/Story8.png?v=1761138120297",
+      "/panels/chapter-1/mobile/Story9.webm?v=1761138120302"
     ],
-    "thumbnail": "/panels/chapter-1/chapter-1.thumb.jpg"
+    "thumbnail": "/panels/chapter-1/chapter-1.thumb.jpg?v=1761138120221"
   }
 ]

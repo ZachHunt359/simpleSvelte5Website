@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # deploy.sh - Idempotent deployment helper for Linux servers (PM2 + adapter-node)
+# Enhanced to support multiple environments: production, staging
 set -euo pipefail
 
 # Navigate to the script's directory (the Svelte app root)
@@ -8,41 +9,81 @@ cd "$(dirname "$0")"
 log() { echo "[deploy] $*"; }
 die() { echo "[deploy] ERROR: $*" >&2; exit 1; }
 
-APP_NAME="simplesvelte5app"
-PM2_BIN="pm2"
-
-# Options
-PULL=1            # do a git pull if inside a git repo
-SMOKE=1           # run a tiny smoke test after restart
+# Default values
+ENV="production"      # environment: production, staging
+PULL=1               # do a git pull if inside a git repo
+SMOKE=1              # run a tiny smoke test after restart
 NODE_MIN_ENVFILE_MAJOR=20
 NODE_MIN_ENVFILE_MINOR=6
 
 usage() {
   cat <<EOF
-Usage: ./deploy.sh [--no-pull] [--no-smoke]
+Usage: ./deploy.sh [--env production|staging] [--no-pull] [--no-smoke]
+
+Enhanced deployment script supporting multiple environments.
+
+Options:
+  --env production|staging    Deploy to specified environment (default: production)
+  --no-pull                  Skip git pull
+  --no-smoke                 Skip smoke test after restart
 
 Performs:
   - (optional) git pull --rebase at repo root
   - MySQL schema import when DATABASE_URL is set (idempotent)
   - Ensures writable dirs: static/panels, build/logs
   - npm ci, generate panels.json, vite build
-  - Restarts app with PM2, ensuring .env is loaded at runtime
-  - Optional smoke test (GET /api/panels/list via localhost)
+  - Restarts app with PM2 using environment-specific config
+  - Optional smoke test via localhost
 
-Env expectations:
-  - .env file present with runtime envs (DATABASE_URL, SITE_ORIGIN, SMTP_*, BODY_SIZE_LIMIT, etc.)
-  - Nginx is already configured as reverse proxy (not modified here)
+Environment files:
+  - .env (common settings)
+  - .env.production (production overrides)
+  - .env.staging (staging overrides)
+
+PM2 Apps:
+  - paranoid-comic-prod (port 3000, .env.production)
+  - paranoid-comic-staging (port 3001, .env.staging)
 EOF
 }
 
-for arg in "$@"; do
-  case "$arg" in
-    --no-pull) PULL=0 ;;
-    --no-smoke) SMOKE=0 ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --env)
+      if [[ -n "${2:-}" ]] && [[ "$2" =~ ^(production|staging)$ ]]; then
+        ENV="$2"
+        shift 2
+      else
+        die "Invalid --env value. Use: production or staging"
+      fi
+      ;;
+    --no-pull) PULL=0; shift ;;
+    --no-smoke) SMOKE=0; shift ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "Unknown arg: $arg"; usage; exit 2 ;;
+    *) echo "Unknown arg: $1"; usage; exit 2 ;;
   esac
 done
+
+# Set environment-specific variables
+case "$ENV" in
+  production)
+    APP_NAME="paranoid-comic-prod"
+    ENV_FILE=".env.production"
+    PORT=3000
+    ;;
+  staging)
+    APP_NAME="paranoid-comic-staging"
+    ENV_FILE=".env.staging"
+    PORT=3001
+    ;;
+  *)
+    die "Invalid environment: $ENV"
+    ;;
+esac
+
+log "Deploying to environment: $ENV"
+log "PM2 app name: $APP_NAME"
+log "Environment file: $ENV_FILE"
+log "Port: $PORT"
 
 # Ensure Node.js is installed
 command -v node >/dev/null 2>&1 || die "Node.js is required but not found in PATH"
@@ -61,7 +102,21 @@ else
   log "Not inside a git repo. Skipping pull."
 fi
 
+# Check if environment file exists
+if [[ ! -f "$ENV_FILE" ]]; then
+  log "Warning: $ENV_FILE not found. Deployment may fail if required variables are missing."
+fi
+
 # If MySQL CLI is available and DATABASE_URL is set, import schema idempotently
+# First, load the environment file to get DATABASE_URL for this environment
+if [[ -f "$ENV_FILE" ]]; then
+  log "Loading environment variables from $ENV_FILE"
+  set -a  # automatically export all variables
+  source .env 2>/dev/null || true  # load common settings first
+  source "$ENV_FILE"
+  set +a
+fi
+
 if [[ -n "${DATABASE_URL:-}" ]]; then
   if command -v mysql >/dev/null 2>&1; then
     if [[ -f data/mysql_schema.sql ]]; then
@@ -137,29 +192,32 @@ npm run build
 log "Restarting the server with PM2"
 export PATH="$HOME/.local/bin:$PATH"
 
-# Always use dotenv/register for PM2 (PM2 may use a different Node without --env-file support)
-# Ensure dotenv is available
+# Restart the server with PM2 using ecosystem config
+log "Restarting the server with PM2 using ecosystem.config.js"
+export PATH="$HOME/.local/bin:$PATH"
+
+# Ensure dotenv is available for runtime env loading
 if ! node -e "require('dotenv');" >/dev/null 2>&1; then
   log "Installing dotenv for production runtime env loading (no-save)"
   npm install dotenv --no-save --omit=dev
 fi
 
-export DOTENV_CONFIG_PATH="$(pwd)/.env"
-NODE_ARGS="-r dotenv/config"
-ENTRY="build/index.js"
+# Use ecosystem config to manage both production and staging
+if [[ ! -f ecosystem.config.js ]]; then
+  die "ecosystem.config.js not found. This file is required for multi-environment deployment."
+fi
 
 set +e
 $PM2_BIN delete "$APP_NAME" >/dev/null 2>&1
 set -e
 
-# Use PM2's --node-args so preloading works regardless of PM2's Node version
-$PM2_BIN start "$ENTRY" --name "$APP_NAME" --node-args "$NODE_ARGS"
+# Start the specific app from ecosystem config
+$PM2_BIN start ecosystem.config.js --only "$APP_NAME"
 $PM2_BIN save
 
 # Optional smoke test
 if [[ "$SMOKE" == "1" ]]; then
-  sleep 1
-  PORT="${PORT:-3000}"
+  sleep 2  # Give the app a moment to start
   # Use a public endpoint for smoke test (no auth required)
   SMOKE_URL="http://127.0.0.1:$PORT/api/whoami"
   log "Smoke: GET $SMOKE_URL"
@@ -169,7 +227,7 @@ if [[ "$SMOKE" == "1" ]]; then
     RC=$?
     set -e
     if [[ $RC -eq 0 ]]; then
-      log "Smoke test OK"
+      log "Smoke test OK for $ENV environment"
     else
       log "Smoke test failed (code $RC) — check PM2 logs: pm2 logs $APP_NAME"
     fi
@@ -178,4 +236,8 @@ if [[ "$SMOKE" == "1" ]]; then
   fi
 fi
 
-log "Deploy completed successfully."
+log "Deploy completed successfully for $ENV environment."
+log "App: $APP_NAME running on port $PORT"
+log "Environment file: $ENV_FILE"
+log "Check status with: pm2 status $APP_NAME"
+log "View logs with: pm2 logs $APP_NAME"

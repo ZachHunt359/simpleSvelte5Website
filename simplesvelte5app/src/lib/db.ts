@@ -16,6 +16,15 @@ function getSqliteDb(): Database.Database {
 
 const useMysql = !!process.env.DATABASE_URL;
 
+console.log('[db] NODE_ENV:', process.env.NODE_ENV);
+console.log('[db] DATABASE_URL present:', !!process.env.DATABASE_URL);
+console.log('[db] Using MySQL:', useMysql);
+if (process.env.DATABASE_URL) {
+  console.log('[db] DATABASE_URL (masked):', process.env.DATABASE_URL.replace(/\/\/.*:.*@/, '//***:***@'));
+} else {
+  console.log('[db] DATABASE_URL is not set');
+}
+
 // Unified async API: query/get/run/transaction
 export async function query(sql: string, params?: any[]) {
   if (useMysql) return dbMysql.query(sql, params);
