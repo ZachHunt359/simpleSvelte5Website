@@ -196,6 +196,9 @@ export PATH="$HOME/.local/bin:$PATH"
 log "Restarting the server with PM2 using ecosystem.config.js"
 export PATH="$HOME/.local/bin:$PATH"
 
+# Set PM2 binary path
+PM2_BIN="pm2"
+
 # Ensure dotenv is available for runtime env loading
 if ! node -e "require('dotenv');" >/dev/null 2>&1; then
   log "Installing dotenv for production runtime env loading (no-save)"
