@@ -112,8 +112,10 @@ fi
 if [[ -f "$ENV_FILE" ]]; then
   log "Loading environment variables from $ENV_FILE"
   set -a  # automatically export all variables
-  source .env 2>/dev/null || true  # load common settings first
-  source "$ENV_FILE"
+  # Load common settings first (filter out comments and empty lines)
+  [[ -f .env ]] && source <(grep -v '^#' .env | grep -v '^$') 2>/dev/null || true
+  # Load environment-specific settings (filter out comments and empty lines)
+  source <(grep -v '^#' "$ENV_FILE" | grep -v '^$')
   set +a
 fi
 
