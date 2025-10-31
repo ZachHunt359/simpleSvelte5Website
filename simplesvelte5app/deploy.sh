@@ -111,27 +111,20 @@ fi
 # First, load the environment file to get DATABASE_URL for this environment
 if [[ -f "$ENV_FILE" ]]; then
   log "Loading environment variables from $ENV_FILE"
-  set -a  # automatically export all variables
   
-  # Load common settings first (using a more robust approach)
+  # Use bulletproof environment loading with set -a/+a (allexport)
+  # This method handles comments, quoting, special characters, and all edge cases
+  set -a  # Enable auto-export of all variables
+  
+  # Load common settings first
   if [[ -f .env ]]; then
-    while IFS= read -r line || [[ -n "$line" ]]; do
-      # Skip empty lines and comments
-      [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-      # Export the variable
-      export "$line"
-    done < .env
+    source .env
   fi
   
-  # Load environment-specific settings
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    # Skip empty lines and comments
-    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-    # Export the variable
-    export "$line"
-  done < "$ENV_FILE"
+  # Load environment-specific settings (overrides common settings)
+  source "$ENV_FILE"
   
-  set +a
+  set +a  # Disable auto-export
 fi
 
 if [[ -n "${DATABASE_URL:-}" ]]; then
