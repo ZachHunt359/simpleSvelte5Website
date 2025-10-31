@@ -112,16 +112,16 @@ fi
 if [[ -f "$ENV_FILE" ]]; then
   log "Loading environment variables from $ENV_FILE"
   
-  # Use bulletproof environment loading with aggressive comment stripping
+  # Use bulletproof environment loading with awk-based preprocessing
   set -a  # Enable auto-export of all variables
   
-  # Load common settings first (strip all comments and empty lines)
+  # Load common settings first (awk strips comments and empty lines reliably)
   if [[ -f .env ]]; then
-    source <(sed -e 's/#.*$//' -e '/^[[:space:]]*$/d' .env)
+    source <(awk '!/^[[:space:]]*#/ && !/^[[:space:]]*$/ {gsub(/#.*$/, ""); if (length($0) > 0) print}' .env)
   fi
   
   # Load environment-specific settings (overrides common settings)
-  source <(sed -e 's/#.*$//' -e '/^[[:space:]]*$/d' "$ENV_FILE")
+  source <(awk '!/^[[:space:]]*#/ && !/^[[:space:]]*$/ {gsub(/#.*$/, ""); if (length($0) > 0) print}' "$ENV_FILE")
   
   set +a  # Disable auto-export
 fi
