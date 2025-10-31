@@ -226,7 +226,7 @@ log "Restarting the server with PM2"
 export PATH="$HOME/.local/bin:$PATH"
 
 # Restart the server with PM2 using ecosystem config
-log "Restarting the server with PM2 using ecosystem.config.js"
+log "Restarting the server with PM2 using ecosystem.config.cjs"
 export PATH="$HOME/.local/bin:$PATH"
 
 # Set PM2 binary path
@@ -239,8 +239,8 @@ if ! node -e "require('dotenv');" >/dev/null 2>&1; then
 fi
 
 # Use ecosystem config to manage both production and staging
-if [[ ! -f ecosystem.config.js ]]; then
-  die "ecosystem.config.js not found. This file is required for multi-environment deployment."
+if [[ ! -f ecosystem.config.cjs ]]; then
+  die "ecosystem.config.cjs not found. This file is required for multi-environment deployment."
 fi
 
 set +e
@@ -248,7 +248,7 @@ $PM2_BIN delete "$APP_NAME" >/dev/null 2>&1
 set -e
 
 # Start the specific app from ecosystem config
-$PM2_BIN start ecosystem.config.js --only "$APP_NAME"
+$PM2_BIN start ecosystem.config.cjs --only "$APP_NAME"
 $PM2_BIN save
 
 # Optional smoke test
