@@ -112,17 +112,16 @@ fi
 if [[ -f "$ENV_FILE" ]]; then
   log "Loading environment variables from $ENV_FILE"
   
-  # Use bulletproof environment loading with set -a/+a (allexport)
-  # Preprocess files to handle any edge cases with comments or formatting
+  # Use bulletproof environment loading with aggressive comment stripping
   set -a  # Enable auto-export of all variables
   
-  # Load common settings first (with preprocessing)
+  # Load common settings first (strip all comments and empty lines)
   if [[ -f .env ]]; then
-    source <(grep -v '^[[:space:]]*#' .env | grep -v '^[[:space:]]*$')
+    source <(sed -e 's/#.*$//' -e '/^[[:space:]]*$/d' .env)
   fi
   
   # Load environment-specific settings (overrides common settings)
-  source <(grep -v '^[[:space:]]*#' "$ENV_FILE" | grep -v '^[[:space:]]*$')
+  source <(sed -e 's/#.*$//' -e '/^[[:space:]]*$/d' "$ENV_FILE")
   
   set +a  # Disable auto-export
 fi
