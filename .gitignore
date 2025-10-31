@@ -1,7 +1,5 @@
-simplesvelte5app/data/db.db-shm
-simplesvelte5app/data/db.db-wal
-simplesvelte5app/data/db.sqbpro
-simplesvelte5app/scripts/create_admin.js
-simplesvelte5app/static/panels/
-
+# Ignore root-level folders
 .github/
+node_modules/
+
+# Add any other ignores as needed below

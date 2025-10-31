@@ -1,0 +1,146 @@
+{
+	"/(authenticated)": [
+		"src/routes/(authenticated)/+layout.ts",
+		"src/routes/(authenticated)/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/": [
+		"src/routes/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/(authenticated)/admin": [
+		"src/routes/(authenticated)/admin/+layout.server.ts",
+		"src/routes/(authenticated)/+layout.ts",
+		"src/routes/(authenticated)/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/(authenticated)/admin/invite": [
+		"src/routes/(authenticated)/admin/invite/+page.server.ts",
+		"src/routes/(authenticated)/admin/+layout.server.ts",
+		"src/routes/(authenticated)/+layout.ts",
+		"src/routes/(authenticated)/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/(authenticated)/admin/logs": [
+		"src/routes/(authenticated)/admin/logs/+page.server.ts",
+		"src/routes/(authenticated)/admin/+layout.server.ts",
+		"src/routes/(authenticated)/+layout.ts",
+		"src/routes/(authenticated)/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/(authenticated)/admin/migrations": [
+		"src/routes/(authenticated)/admin/migrations/+page.server.ts",
+		"src/routes/(authenticated)/admin/+layout.server.ts",
+		"src/routes/(authenticated)/+layout.ts",
+		"src/routes/(authenticated)/+layout.server.ts",
+		"src/routes/+layout.server.ts",
+		"src/routes/(authenticated)/admin/migrations/+server.ts"
+	],
+	"/api/admin/invites": [
+		"src/routes/api/admin/invites/+server.ts"
+	],
+	"/api/admin/invite": [
+		"src/routes/api/admin/invite/+server.ts"
+	],
+	"/api/admin/invite/delete": [
+		"src/routes/api/admin/invite/delete/+server.ts"
+	],
+	"/api/admin/logs": [
+		"src/routes/api/admin/logs/+server.ts"
+	],
+	"/api/admin/panels/regenerate": [
+		"src/routes/api/admin/panels/regenerate/+server.ts"
+	],
+	"/api/inquiries": [
+		"src/routes/api/inquiries/+server.ts"
+	],
+	"/api/inquiry": [
+		"src/routes/api/inquiry/+server.ts"
+	],
+	"/api/inquiry/archive": [
+		"src/routes/api/inquiry/archive/+server.ts"
+	],
+	"/api/inquiry/clear": [
+		"src/routes/api/inquiry/clear/+server.ts"
+	],
+	"/api/inquiry/delete-old": [
+		"src/routes/api/inquiry/delete-old/+server.ts"
+	],
+	"/api/inquiry/delete": [
+		"src/routes/api/inquiry/delete/+server.ts"
+	],
+	"/api/inquiry/reply": [
+		"src/routes/api/inquiry/reply/+server.ts"
+	],
+	"/api/inquiry/resend": [
+		"src/routes/api/inquiry/resend/+server.ts"
+	],
+	"/api/inquiry/seen": [
+		"src/routes/api/inquiry/seen/+server.ts"
+	],
+	"/api/inquiry/send-email": [
+		"src/routes/api/inquiry/send-email/+server.ts"
+	],
+	"/api/me": [
+		"src/routes/api/me/+server.ts"
+	],
+	"/api/panels/list": [
+		"src/routes/api/panels/list/+server.ts"
+	],
+	"/api/panels/upload": [
+		"src/routes/api/panels/upload/+server.ts"
+	],
+	"/api/whoami": [
+		"src/routes/api/whoami/+server.ts"
+	],
+	"/(authenticated)/archive": [
+		"src/routes/(authenticated)/archive/+page.server.ts",
+		"src/routes/(authenticated)/+layout.ts",
+		"src/routes/(authenticated)/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/(authenticated)/dashboard": [
+		"src/routes/(authenticated)/dashboard/+page.server.ts",
+		"src/routes/(authenticated)/+layout.ts",
+		"src/routes/(authenticated)/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/endpoints/api/whoami": [
+		"src/routes/endpoints/api/whoami/+server.ts"
+	],
+	"/login": [
+		"src/routes/login/+page.ts",
+		"src/routes/login/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/logout": [
+		"src/routes/logout/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/panels.json": [
+		"src/routes/panels.json/+server.ts"
+	],
+	"/register": [
+		"src/routes/register/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/(authenticated)/settings": [
+		"src/routes/(authenticated)/settings/+page.ts",
+		"src/routes/(authenticated)/+layout.ts",
+		"src/routes/(authenticated)/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/signup": [
+		"src/routes/signup/+page.ts",
+		"src/routes/signup/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/(authenticated)/upload": [
+		"src/routes/(authenticated)/+layout.ts",
+		"src/routes/(authenticated)/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/[chapter]/[panel]": [
+		"src/routes/+layout.server.ts"
+	]
+}
