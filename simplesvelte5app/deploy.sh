@@ -112,7 +112,7 @@ fi
 if [[ -f "$ENV_FILE" ]]; then
   log "Loading environment variables from $ENV_FILE"
   
-  # Use bulletproof environment loading with temporary file approach
+  # Use ultra-robust environment loading with explicit validation
   set -a  # Enable auto-export of all variables
   
   # Create temporary files for preprocessing
@@ -120,15 +120,32 @@ if [[ -f "$ENV_FILE" ]]; then
   TEMP_ENV_SPECIFIC=$(mktemp)
   trap 'rm -f "$TEMP_ENV_COMMON" "$TEMP_ENV_SPECIFIC"' EXIT
   
-  # Load common settings first (preprocess to temp file)
+  # Load common settings first (ultra-robust preprocessing)
   if [[ -f .env ]]; then
-    awk '!/^[[:space:]]*#/ && !/^[[:space:]]*$/ {gsub(/#.*$/, ""); gsub(/^[[:space:]]+|[[:space:]]+$/, ""); if (length($0) > 0) print}' .env > "$TEMP_ENV_COMMON"
-    source "$TEMP_ENV_COMMON"
+    # Only process lines that contain '=' and aren't comments
+    awk '/=/ && !/^[[:space:]]*#/ {
+      gsub(/#.*$/, "");           # Remove comments
+      gsub(/^[[:space:]]+/, "");  # Remove leading whitespace
+      gsub(/[[:space:]]+$/, "");  # Remove trailing whitespace
+      if (length($0) > 0 && index($0, "=") > 1) print
+    }' .env > "$TEMP_ENV_COMMON"
+    
+    if [[ -s "$TEMP_ENV_COMMON" ]]; then
+      source "$TEMP_ENV_COMMON"
+    fi
   fi
   
   # Load environment-specific settings (overrides common settings)
-  awk '!/^[[:space:]]*#/ && !/^[[:space:]]*$/ {gsub(/#.*$/, ""); gsub(/^[[:space:]]+|[[:space:]]+$/, ""); if (length($0) > 0) print}' "$ENV_FILE" > "$TEMP_ENV_SPECIFIC"
-  source "$TEMP_ENV_SPECIFIC"
+  awk '/=/ && !/^[[:space:]]*#/ {
+    gsub(/#.*$/, "");           # Remove comments
+    gsub(/^[[:space:]]+/, "");  # Remove leading whitespace
+    gsub(/[[:space:]]+$/, "");  # Remove trailing whitespace
+    if (length($0) > 0 && index($0, "=") > 1) print
+  }' "$ENV_FILE" > "$TEMP_ENV_SPECIFIC"
+  
+  if [[ -s "$TEMP_ENV_SPECIFIC" ]]; then
+    source "$TEMP_ENV_SPECIFIC"
+  fi
   
   set +a  # Disable auto-export
 fi
