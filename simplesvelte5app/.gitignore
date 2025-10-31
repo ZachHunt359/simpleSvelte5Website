@@ -19,8 +19,8 @@ Thumbs.db
 !.env.test
 
 # PM2 / local runtime configs (may contain secrets)
-ecosystem*.cjs
-ecosystem*.config.*
+# ecosystem*.cjs - allowing ecosystem.config.cjs to be tracked (uses env vars, no secrets)
+# ecosystem*.config.*
 pm2*.json
 
 # Vite
