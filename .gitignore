@@ -1,5 +1,43 @@
-# Ignore root-level folders
+## Root-level ignores
 .github/
 node_modules/
 
-# Add any other ignores as needed below
+# Project build / caches
+.svelte-kit/
+build/
+.vite/
+dist/
+.cache/
+coverage/
+/.parcel-cache/
+
+# Logs and runtime files
+logs/
+build/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment files - ignore secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.staging
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Keep the example env in the repo
+!.env.example
+
+# Static panels (media) - keep to avoid committing large assets
+static/panels/

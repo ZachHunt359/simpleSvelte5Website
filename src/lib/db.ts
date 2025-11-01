@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import Database from 'better-sqlite3';
 import path from 'path';
 import * as dbMysql from './db-mysql';

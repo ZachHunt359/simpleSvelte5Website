@@ -24,21 +24,28 @@
         currentPanel !== displayedPanelIndex &&
         panels[currentPanel]
     ) {
-        const url = panels[currentPanel];
+        const entry = panels[currentPanel];
         preloading = true;
 
-        if (/\.(webm)$/i.test(url)) {
-            // For video, swap immediately (preloading is unreliable for videos)
+        if (typeof entry === 'object' && entry.type === 'youtube') {
+            // For youtube embeds, swap immediately (no image preload)
             displayedPanelIndex = currentPanel;
             preloading = false;
         } else {
-            // For images, preload before swapping
-            const img = new window.Image();
-            img.onload = () => {
+            const url = entry;
+            if (/\.(webm)$/i.test(url)) {
+                // For video, swap immediately (preloading is unreliable for videos)
                 displayedPanelIndex = currentPanel;
                 preloading = false;
-            };
-            img.src = url;
+            } else {
+                // For images, preload before swapping
+                const img = new window.Image();
+                img.onload = () => {
+                    displayedPanelIndex = currentPanel;
+                    preloading = false;
+                };
+                img.src = url;
+            }
         }
     }
 
@@ -46,7 +53,9 @@
     function preloadImages(currentPanel) {
         if (!browser || panels.length === 0) return;
         for (let i = currentPanel - 1; i < currentPanel + 3 && i < panels.length; i++) {
-            const url = panels[i];
+            const entry = panels[i];
+            if (typeof entry === 'object') continue; // nothing to preload for structured entries
+                const url = entry;
             if (/\.(webm)$/i.test(url)) {
                 // Preload video (not always effective, but doesn't hurt)
                 const video = document.createElement('video');
@@ -145,7 +154,21 @@
     on:touchstart={handleTouchStart}
     on:touchend={handleTouchEnd}>
     {#if panels.length > 0 && displayedPanelIndex >= 0 && displayedPanelIndex < panels.length}
-        {#if /\.(webm)$/i.test(panels[displayedPanelIndex])}
+        {#if typeof panels[displayedPanelIndex] === 'object' && panels[displayedPanelIndex].type === 'youtube'}
+            <!-- YouTube embed -->
+            <iframe
+                src={`https://www.youtube.com/embed/${panels[displayedPanelIndex].id}?rel=0&showinfo=0`}
+                title={`YouTube video ${panels[displayedPanelIndex].id}`}
+                width="100%"
+                height="480"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                aria-hidden="true"
+                tabindex="-1"
+                on:load={handleMediaLoad}
+            ></iframe>
+        {:else if /\.(webm)$/i.test(panels[displayedPanelIndex])}
             <!-- decorative animated panel: mark as non-interactive for assistive tech -->
             <video
                 src={panels[displayedPanelIndex]}

@@ -1,5 +1,6 @@
 import { generatePanelsJson } from '../../../../../../scripts/generate-panels-json.js';
-import { isAdmin } from '$lib/auth/helpers';
+import { isAdmin, getUserFromCookies } from '$lib/auth/helpers';
+import { logInfo } from '$lib/logger';
 
 export const POST = async ({ cookies }) => {
   try {
@@ -9,6 +10,15 @@ export const POST = async ({ cookies }) => {
 
     // Run generation (sync) and return result
     try {
+      // Log manual regeneration request (include admin identity when available)
+      try {
+        const user = await getUserFromCookies(cookies);
+        const id = (user && user.email) ? String(user.email).toLowerCase() : 'unknown';
+        logInfo('Generating Panels (Manual)', { triggeredBy: id });
+      } catch (_) {
+        try { logInfo('Generating Panels (Manual)', {}); } catch (_) {}
+      }
+
       generatePanelsJson({ regenThumbnails: false, log: true });
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (e) {

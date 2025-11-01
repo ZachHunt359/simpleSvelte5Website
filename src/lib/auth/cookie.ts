@@ -49,46 +49,47 @@ export const cookie: AuthAdapter = {
   },
 
   async login({ email, password, opts }) {
-    console.log("[auth.login] Attempting login for email:", email);
+  console.log("[auth.login] Attempting login for email:", email);
 
-    const row = await get("SELECT Id, Email, PasswordHash FROM AdminUsers WHERE lower(Email) = lower(?)", [email]);
-    if (!row) {
-        console.error("[auth.login] No user found for email:", email);
-        return err(new Error("no user found"));
-    }
+  const row = await get("SELECT Id, Email, PasswordHash FROM AdminUsers WHERE lower(Email) = lower(?)", [email]);
+  console.log("[auth.login] DB query result for email:", email, row);
+  if (!row) {
+    console.error("[auth.login] No user found for email:", email);
+    return err(new Error("no user found"));
+  }
 
-    const matches = bcrypt.compareSync(password, row.PasswordHash);
-    console.log("[auth.login] Password comparison result for email:", email, matches);
+  const matches = bcrypt.compareSync(password, row.PasswordHash);
+  console.log("[auth.login] Password comparison result for email:", email, matches);
 
-    if (!matches) {
-        console.error("[auth.login] Invalid credentials for email:", email);
-        return err(new Error("invalid credentials"));
-    }
+  if (!matches) {
+    console.error("[auth.login] Invalid credentials for email:", email);
+    return err(new Error("invalid credentials"));
+  }
 
-    console.log("[auth.login] Login successful for email:", email);
-    // create session token
-    const sessionToken = randomBytes(32).toString("hex");
-    const epoch = Math.floor(Date.now() / 1000);
-    const expiresAt = epoch + SESSION_MAX_AGE;
+  console.log("[auth.login] Login successful for email:", email);
+  // create session token
+  const sessionToken = randomBytes(32).toString("hex");
+  const epoch = Math.floor(Date.now() / 1000);
+  const expiresAt = epoch + SESSION_MAX_AGE;
 
-    await run(`
-      INSERT INTO Sessions (Token, UserId, CreatedAt, ExpiresAt)
-      VALUES (?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE
-      Token = VALUES(Token), CreatedAt = VALUES(CreatedAt), ExpiresAt = VALUES(ExpiresAt)
-    `, [sessionToken, String(row.Id), epoch, expiresAt]);
+  await run(`
+    INSERT INTO Sessions (Token, UserId, CreatedAt, ExpiresAt)
+    VALUES (?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+    Token = VALUES(Token), CreatedAt = VALUES(CreatedAt), ExpiresAt = VALUES(ExpiresAt)
+  `, [sessionToken, String(row.Id), epoch, expiresAt]);
 
-    // set cookie as "<userId>:<sessionToken>"
-    opts.cookies.set("auth_token", `${row.Id}:${sessionToken}`, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-        maxAge: SESSION_MAX_AGE,
-        secure: process.env.NODE_ENV === 'production'
-    });
+  // set cookie as "<userId>:<sessionToken>"
+  opts.cookies.set("auth_token", `${row.Id}:${sessionToken}`, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: SESSION_MAX_AGE,
+    secure: process.env.NODE_ENV === 'production'
+  });
 
-    const user = { id: String(row.Id), email: row.Email, isAdmin: true };
-    return ok(user);
+  const user = { id: String(row.Id), email: row.Email, isAdmin: true };
+  return ok(user);
   },
 
   async signup({ email, password, password_confirm, opts }) {

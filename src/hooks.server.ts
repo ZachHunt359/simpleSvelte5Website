@@ -6,6 +6,7 @@ import path from 'path';
 import { getDb } from '$lib/db';
 import * as dbMysql from '$lib/db-mysql';
 import { spawn } from 'child_process';
+import { activeAdminsCount } from '$lib/panelsHeartbeat';
 
 // Run a quick filesystem sanity check at startup. This runs when the module is evaluated
 // during server start and logs a friendly error if critical directories are not writable.
@@ -163,6 +164,33 @@ try {
 	try { logError('startup: unexpected error during DB validation', { error: msg }); } catch (_) { console.error('startup: unexpected error during DB validation', msg); }
 	console.error('FATAL: unexpected error during startup validation - see logs for details');
 	process.exit(1);
+}
+
+// Scheduled regeneration: run periodically to catch scheduled publish dates.
+// Skip regeneration while any admin is actively viewing the upload/ChapterTree UI
+try {
+	const intervalMs = Number(process.env.PANELS_REGEN_INTERVAL_MS ?? 60_000); // default 60s
+
+	// Log scheduled regeneration cadence once at startup so logs show configured interval
+	try { logInfo(`Generating Panels every ${Math.round(intervalMs/60000)} minute(s)`, { intervalMs }); } catch (_) {}
+	setInterval(() => {
+		try {
+			// Skip if any admin heartbeats active in the last 30s
+			const active = activeAdminsCount(30_000);
+			if (active > 0) {
+				logInfo('panels regen skipped due to active admin(s)', { active });
+				return;
+			}
+			if (needPanelsRegen()) {
+				logInfo('scheduled panels.json regeneration triggered');
+				spawnPanelsGenerator();
+			}
+		} catch (err) {
+			try { logError('scheduled panels regen error', { error: err && err.message ? err.message : String(err) }); } catch (_) { console.error('scheduled panels regen error', err); }
+		}
+	}, intervalMs);
+} catch (e) {
+	try { logError('failed to initialize scheduled panels regen', { error: e && e.message ? e.message : String(e) }); } catch (_) { console.error('failed to initialize scheduled panels regen', e); }
 }
 
 export const handle: Handle = async ({ event, resolve }) => {

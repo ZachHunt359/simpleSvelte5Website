@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { createEventDispatcher } from 'svelte';
+  import { dndzone } from 'svelte-dnd-action';
   
   // Import Uppy components
   import Uppy from '@uppy/core';
@@ -195,6 +196,8 @@
 </script>
 
 <div class="thumbnail-gallery bg-slate-900 border border-slate-700 rounded-lg p-4">
+  <!-- DEBUG: Gallery Rendered -->
+  <div class="text-xs text-yellow-400 mb-2">[DEBUG] ThumbnailGallery rendered. files: {files.length}, chapters: {chapters.length}, showChapterGroups: {showChapterGroups ? 'true' : 'false'}</div>
   <!-- Header -->
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-white font-medium">File Preview</h3>
@@ -235,6 +238,20 @@
   
   <!-- Custom thumbnail display -->
   {#if showChapterGroups}
+    <!-- Drag-and-drop test button for debugging -->
+    <button class="btn btn-xs btn-ghost mb-2" on:click={() => {
+      const chapter = chapters[0];
+      if (groupedFiles[chapter]?.length > 1) {
+        const files = [...groupedFiles[chapter]];
+        const moved = files.shift();
+        if (moved) {
+          files.push(moved);
+          groupedFiles[chapter] = files;
+          groupedFiles = { ...groupedFiles };
+          dispatch('filesReordered', { chapter, files });
+        }
+      }
+    }}>Simulate Drag: Move First to Last</button>
     <!-- Grouped by chapter -->
     {#each chapters as chapter}
       {#if selectedChapter === 'all' || selectedChapter === chapter}
@@ -244,7 +261,19 @@
             <span class="text-slate-500 text-sm">({groupedFiles[chapter]?.length || 0} files)</span>
           </h4>
           
-          <div class="files-container {viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3' : 'space-y-2'}">
+          <div class="files-container {viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3' : 'space-y-2'}"
+            use:dndzone={{ items: groupedFiles[chapter] || [], flipDurationMs: 150 }}
+            on:consider={e => {
+              const { items } = e.detail;
+              groupedFiles[chapter] = items;
+              groupedFiles = { ...groupedFiles };
+            }}
+            on:finalize={e => {
+              const { items } = e.detail;
+              groupedFiles[chapter] = items;
+              groupedFiles = { ...groupedFiles };
+              dispatch('filesReordered', { chapter, files: items });
+            }}>
             {#each groupedFiles[chapter] || [] as fileData, index}
               {@const status = getFileStatus(fileData.file)}
               {@const path = fileData.file.webkitRelativePath || fileData.file.name}

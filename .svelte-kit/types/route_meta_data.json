@@ -48,6 +48,12 @@
 	"/api/admin/logs": [
 		"src/routes/api/admin/logs/+server.ts"
 	],
+	"/api/admin/panels/heartbeat": [
+		"src/routes/api/admin/panels/heartbeat/+server.ts"
+	],
+	"/api/admin/panels/order": [
+		"src/routes/api/admin/panels/order/+server.ts"
+	],
 	"/api/admin/panels/regenerate": [
 		"src/routes/api/admin/panels/regenerate/+server.ts"
 	],

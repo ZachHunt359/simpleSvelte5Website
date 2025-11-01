@@ -108,9 +108,14 @@ function validatePath(filePath: string): ValidationResult & { chapter?: string; 
   // Check for device type folder
   const hasDesktop = pathParts.some(part => part.toLowerCase() === 'desktop');
   const hasMobile = pathParts.some(part => part.toLowerCase() === 'mobile');
-  
+
+  // Exception: allow chapter-X.thumb.jpg directly in chapter folder
+  const fileName = pathParts[pathParts.length - 1];
+  const isChapterThumb = /^chapter-\d+\.thumb\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
   if (!hasDesktop && !hasMobile) {
-    errors.push('File must be in a desktop or mobile subfolder');
+    if (!isChapterThumb) {
+      errors.push('File must be in a desktop or mobile subfolder');
+    }
   } else if (hasDesktop && hasMobile) {
     errors.push('File cannot be in both desktop and mobile folders');
   } else {
@@ -118,7 +123,6 @@ function validatePath(filePath: string): ValidationResult & { chapter?: string; 
   }
   
   // Extract panel number from filename
-  const fileName = pathParts[pathParts.length - 1];
   const panelMatch = fileName.match(/(\d+)/);
   if (panelMatch) {
     panelNumber = parseInt(panelMatch[1], 10);

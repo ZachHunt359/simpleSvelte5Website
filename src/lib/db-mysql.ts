@@ -26,12 +26,18 @@ async function ensurePool() {
 
 export async function query(sql: string, params?: any[]) {
   await ensurePool();
+  console.log('[db-mysql.query] SQL:', sql);
+  console.log('[db-mysql.query] Params:', params);
   const [rows] = await (pool as mysql.Pool).query(sql, params);
+  console.log('[db-mysql.query] Result:', rows);
   return rows as any[];
 }
 
 export async function get(sql: string, params?: any[]) {
   const rows = await query(sql, params);
+  console.log('[db-mysql.get] SQL:', sql);
+  console.log('[db-mysql.get] Params:', params);
+  console.log('[db-mysql.get] Rows:', rows);
   return Array.isArray(rows) ? rows[0] : undefined;
 }
 

@@ -146,12 +146,16 @@ async function main() {
       const ok = bcrypt.compareSync(password, stored);
       const sameAsGenerated = stored === hash;
       const okAgainstGenerated = bcrypt.compareSync(password, hash);
-      console.log('[seed-admin] stored hash:', stored);
+      console.log('[seed-admin] password used:', password);
+      console.log('[seed-admin] freshly generated hash:', hash);
+      console.log('[seed-admin] stored hash in DB:', stored);
       console.log('[seed-admin] bcrypt.compareSync(password, stored) =>', ok);
       console.log('[seed-admin] stored === freshlyGeneratedHash =>', sameAsGenerated);
       console.log('[seed-admin] bcrypt.compareSync(password, freshlyGeneratedHash) =>', okAgainstGenerated);
       if (!ok) {
         console.warn('[seed-admin] WARNING: Stored hash does not match provided password.');
+      } else {
+        console.log('[seed-admin] SUCCESS: Stored hash matches provided password.');
       }
     } else {
       console.warn('[seed-admin] WARNING: Could not re-read admin row after upsert.');

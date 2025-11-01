@@ -91,7 +91,7 @@
         const desktopArr = chap.desktop ?? [];
         const mobileArr = chap.mobile ?? [];
         const maxLen = Math.max(desktopArr.length, mobileArr.length);
-        const out: string[] = [];
+        const out: any[] = [];
         for (let i = 0; i < maxLen; i++) {
             const d = desktopArr[i] ?? null;
             const m = mobileArr[i] ?? null;
@@ -101,12 +101,19 @@
         return out;
     }
 
-    function basenameNoExt(url: string | undefined | null): string | undefined {
-        if (!url) return undefined;
-        const noQuery = url.split('?')[0];
-        const base = noQuery.split('/').pop();
-        if (!base) return undefined;
-        return base.replace(/\.[^/.]+$/, '');
+    function basenameNoExt(item: any): string | undefined {
+        if (!item) return undefined;
+        if (typeof item === 'string') {
+            const noQuery = item.split('?')[0];
+            const base = noQuery.split('/').pop();
+            if (!base) return undefined;
+            return base.replace(/\.[^/.]+$/, '');
+        }
+        // If object (structured), create an identifier
+        if (typeof item === 'object' && item.type === 'youtube' && item.id) {
+            return `youtube-${item.id}`;
+        }
+        return undefined;
     }
 
     $: panels = chapters.length > 0 ? buildPanelsForChapter(currentChapter, isDesktop) : [];
@@ -285,15 +292,19 @@
         const chapterSlug = $page.params.chapter as string;
         const panelFile = $page.params.panel as string;
 
-        const chapterIdx = chapters.findIndex((c: any) => c.slug === chapterSlug);
-        if (chapterIdx !== -1) {
-            currentChapter = chapterIdx;
-            const newPanels = buildPanelsForChapter(chapterIdx, isDesktop);
-            const panelIdx = newPanels.findIndex(p => p.includes(panelFile));
-            if (panelIdx !== -1) {
-                currentPanel = panelIdx;
+            const chapterIdx = chapters.findIndex((c: any) => c.slug === chapterSlug);
+            if (chapterIdx !== -1) {
+                currentChapter = chapterIdx;
+                const newPanels = buildPanelsForChapter(chapterIdx, isDesktop);
+                const panelIdx = newPanels.findIndex(p => {
+                    if (typeof p === 'string') return p.includes(panelFile);
+                    if (typeof p === 'object' && p.type === 'youtube' && `youtube-${p.id}` === panelFile) return true;
+                    return false;
+                });
+                if (panelIdx !== -1) {
+                    currentPanel = panelIdx;
+                }
             }
-        }
         lastParams = { chapter: chapterSlug, panel: panelFile };
     }
 

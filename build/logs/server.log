@@ -10,3 +10,221 @@
 {"ts":"2025-10-31T03:42:04.098Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
 {"ts":"2025-10-31T12:37:36.795Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
 {"ts":"2025-10-31T12:52:47.968Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T16:59:45.502Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:08:11.835Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:10:04.655Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:13:37.472Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:16:44.899Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:19:34.315Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:19:38.384Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:21:48.697Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:24:21.703Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:26:55.311Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:26:55.312Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T17:36:04.336Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:36:04.349Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T17:45:18.137Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:45:18.137Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T17:45:37.954Z","level":"info","msg":"[panels:upload] received files","meta":{"count":36}}
+{"ts":"2025-10-31T17:56:26.373Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:56:26.373Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T17:57:34.726Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:57:34.726Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T17:59:35.937Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T17:59:35.938Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:00:01.145Z","level":"info","msg":"[panels:upload] received files","meta":{"count":17}}
+{"ts":"2025-10-31T18:01:52.612Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:01:52.684Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:08:16.092Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:08:16.092Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:12:05.458Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:12:05.459Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:15:48.580Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:15:48.699Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:21:12.770Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:21:12.771Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:23:06.466Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:23:06.467Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:26:56.121Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:26:56.122Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:29:25.365Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:29:25.366Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:30:39.640Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:30:39.641Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:31:46.700Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:31:46.723Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:32:33.111Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:32:33.111Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:33:17.210Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:33:17.211Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:34:44.917Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:34:44.917Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:35:59.095Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:35:59.096Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T18:44:50.715Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T18:44:50.715Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T19:14:56.784Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T19:14:56.785Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T19:24:01.648Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T19:24:01.648Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T19:24:15.413Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T19:25:13.775Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T19:25:13.776Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T19:28:15.815Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T19:29:08.268Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T19:29:08.269Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T19:34:32.456Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T19:34:32.593Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T19:52:58.736Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:03:51.074Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:04:25.005Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:06:46.971Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:07:09.394Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:09:48.995Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:12:29.866Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:12:59.932Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:21:55.568Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:21:55.598Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T20:25:36.592Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:25:36.642Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T20:35:57.647Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:35:57.648Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T20:40:37.122Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:40:37.123Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T20:53:18.041Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:53:18.060Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T20:53:29.451Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T20:53:29.452Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T21:02:36.859Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T21:02:36.860Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T21:08:05.135Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T21:08:05.135Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T21:09:08.712Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T21:09:08.712Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T21:22:58.709Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T21:22:58.831Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T21:34:23.168Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T21:34:23.309Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T22:05:29.949Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T22:05:30.218Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T22:09:38.006Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T22:09:38.006Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T22:11:49.921Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T22:11:49.960Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T23:23:07.443Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T23:23:07.445Z","level":"info","msg":"panels.json is missing or stale; regenerating at startup","meta":null}
+{"ts":"2025-10-31T23:23:07.446Z","level":"info","msg":"spawned generate-panels-json at startup","meta":{"script":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\scripts\\generate-panels-json.js"}}
+{"ts":"2025-10-31T23:23:07.834Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T23:24:21.319Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T23:24:21.609Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T23:25:21.598Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-10-31T23:26:21.607Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-10-31T23:27:21.612Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-10-31T23:28:21.625Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-10-31T23:29:47.124Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T23:29:47.124Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T23:30:47.111Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-10-31T23:54:35.649Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-10-31T23:54:35.736Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-10-31T23:55:35.721Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-10-31T23:56:35.725Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-10-31T23:57:35.739Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-10-31T23:58:35.742Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-10-31T23:59:35.748Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:00:35.767Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:02:16.955Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:02:17.058Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:03:17.044Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:04:17.054Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:05:17.073Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:06:17.080Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:07:17.102Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:07:37.596Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:07:37.653Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:08:11.383Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:08:11.422Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:09:11.420Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:10:01.749Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:10:01.807Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:11:01.791Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:12:01.802Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:13:01.805Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:13:10.192Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:13:10.685Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:14:10.677Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:15:10.694Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:16:10.717Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:16:45.892Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:16:45.946Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:17:45.934Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:18:45.939Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:19:50.691Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:19:50.738Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:20:50.719Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:21:50.722Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:22:50.733Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:23:50.753Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:24:12.869Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:24:12.998Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:25:12.997Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:26:13.000Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:27:13.011Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:28:13.035Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:29:05.459Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:29:05.591Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:30:05.579Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:31:05.583Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:31:59.975Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:32:00.068Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:33:00.054Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:34:00.057Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:35:00.076Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:36:00.085Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:37:00.095Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:38:00.112Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:39:00.120Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:40:00.126Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:41:00.139Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:41:32.628Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:41:32.629Z","level":"info","msg":"panels.json is missing or stale; regenerating at startup","meta":null}
+{"ts":"2025-11-01T00:41:32.630Z","level":"info","msg":"spawned generate-panels-json at startup","meta":{"script":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\scripts\\generate-panels-json.js"}}
+{"ts":"2025-11-01T00:41:32.653Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:42:00.152Z","level":"info","msg":"scheduled panels.json regeneration triggered","meta":null}
+{"ts":"2025-11-01T00:42:00.153Z","level":"info","msg":"spawned generate-panels-json at startup","meta":{"script":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\scripts\\generate-panels-json.js"}}
+{"ts":"2025-11-01T00:42:32.658Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:43:00.152Z","level":"info","msg":"scheduled panels.json regeneration triggered","meta":null}
+{"ts":"2025-11-01T00:43:00.153Z","level":"info","msg":"spawned generate-panels-json at startup","meta":{"script":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\scripts\\generate-panels-json.js"}}
+{"ts":"2025-11-01T00:43:10.004Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:43:10.078Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:44:05.170Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:44:05.218Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:45:05.203Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:46:05.214Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:46:32.427Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:46:32.428Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:47:32.413Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:48:23.389Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:48:23.390Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:49:23.379Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:50:12.653Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:50:12.654Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:51:12.638Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:51:49.942Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:51:49.943Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T00:52:49.924Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:53:49.928Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:54:49.928Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:55:49.932Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:56:50.068Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:57:50.076Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:58:50.095Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:59:50.107Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T00:59:57.233Z","level":"info","msg":"startup: writeable paths OK","meta":{"logsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\build\\logs","panelsDir":"C:\\Users\\khayy\\source\\repos\\simpleSvelte5Website\\static\\panels"}}
+{"ts":"2025-11-01T00:59:57.357Z","level":"info","msg":"startup: validated MySQL connection","meta":{"database":"PARANOiD_DB","attempt":1}}
+{"ts":"2025-11-01T01:00:57.359Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T01:01:57.363Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T01:02:57.374Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T01:03:57.387Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T01:04:57.391Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T01:05:57.400Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
+{"ts":"2025-11-01T01:06:57.401Z","level":"info","msg":"panels regen skipped due to active admin(s)","meta":{"active":1}}
