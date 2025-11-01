@@ -62,7 +62,7 @@ async function run() {
     const info = await transporter.sendMail({
       from: smtpFrom,
       to,
-      subject: 'Test message from simplesvelte5app',
+  subject: 'Test message from simpleSvelte5Website',
       text: `Test email sent at ${new Date().toISOString()} to ${to}`
     });
 

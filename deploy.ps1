@@ -34,6 +34,11 @@ try {
     Set-Location $root
 
     Log "Starting deploy in $root"
+    # Derive a safe PM2 app name from the repo folder name to avoid hard-coded app names
+    try {
+        $appName = Split-Path -Leaf $root
+        if (-not $appName) { $appName = 'svelte-app' }
+    } catch { $appName = 'svelte-app' }
 
     # Ensure Node.js is available
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
@@ -122,8 +127,9 @@ try {
     if ($Start) {
         Log "Start requested. Attempting to start with pm2 if available."
         if (Get-Command pm2 -ErrorAction SilentlyContinue) {
-            Log "Starting app via pm2 (npm run preview)"
-            pm2 start npm --name simplesvelte5app -- run preview
+            Log "Starting app via pm2 (npm run preview) as app name: $appName"
+            # Use the derived repo-folder name as the PM2 process name (avoid hard-coded app names)
+            pm2 start npm --name $appName -- run preview
         } else {
             Log "pm2 not found. To run the app interactively use: npm run preview -- --port 3000"
             Log "On cPanel, configure the Application Manager to run the built app or use your host's process manager."

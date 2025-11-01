@@ -11,7 +11,7 @@
 module.exports = {
   apps: [
     {
-      name: 'simplesvelte5app',
+  name: 'simpleSvelte5Website',
       script: './build/index.js',
       instances: 1,
       exec_mode: 'fork',

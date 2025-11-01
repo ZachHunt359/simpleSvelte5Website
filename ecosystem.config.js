@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'paranoid-comic-prod',
       script: 'build/index.js',
-      cwd: '/home/deploy/simpleSvelte5Website/simplesvelte5app',
+  cwd: '/home/deploy/simpleSvelte5Website',
       instances: 1,
       exec_mode: 'fork',
       watch: false,
@@ -12,17 +12,17 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
-        DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/simplesvelte5app/.env.production'
+  DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/.env.production'
       },
-      error_file: '/home/deploy/simpleSvelte5Website/simplesvelte5app/build/logs/pm2-prod-error.log',
-      out_file: '/home/deploy/simpleSvelte5Website/simplesvelte5app/build/logs/pm2-prod-out.log',
-      log_file: '/home/deploy/simpleSvelte5Website/simplesvelte5app/build/logs/pm2-prod-combined.log',
+  error_file: '/home/deploy/simpleSvelte5Website/build/logs/pm2-prod-error.log',
+  out_file: '/home/deploy/simpleSvelte5Website/build/logs/pm2-prod-out.log',
+  log_file: '/home/deploy/simpleSvelte5Website/build/logs/pm2-prod-combined.log',
       time: true
     },
     {
       name: 'paranoid-comic-staging',
       script: 'build/index.js',
-      cwd: '/home/deploy/simpleSvelte5Website/simplesvelte5app',
+  cwd: '/home/deploy/simpleSvelte5Website',
       instances: 1,
       exec_mode: 'fork',
       watch: false,
@@ -31,11 +31,11 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
-        DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/simplesvelte5app/.env.staging'
+  DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/.env.staging'
       },
-      error_file: '/home/deploy/simpleSvelte5Website/simplesvelte5app/build/logs/pm2-staging-error.log',
-      out_file: '/home/deploy/simpleSvelte5Website/simplesvelte5app/build/logs/pm2-staging-out.log',
-      log_file: '/home/deploy/simpleSvelte5Website/simplesvelte5app/build/logs/pm2-staging-combined.log',
+  error_file: '/home/deploy/simpleSvelte5Website/build/logs/pm2-staging-error.log',
+  out_file: '/home/deploy/simpleSvelte5Website/build/logs/pm2-staging-out.log',
+  log_file: '/home/deploy/simpleSvelte5Website/build/logs/pm2-staging-combined.log',
       time: true
     }
   ]
