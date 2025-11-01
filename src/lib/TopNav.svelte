@@ -31,15 +31,15 @@
 >
     <ul>
         <li>
-            <a href="/#" aria-label="Discord link">
+            <a href="https://discord.gg/f6Y3ChGfTQ" aria-label="Discord link" target="_blank" rel="noopener noreferrer">
                 <!-- Discord -->
                 <iconify-icon icon="mdi:discord"></iconify-icon>
             </a>
         </li>
         <li>
-            <a href="/#" aria-label="Patreon link">
-                <!-- Patreon -->
-                <iconify-icon icon="simple-icons:patreon"></iconify-icon>
+            <a href="https://ko-fi.com/mikiib" aria-label="Ko-fi link" target="_blank" rel="noopener noreferrer">
+                <!-- Ko-fi -->
+                <iconify-icon icon="simple-icons:ko-fi"></iconify-icon>
             </a>
         </li>
         <li>
