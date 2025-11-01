@@ -134,6 +134,14 @@
     return result;
   }
 
+  // Convert chapter slug (e.g., "chapter-1") to formatted name (e.g., "Chapter 1")
+  function slugToChapterName(slug: string): string {
+    const match = slug.match(/chapter-(\d+)/i);
+    if (match && match[1]) return `Chapter ${match[1]}`;
+    if (slug === 'uncategorized') return 'Uncategorized';
+    return slug;
+  }
+
   // Fetch all files in /panels and build a File[] for tree rendering
   async function fetchPanelsFiles() {
     // Fetch file list and _order.json (if present) then reorder files according to _order.json
@@ -165,6 +173,7 @@
     // If we have an order map, build ordered list by iterating each chapter/device in order
     const ordered: any[] = [];
     const added = new Set<string>();
+    const youtubeIds = new Set<string>(); // Track YouTube entries to prevent duplicates
     try {
       // Sort chapter keys to ensure consistent chapter ordering (chapter-1, chapter-2, etc.)
       const chapterKeys = Object.keys(panelsOrderMap || {}).sort((a, b) => {
@@ -178,6 +187,7 @@
       
       for (const chapter of chapterKeys) {
         const entry = panelsOrderMap[chapter] || {};
+        const chapterName = slugToChapterName(chapter); // Convert slug to formatted name
         for (const dev of ['desktop', 'mobile', 'other']) {
           const arr = entry[dev] || [];
           for (const item of arr) {
@@ -190,9 +200,12 @@
                 size: 0,
                 type: 'youtube',
                 youtubeId: item.id,
+                _device: dev, // Preserve device placement from _order.json
+                _chapter: chapterName, // Preserve chapter placement from _order.json (formatted name)
                 ...item
               };
               ordered.push(youtubeEntry);
+              youtubeIds.add(item.id); // Mark this YouTube video as processed
               continue;
             }
             
@@ -202,17 +215,43 @@
             // Handle YouTube entries stored as strings (format: "youtube:VIDEO_ID")
             if (rel && rel.startsWith('youtube:')) {
               const videoId = rel.slice(8); // Remove "youtube:" prefix
-              const youtubeEntry = {
+              
+              // Skip if we already added this YouTube entry
+              if (youtubeIds.has(videoId)) {
+                continue;
+              }
+              
+              const youtubeEntry: any = {
                 name: `YouTube: ${videoId}`,
                 webkitRelativePath: rel,
                 id: `youtube-${videoId}`,
                 size: 0,
                 type: 'youtube',
                 youtubeId: videoId,
+                _device: dev, // Preserve device placement from _order.json
+                _chapter: chapterName, // Preserve chapter placement from _order.json (formatted name)
                 // Preserve metadata if item is an object
                 ...(typeof item === 'object' && item ? item : {})
               };
+              
+              // Try to fetch title if not already present
+              if (!youtubeEntry.title) {
+                try {
+                  const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+                  const response = await fetch(oembedUrl);
+                  if (response.ok) {
+                    const data = await response.json();
+                    if (data.title) {
+                      youtubeEntry.title = data.title;
+                    }
+                  }
+                } catch (e) {
+                  console.warn(`Failed to fetch YouTube title for ${videoId}:`, e);
+                }
+              }
+              
               ordered.push(youtubeEntry);
+              youtubeIds.add(videoId); // Mark this YouTube video as processed
               continue;
             }
             if (!rel) continue;
@@ -237,7 +276,14 @@
     }
 
     // Append remaining files that weren't in the order map, sorted naturally by path
-    const remaining = Object.keys(lookup).filter(k => !added.has(k)).sort(naturalCompare);
+    // Don't add files that look like YouTube entries from the lookup
+    const remaining = Object.keys(lookup).filter(k => {
+      // Skip if already added
+      if (added.has(k)) return false;
+      // Skip if it's a YouTube entry path (shouldn't happen, but just in case)
+      if (k.startsWith('youtube:')) return false;
+      return true;
+    }).sort(naturalCompare);
     for (const r of remaining) ordered.push(lookup[r]);
 
     panelsFiles = ordered;
@@ -661,12 +707,94 @@
   }
 
   // Persist order changes to server (writes static/panels/_order.json)
-  async function savePanelsOrder(detail: { chapter: string; device: string; order: string[] }) {
+  async function savePanelsOrder(detail: { chapter: string; device: string; order: any[] }) {
     try {
-      const payload = { orders: { [detail.chapter]: { [detail.device]: detail.order } } };
-      const res = await fetch('/api/admin/panels/order', { method: 'POST', body: JSON.stringify(payload), headers: { 'content-type': 'application/json' }, credentials: 'same-origin' });
-      if (!res.ok) {
-        console.warn('Failed to save panels order:', res.status);
+      // Check if we're moving a YouTube entry - if so, we need to remove it from all other locations
+      const youtubeEntries = detail.order.filter(item => {
+        // Handle object format (what we now send from ChapterTree)
+        if (typeof item === 'object' && (item as any).type === 'youtube') return true;
+        // Legacy: handle string format for backwards compatibility
+        if (typeof item === 'string' && item.startsWith('youtube:')) return true;
+        return false;
+      });
+      
+      if (youtubeEntries.length > 0) {
+        // Get current full order map and remove YouTube entries from all other locations
+        const fullOrderPayload: any = {};
+        
+        // For each chapter in the order map, remove the YouTube entries from all device sections
+        // except the target chapter+device
+        for (const [chapterSlug, chapterData] of Object.entries(panelsOrderMap)) {
+          const isTargetChapter = chapterSlug === detail.chapter;
+          fullOrderPayload[chapterSlug] = {};
+          
+          for (const device of ['desktop', 'mobile', 'other']) {
+            const deviceArray = (chapterData as any)[device] || [];
+            const isTargetDevice = isTargetChapter && device === detail.device;
+            
+            if (isTargetDevice) {
+              // This is the target location - use the new order
+              fullOrderPayload[chapterSlug][device] = detail.order;
+            } else {
+              // Not the target - filter out YouTube entries that match any in youtubeEntries
+              fullOrderPayload[chapterSlug][device] = deviceArray.filter((entry: any) => {
+                const entryId = typeof entry === 'string' && entry.startsWith('youtube:') 
+                  ? entry.split(':')[1]
+                  : (entry?.type === 'youtube' ? entry.id : null);
+                
+                if (!entryId) return true; // Not a YouTube entry, keep it
+                
+                // Check if this YouTube entry matches any in our moved entries
+                return !youtubeEntries.some((movedEntry: any) => {
+                  const movedId = typeof movedEntry === 'string' && movedEntry.startsWith('youtube:')
+                    ? movedEntry.split(':')[1]
+                    : (movedEntry?.type === 'youtube' ? movedEntry.id : null);
+                  return movedId === entryId;
+                });
+              });
+            }
+          }
+        }
+        
+        // Save the full modified order map to remove duplicates
+        const res = await fetch('/api/admin/panels/order', { 
+          method: 'POST', 
+          body: JSON.stringify({ orders: fullOrderPayload }), 
+          headers: { 'content-type': 'application/json' }, 
+          credentials: 'same-origin' 
+        });
+        if (!res.ok) {
+          console.warn('Failed to save panels order with YouTube cleanup:', res.status);
+        } else {
+          // Update local order map
+          panelsOrderMap = { ...fullOrderPayload };
+          
+          // Update _chapter and _device properties on YouTube entries in local state
+          panelsFiles = panelsFiles.map(f => {
+            if (f.type === 'youtube' && f.youtubeId) {
+              const youtubeId = f.youtubeId;
+              const inMovedEntries = youtubeEntries.some((movedEntry: any) => {
+                const movedId = typeof movedEntry === 'string' && movedEntry.startsWith('youtube:')
+                  ? movedEntry.split(':')[1]
+                  : (movedEntry?.type === 'youtube' ? movedEntry.id : null);
+                return movedId === youtubeId;
+              });
+              
+              if (inMovedEntries) {
+                // This YouTube entry was moved - update its chapter and device
+                return { ...f, _chapter: detail.chapter, _device: detail.device };
+              }
+            }
+            return f;
+          });
+        }
+      } else {
+        // No YouTube entries, use simple save
+        const payload = { orders: { [detail.chapter]: { [detail.device]: detail.order } } };
+        const res = await fetch('/api/admin/panels/order', { method: 'POST', body: JSON.stringify(payload), headers: { 'content-type': 'application/json' }, credentials: 'same-origin' });
+        if (!res.ok) {
+          console.warn('Failed to save panels order:', res.status);
+        }
       }
     } catch (err) {
       console.warn('Error saving panels order', err);
@@ -746,7 +874,12 @@
     if (file._isNew) {
       filesToUpload = filesToUpload.filter(f => ((f as any).id || (f.webkitRelativePath || f.name)) !== (file.id || file.webkitRelativePath || file.name));
     } else {
-      panelsFiles = panelsFiles.filter(f => (f.webkitRelativePath || f.name) !== (file.webkitRelativePath || file.name));
+      // For YouTube entries, filter by youtubeId; for regular files, filter by path
+      if (file.type === 'youtube' && file.youtubeId) {
+        panelsFiles = panelsFiles.filter(f => !(f.type === 'youtube' && f.youtubeId === file.youtubeId));
+      } else {
+        panelsFiles = panelsFiles.filter(f => (f.webkitRelativePath || f.name) !== (file.webkitRelativePath || file.name));
+      }
       
       // Also remove from _order.json
       // Determine which chapter and device this file belongs to
@@ -756,10 +889,12 @@
       // Normalize path: remove "panels/" prefix if present
       relPath = relPath.replace(/^\/+/, '').replace(/^panels\//, '');
       
-      // Determine device type
-      let device: 'desktop' | 'mobile' | 'other' = 'other';
-      if (/\/desktop\//i.test(relPath)) device = 'desktop';
-      else if (/\/mobile\//i.test(relPath)) device = 'mobile';
+      // Determine device type - use explicit _device if available (for YouTube entries)
+      let device: 'desktop' | 'mobile' | 'other' = file._device || 'other';
+      if (!file._device) {
+        if (/\/desktop\//i.test(relPath)) device = 'desktop';
+        else if (/\/mobile\//i.test(relPath)) device = 'mobile';
+      }
       
       // Build updated orders by filtering out this file (only first occurrence if duplicates exist)
       const existingChapter = (panelsOrderMap && panelsOrderMap[slug]) || {};
@@ -873,6 +1008,18 @@
         ...filesToUpload.filter(pf => extractChapter(pf.webkitRelativePath || pf.name) === chapter)
       ];
       function mapEntryLocal(f: any) {
+        // Handle YouTube entries specially
+        if (f.type === 'youtube' && f.youtubeId) {
+          const out: any = {
+            type: 'youtube',
+            id: f.youtubeId
+          };
+          if (f.title) out.title = f.title;
+          if ('published' in f) out.published = !!f.published;
+          if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
+          return out;
+        }
+        
         const rel = (f.webkitRelativePath || f.name || '').toString().replace(/^\/panels\//, '').replace(/\?v=.*$/, '');
         const outHasMeta = ('published' in f) || ('publishDate' in f);
         if (outHasMeta) {
@@ -883,11 +1030,21 @@
         }
         return rel;
       }
+      
+      // Helper to determine device for a file (respects _device for YouTube entries)
+      function getFileDevice(f: any): 'desktop' | 'mobile' | 'other' {
+        if (f._device) return f._device;
+        const path = f.webkitRelativePath || f.name;
+        if (/\/desktop\//i.test(path)) return 'desktop';
+        if (/\/mobile\//i.test(path)) return 'mobile';
+        return 'other';
+      }
+      
       const ordersForChapter: any = {
         [slug]: {
-          desktop: (chapterFiles.filter((c:any) => /\/desktop\//i.test(c.webkitRelativePath || c.name)).map(mapEntryLocal)),
-          mobile: (chapterFiles.filter((c:any) => /\/mobile\//i.test(c.webkitRelativePath || c.name)).map(mapEntryLocal)),
-          other: (chapterFiles.filter((c:any) => !/\/desktop\//i.test(c.webkitRelativePath || c.name) && !/\/mobile\//i.test(c.webkitRelativePath || c.name)).map(mapEntryLocal))
+          desktop: chapterFiles.filter((c:any) => getFileDevice(c) === 'desktop').map(mapEntryLocal),
+          mobile: chapterFiles.filter((c:any) => getFileDevice(c) === 'mobile').map(mapEntryLocal),
+          other: chapterFiles.filter((c:any) => getFileDevice(c) === 'other').map(mapEntryLocal)
         }
       };
       // Merge save (no replace) so other chapters are preserved
@@ -967,17 +1124,49 @@
     const url = window.prompt('YouTube URL or video ID to insert into ' + chapter + ':');
     if (!url) return;
     const id = extractYouTubeId(url);
+    
+    // Fetch video title from YouTube
+    let videoTitle = `YouTube: ${id}`;
+    try {
+      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`;
+      const response = await fetch(oembedUrl);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.title) {
+          videoTitle = data.title;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch YouTube video title:', e);
+      // Continue with default title
+    }
+    
     const slug = slugifyChapterKey(chapter);
-    const relDesktop = `${slug}/desktop/youtube:${id}`;
-    const relMobile = `${slug}/mobile/youtube:${id}`;
-    // Insert placeholder for both desktop and mobile so admin can drag into place for each device
-    panelsFiles = [
-      ...panelsFiles,
-      { name: `YouTube: ${id} (desktop)`, webkitRelativePath: relDesktop, size: 0, type: 'video/youtube', published: false },
-      { name: `YouTube: ${id} (mobile)`, webkitRelativePath: relMobile, size: 0, type: 'video/youtube', published: false }
-    ];
-    // Notify admin that both entries were created and need placement
-    window.alert('Inserted YouTube placeholders for Desktop and Mobile. Please drag each into its desired position for Desktop and Mobile ordering.');
+    
+    // Save to _order.json with the fetched title
+    const existingChapter = (panelsOrderMap && panelsOrderMap[slug]) || {};
+    const updatedChapterOrders: any = { 
+      ...existingChapter,
+      other: [
+        ...(Array.isArray(existingChapter.other) ? existingChapter.other : []),
+        {
+          type: 'youtube',
+          id: id,
+          title: videoTitle,
+          published: false
+        }
+      ]
+    };
+    
+    try {
+      await saveFullOrder({ [slug]: updatedChapterOrders }, false, false);
+      // Refresh the panels files to show the new YouTube entry
+      await fetchPanelsFiles();
+      window.alert(`YouTube video "${videoTitle}" added successfully! You can drag it to reorder within Other Files.`);
+    } catch (err) {
+      console.error('Failed to save YouTube entry:', err);
+      window.alert('Failed to add YouTube video. Please try again.');
+    }
   }
 
   // Admin-triggered regenerate panels (calls server endpoint)

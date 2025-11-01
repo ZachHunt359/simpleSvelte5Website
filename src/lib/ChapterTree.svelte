@@ -38,10 +38,14 @@
       allFiles.forEach((file: any, idx: number) => {
         let path = (file.webkitRelativePath ?? file.name ?? '').toString();
         path = path.replace(/\\/g, '/');
-        const chapter = extractChapter(path);
-        let device: DeviceType = 'other';
-        if (/\/desktop\//i.test(path)) device = 'desktop';
-        else if (/\/mobile\//i.test(path)) device = 'mobile';
+        // Respect explicit chapter placement (e.g., from _order.json), otherwise infer from path
+        const chapter = file._chapter || extractChapter(path);
+        // Respect explicit device placement (e.g., from _order.json), otherwise infer from path
+        let device: DeviceType = file._device || 'other';
+        if (!file._device) {
+          if (/\/desktop\//i.test(path)) device = 'desktop';
+          else if (/\/mobile\//i.test(path)) device = 'mobile';
+        }
         let fileObj: any;
         if (device === 'other') {
           // Always copy all file properties for 'other' files
@@ -257,6 +261,18 @@
       const slug = slugifyChapterKey(ch);
       // Preserve metadata if present (published/publishDate) by emitting objects for those entries
       function mapEntry(f:any) {
+        // Handle YouTube entries specially
+        if (f.type === 'youtube' && f.youtubeId) {
+          const out: any = {
+            type: 'youtube',
+            id: f.youtubeId
+          };
+          if (f.title) out.title = f.title;
+          if ('published' in f) out.published = !!f.published;
+          if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
+          return out;
+        }
+        
         const rel = (f.webkitRelativePath || f.name || '').toString().replace(/^\/panels\//, '').replace(/\?v=.*$/, '');
         const hasMeta = ('published' in f) || ('publishDate' in f);
         if (hasMeta) {
@@ -548,7 +564,18 @@
                     <div
                       use:dragHandleZone={{ items: (chapterMap[item.title].other ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
                       on:consider={e => { chapterMap[item.title].other = e.detail.items; chapterMap = { ...chapterMap }; }}
-                      on:finalize={e => { chapterMap[item.title].other = e.detail.items; chapterMap = { ...chapterMap }; dispatch('orderChange', { chapter: item.title, device: 'other', order: e.detail.items.map((f:any) => f.webkitRelativePath || f.name) }); }}
+                      on:finalize={e => { 
+                        chapterMap[item.title].other = e.detail.items; 
+                        chapterMap = { ...chapterMap }; 
+                        // Map entries properly: YouTube as objects, files as paths
+                        const order = e.detail.items.map((f:any) => {
+                          if (f.type === 'youtube' && f.youtubeId) {
+                            return { type: 'youtube', id: f.youtubeId, title: f.title, published: f.published || false };
+                          }
+                          return f.webkitRelativePath || f.name;
+                        });
+                        dispatch('orderChange', { chapter: item.title, device: 'other', order }); 
+                      }}
                       style="padding:0;margin:0;">
                       {#each (chapterMap[item.title].other ?? []) as file (file.id)}
                         <div class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''}" style={getPanelStatus(file) === 'new' ? 'font-weight:bold;color:#22c55e;display:flex;align-items:center;justify-content:space-between;' : 'display:flex;align-items:center;justify-content:space-between;'}>
@@ -582,26 +609,47 @@
                     <div
                       use:dragHandleZone={{ items: (chapterMap[item.title].desktop ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
                       on:consider={e => { chapterMap[item.title].desktop = e.detail.items; chapterMap = { ...chapterMap }; }}
-                      on:finalize={e => { chapterMap[item.title].desktop = e.detail.items; chapterMap = { ...chapterMap }; dispatch('orderChange', { chapter: item.title, device: 'desktop', order: e.detail.items.map((f:any) => f.webkitRelativePath || f.name) }); }}
+                      on:finalize={e => { 
+                        chapterMap[item.title].desktop = e.detail.items; 
+                        chapterMap = { ...chapterMap }; 
+                        // Map entries properly: YouTube as objects, files as paths
+                        const order = e.detail.items.map((f:any) => {
+                          if (f.type === 'youtube' && f.youtubeId) {
+                            return { type: 'youtube', id: f.youtubeId, title: f.title, published: f.published || false };
+                          }
+                          return f.webkitRelativePath || f.name;
+                        });
+                        dispatch('orderChange', { chapter: item.title, device: 'desktop', order }); 
+                      }}
                       style="padding:0;margin:0;">
                       {#each (chapterMap[item.title].desktop ?? []) as file (file.id)}
                         <div class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''}" style="display:flex;align-items:center;justify-content:space-between;">
                           <div style="display:flex;align-items:center;">
                             <span class="drag-handle" use:dragHandle style="cursor:grab;margin-right:0.5rem;opacity:0.9" aria-label="drag panel">☰</span>
-                            {#if /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name)}
+                            {#if file.type === 'youtube' && file.youtubeId}
+                              <span class="youtube-icon" style="display:inline-block;width:48px;height:48px;background:#ff0000;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#fff;">▶</span>
+                              <div style="flex:1;">
+                                <div style="color:#ef4444;font-weight:500;">{file.title || `YouTube: ${file.youtubeId}`}</div>
+                                <div style="font-size:0.8em;color:#94a3b8;">https://youtube.com/watch?v={file.youtubeId}</div>
+                              </div>
+                            {:else if /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name)}
                               {#if file._isNew && file.preview}
                                 <img src={file.preview} alt={file.name} class="panel-thumb" style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" />
                               {:else}
                                 <img src={"/panels/" + file.webkitRelativePath} alt={file.name} class="panel-thumb" style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" />
                               {/if}
+                              <span>{file.name}</span>
                             {:else}
                               <span class="file-icon" style="display:inline-block;width:48px;height:48px;background:#222;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#888;">📄</span>
+                              <span>{file.name}</span>
                             {/if}
-                            <span>{file.name}</span>
                             {#if getPanelStatus(file) === 'duplicate'}<span class="badge badge-warning ml-2">Duplicate</span>{/if}
                             {#if getPanelStatus(file) === 'error'}<span class="badge badge-error ml-2">Error</span>{/if}
                           </div>
                                     <div style="display:flex;gap:0.5rem;align-items:center;">
+                                      {#if file.type === 'youtube' && file.youtubeId}
+                                        <button class="btn btn-ghost btn-xs text-blue-400" on:click={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
+                                      {/if}
                                       <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
                                       <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => openSchedulePicker(file, item.title)}>Schedule</button>
                                         {#if openPickerId === file.id}
@@ -620,17 +668,39 @@
                     <div
                       use:dragHandleZone={{ items: (chapterMap[item.title].mobile ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
                       on:consider={e => { chapterMap[item.title].mobile = e.detail.items; chapterMap = { ...chapterMap }; }}
-                      on:finalize={e => { chapterMap[item.title].mobile = e.detail.items; chapterMap = { ...chapterMap }; dispatch('orderChange', { chapter: item.title, device: 'mobile', order: e.detail.items.map((f:any) => f.webkitRelativePath || f.name) }); }}
+                      on:finalize={e => { 
+                        chapterMap[item.title].mobile = e.detail.items; 
+                        chapterMap = { ...chapterMap }; 
+                        // Map entries properly: YouTube as objects, files as paths
+                        const order = e.detail.items.map((f:any) => {
+                          if (f.type === 'youtube' && f.youtubeId) {
+                            return { type: 'youtube', id: f.youtubeId, title: f.title, published: f.published || false };
+                          }
+                          return f.webkitRelativePath || f.name;
+                        });
+                        dispatch('orderChange', { chapter: item.title, device: 'mobile', order }); 
+                      }}
                       style="padding:0;margin:0;">
                       {#each (chapterMap[item.title].mobile ?? []) as file (file.id)}
                         <div class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''}" style="display:flex;align-items:center;justify-content:space-between;">
                           <div style="display:flex;align-items:center;">
                             <span class="drag-handle" use:dragHandle style="cursor:grab;margin-right:0.5rem;opacity:0.9" aria-label="drag panel">☰</span>
-                            <span>{file.name}</span>
+                            {#if file.type === 'youtube' && file.youtubeId}
+                              <span class="youtube-icon" style="display:inline-block;width:48px;height:48px;background:#ff0000;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#fff;">▶</span>
+                              <div style="flex:1;">
+                                <div style="color:#ef4444;font-weight:500;">{file.title || `YouTube: ${file.youtubeId}`}</div>
+                                <div style="font-size:0.8em;color:#94a3b8;">https://youtube.com/watch?v={file.youtubeId}</div>
+                              </div>
+                            {:else}
+                              <span>{file.name}</span>
+                            {/if}
                             {#if getPanelStatus(file) === 'duplicate'}<span class="badge badge-warning ml-2">Duplicate</span>{/if}
                             {#if getPanelStatus(file) === 'error'}<span class="badge badge-error ml-2">Error</span>{/if}
                           </div>
                           <div style="display:flex;gap:0.5rem;align-items:center;">
+                            {#if file.type === 'youtube' && file.youtubeId}
+                              <button class="btn btn-ghost btn-xs text-blue-400" on:click={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
+                            {/if}
                             <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
                             <button class="btn btn-ghost btn-xs text-red-500" on:click={() => handleDelete(file)}>Delete</button>
                           </div>
