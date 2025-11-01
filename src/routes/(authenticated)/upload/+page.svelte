@@ -21,9 +21,86 @@
   let conflicts: ConflictAnalysis = { duplicates: [], missing: [], errors: [], warnings: [], mismatched: [] };
   let validationInProgress = false;
   let totalSize = 0;
+  // Overall upload progress (0-100)
+  let overallProgress = 0;
+  // ETA (seconds remaining), -1 when unknown
+  let overallETA = -1;
+  // moving average bytes/sec for ETA
+  let emaBytesPerSec = 0;
+  let uploadStartTime: number | null = null;
+  let lastBytesSeen = 0;
+  // timestamp (ms) of last sample used to compute EMA
+  let lastUpdateTime: number | null = null;
+  // recent instantaneous bps samples to stabilize early ETA estimates
+  let bpsSamples: number[] = [];
+  // track how many files completed since last ETA recalc
+  let filesCompletedSinceLastCalc = 0;
+  // chunking thresholds (bytes)
+  const CHUNK_THRESHOLD = 8 * 1024 * 1024; // 8MB
+  const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB
   let inferredChapters: string[] = [];
   // Local debug toggle to control tree/component debug output
   let treeDebug = false;
+
+  // Natural / numeric-aware sort helpers (shared so merging uses same ordering)
+  function tokenizeForSort(s: string) {
+    const norm = String(s).replace(/\s+/g, '');
+    const parts = norm.split(/(\d+)/).filter(Boolean).map(p => {
+      if (/^\d+$/.test(p)) return Number(p);
+      return p.toLowerCase();
+    });
+    return parts;
+  }
+
+  function naturalCompare(a: string, b: string) {
+    const ta = tokenizeForSort(a);
+    const tb = tokenizeForSort(b);
+    for (let i = 0; i < Math.max(ta.length, tb.length); i++) {
+      const ia = ta[i];
+      const ib = tb[i];
+      if (ia === undefined) return -1;
+      if (ib === undefined) return 1;
+      if (typeof ia === 'number' && typeof ib === 'number') {
+        if (ia !== ib) return ia - ib;
+        continue;
+      }
+      if (typeof ia === 'number') return -1;
+      if (typeof ib === 'number') return 1;
+      const cmp = (ia as string).localeCompare(ib as string);
+      if (cmp !== 0) return cmp;
+    }
+    return 0;
+  }
+
+  // Merge helpers: handle array entries that may be strings or metadata objects { path: '...' }
+  function entryPath(e: string | { path?: string }) {
+    return typeof e === 'string' ? e : (e && (e as any).path) || '';
+  }
+
+  function mergeInsertExisting(existing: (string|any)[], newItems: string[], naturalCompareFn: (a: string, b: string) => number) {
+    const existingPaths = existing.map(entryPath);
+    const filteredNew = newItems.filter(n => !existingPaths.includes(n));
+    if (filteredNew.length === 0) return existing.slice();
+
+    const sortedNew = filteredNew.slice().sort(naturalCompareFn);
+
+    const existingWithPaths = existing.map(e => ({ raw: e, path: entryPath(e) }));
+
+    for (const n of sortedNew) {
+      let inserted = false;
+      for (let i = 0; i < existingWithPaths.length; i++) {
+        const cmp = naturalCompareFn(n, existingWithPaths[i].path);
+        if (cmp <= 0) {
+          existingWithPaths.splice(i, 0, { raw: n, path: n });
+          inserted = true;
+          break;
+        }
+      }
+      if (!inserted) existingWithPaths.push({ raw: n, path: n });
+    }
+
+    return existingWithPaths.map(x => x.raw);
+  }
 
   async function handleFileSelect(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -221,38 +298,7 @@
         }
         return out;
       });
-      // Natural / numeric-aware sort so "Spread 1" comes before "Spread 2" and "Spread10" sorts after 9
-      function tokenizeForSort(s: string) {
-        // Normalize common separators that should not affect numeric ordering.
-        // Remove whitespace so "Spread 20" and "Spread20" are treated the same.
-        const norm = s.replace(/\s+/g, '');
-        // split into runs of digits or non-digits
-        const parts = norm.split(/(\d+)/).filter(Boolean).map(p => {
-          if (/^\d+$/.test(p)) return Number(p);
-          return p.toLowerCase();
-        });
-        return parts;
-      }
-
-      function naturalCompare(a: string, b: string) {
-        const ta = tokenizeForSort(a);
-        const tb = tokenizeForSort(b);
-        for (let i = 0; i < Math.max(ta.length, tb.length); i++) {
-          const ia = ta[i];
-          const ib = tb[i];
-          if (ia === undefined) return -1;
-          if (ib === undefined) return 1;
-          if (typeof ia === 'number' && typeof ib === 'number') {
-            if (ia !== ib) return ia - ib;
-            continue;
-          }
-          if (typeof ia === 'number') return -1; // numbers before letters
-          if (typeof ib === 'number') return 1;
-          const cmp = (ia as string).localeCompare(ib as string);
-          if (cmp !== 0) return cmp;
-        }
-        return 0;
-      }
+      // naturalCompare is defined at module scope and reused here
 
       filesToUpload.sort((A, B) => {
         const aPath = (A.webkitRelativePath || A.name || '').replace(/\\/g, '/');
@@ -294,6 +340,9 @@
         if (ev.lengthComputable) {
           const pct = Math.round((ev.loaded / ev.total) * 100);
           onProgress(pct);
+          // kick off ETA tracking
+          if (!uploadStartTime) uploadStartTime = Date.now();
+          updateETA();
         }
       };
       xhr.onload = () => {
@@ -310,12 +359,26 @@
     const blobOrFile = fileObj._file || fileObj;
     let attempt = 0;
     const baseDelay = 500;
+    // proactively chunk very large files instead of trying a single large POST
+    if ((blobOrFile as File).size && (blobOrFile as File).size > CHUNK_THRESHOLD) {
+      fileObj._status = 'chunking';
+      const chunkOk = await attemptChunkedUpload(blobOrFile as File, relPath, fileObj);
+      if (chunkOk) {
+        fileObj._status = 'done';
+        fileObj._uploadProgress = 100;
+        updateOverallProgress();
+        return true;
+      }
+      // fall through to try normal upload retries if chunking failed
+      fileObj._status = 'chunk-failed';
+    }
     while (attempt < maxRetries) {
       fileObj._status = 'uploading';
-      const res = await uploadOnce(blobOrFile, relPath, (pct) => { fileObj._uploadProgress = pct; });
+      const res = await uploadOnce(blobOrFile, relPath, (pct) => { fileObj._uploadProgress = pct; updateOverallProgress(); });
       if (res.ok) {
         fileObj._status = 'done';
         fileObj._uploadProgress = 100;
+        updateOverallProgress();
         return true;
       }
       // don't retry on client errors
@@ -328,13 +391,184 @@
       const delay = baseDelay * Math.pow(2, attempt - 1);
       await new Promise(r => setTimeout(r, delay));
     }
+    // If the file is large, attempt chunked upload as a fallback
+    if ((blobOrFile as File).size && (blobOrFile as File).size > CHUNK_THRESHOLD) {
+      fileObj._status = 'attempting chunked upload';
+      const chunkOk = await attemptChunkedUpload(blobOrFile as File, relPath, fileObj);
+      if (chunkOk) {
+        fileObj._status = 'done';
+        fileObj._uploadProgress = 100;
+        updateOverallProgress();
+        return true;
+      }
+    }
     fileObj._status = 'failed';
     return false;
+  }
+
+  // Compute and update overallProgress from per-file uploadProgress values
+  function updateOverallProgress() {
+    try {
+      const all = [...filesToUpload];
+      if (all.length === 0) {
+        overallProgress = 0;
+        overallETA = -1;
+        return;
+      }
+      // Weight by file size if available
+      const total = all.reduce((s, f) => s + ((f.size || 0) || 0), 0) || all.length;
+      let acc = 0;
+      let uploadedBytes = 0;
+      for (const f of all) {
+        const weight = (f.size || 0) || 1;
+        const pct = (f._uploadProgress || 0) / 100;
+        acc += pct * weight;
+        uploadedBytes += pct * weight;
+      }
+      overallProgress = Math.round((acc / total) * 100);
+
+      // Recalculate ETA only periodically (every 10 files or 25% of queue, whichever is smaller)
+      const recalcInterval = Math.min(10, Math.ceil(all.length * 0.25));
+      const completedCount = all.filter(f => f._status === 'done').length;
+      const shouldRecalc = (completedCount - filesCompletedSinceLastCalc) >= recalcInterval;
+
+      if (!shouldRecalc && overallETA >= 0) {
+        // Skip recalc; just decrement existing ETA estimate if we made progress
+        const prevProgress = overallProgress;
+        if (overallProgress > prevProgress && overallETA > 0) {
+          // rough decrement proportional to progress gain
+          const progressDelta = overallProgress - prevProgress;
+          const etaDecrement = Math.max(1, Math.round(overallETA * (progressDelta / 100)));
+          overallETA = Math.max(0, overallETA - etaDecrement);
+        }
+        return;
+      }
+
+      // Perform full ETA recalculation
+      filesCompletedSinceLastCalc = completedCount;
+      const now = Date.now();
+      if (!uploadStartTime && uploadedBytes > 0) {
+        uploadStartTime = now;
+        lastUpdateTime = now;
+        lastBytesSeen = uploadedBytes;
+        emaBytesPerSec = 0;
+        bpsSamples = [];
+      }
+      const bytesSeen = uploadedBytes;
+      const prevTime = lastUpdateTime || uploadStartTime || now;
+      let dt = (now - prevTime) / 1000;
+      if (dt <= 0) dt = 0.1;
+      const deltaBytes = Math.max(0, bytesSeen - (lastBytesSeen || 0));
+      const instantBps = deltaBytes / dt;
+
+      // push into short sample buffer and cap length
+      bpsSamples.push(instantBps);
+      if (bpsSamples.length > 6) bpsSamples.shift();
+
+      // only start computing a stable EMA after we have at least two samples and at least 1s elapsed
+      const haveEnoughSamples = bpsSamples.length >= 2 && ((now - (uploadStartTime || now)) >= 1000);
+      const alpha = 0.12; // slower smoothing to reduce jitter
+      if (haveEnoughSamples) {
+        // derive a robust instant by taking the median of recent samples to avoid spikes
+        const sorted = bpsSamples.slice().sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        const medianInstant = sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        if (!emaBytesPerSec || emaBytesPerSec <= 0) emaBytesPerSec = medianInstant;
+        else emaBytesPerSec = alpha * medianInstant + (1 - alpha) * emaBytesPerSec;
+      } else {
+        // warm up: keep last values but don't expose ETA until stable
+        if (!emaBytesPerSec || emaBytesPerSec <= 0) emaBytesPerSec = instantBps;
+        else emaBytesPerSec = 0.6 * emaBytesPerSec + 0.4 * instantBps;
+      }
+
+      lastBytesSeen = bytesSeen;
+      lastUpdateTime = now;
+
+      const remaining = Math.max(0, total - uploadedBytes);
+      // show ETA only when EMA indicates a reasonable throughput and we had time to warm up
+      const minShowBps = 24; // bytes/sec threshold for showing ETA (keeps very noisy/slow cases hidden)
+      if (haveEnoughSamples && emaBytesPerSec > minShowBps) {
+        overallETA = Math.max(0, Math.round(remaining / emaBytesPerSec));
+      } else {
+        overallETA = -1; // unknown or too slow to estimate reliably
+      }
+    } catch (e) {
+      overallProgress = 0;
+      overallETA = -1;
+    }
+  }
+
+  function updateETA() {
+    // helper to trigger ETA recalculation by delegating to updateOverallProgress
+    updateOverallProgress();
+  }
+
+  // Format seconds into a human friendly "Xm Ys" string; return empty when unknown
+  function formatETA(sec: number) {
+    if (typeof sec !== 'number' || sec < 0) return '';
+    if (sec < 60) return `${Math.round(sec)}s`;
+    const mins = Math.floor(sec / 60);
+    const rem = Math.round(sec % 60);
+    return `${mins}m ${String(rem).padStart(2, '0')}s`;
+  }
+
+  // Chunked upload fallback (best-effort). This assumes server supports chunked uploads
+  // by accepting chunked POSTs and an optional assemble request. If server doesn't
+  // support it, this will likely fail and return false.
+  async function attemptChunkedUpload(file: File, relPath: string, fileObj: any) {
+    const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(file.size, start + CHUNK_SIZE);
+      const chunk = file.slice(start, end);
+      // send chunk
+      const fd = new FormData();
+      fd.append('chunk', chunk, file.name + `.part${i}`);
+      fd.append('relativePath', relPath);
+      fd.append('chunkIndex', String(i));
+      fd.append('totalChunks', String(totalChunks));
+      fd.append('originalSize', String(file.size));
+      try {
+        const resp = await fetch('/api/panels/upload?chunk=true', { method: 'POST', body: fd, credentials: 'same-origin' });
+        if (!resp.ok) {
+          console.warn('Chunk upload failed', resp.status);
+          return false;
+        }
+        // update per-file progress based on chunks completed
+        fileObj._uploadProgress = Math.round(((i + 1) / totalChunks) * 100);
+        updateOverallProgress();
+      } catch (e) {
+        console.warn('Chunk upload error', e);
+        return false;
+      }
+    }
+    // attempt assemble
+    try {
+      const finish = await fetch('/api/panels/upload/finish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ relativePath: relPath, totalChunks }), credentials: 'same-origin' });
+      if (!finish.ok) {
+        console.warn('Chunk assemble failed', finish.status);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn('Chunk assemble error', e);
+      return false;
+    }
   }
 
   async function handleUpload() {
     if (!filesToUpload.length) return;
     uploading = true; uploadError = ''; uploadSuccess = '';
+    overallProgress = 1; // make the overall bar visible immediately when uploads start
+    // reset ETA tracking state at start of upload
+    filesCompletedSinceLastCalc = 0;
+    uploadStartTime = null;
+    lastUpdateTime = null;
+    lastBytesSeen = 0;
+    emaBytesPerSec = 0;
+    bpsSamples = [];
+    overallETA = -1;
     let topFolder = '';
     if (filesToUpload.length > 0) {
       const firstPath = filesToUpload[0].webkitRelativePath || filesToUpload[0].name;
@@ -350,6 +584,7 @@
       if (topFolder && relPath.startsWith(topFolder + "\\")) relPath = relPath.slice(topFolder.length + 1);
       file._uploadProgress = 0;
       file._status = 'queued';
+      updateOverallProgress();
       const ok = await uploadWithRetries(file, relPath, 3);
       if (!ok) {
         anyFailure = true;
@@ -363,8 +598,8 @@
         const orders = buildOrdersFromFiles(filesToUpload, topFolder);
         // Only call save if we actually have something to write
         if (Object.keys(orders).length > 0) {
-          // Replace existing order entries with the newly uploaded ordering to prune stale entries
-          await saveFullOrder(orders, true);
+          // Merge newly uploaded ordering into existing order (do not replace)
+          await saveFullOrder(orders, false);
           // Refresh panelsFiles and order map so the tree reflects saved order immediately
           await fetchPanelsFiles();
         }
@@ -372,6 +607,8 @@
         console.warn('Failed to persist tentative order after upload', e);
       }
       uploadSuccess = 'Upload complete!';
+      overallProgress = 100;
+      setTimeout(() => { overallProgress = 0; updateOverallProgress(); }, 1500);
       selectedFiles = [];
       filesToUpload = [];
     }
@@ -425,6 +662,23 @@
       // store the relative path as it will be discovered under static/panels
       orders[slug][device].push(relPath);
     }
+
+    // Merge new uploads into existing per-device arrays while preserving manual ordering.
+    for (const slug of Object.keys(orders)) {
+      const chapterOrders = orders[slug] || {};
+      const existingChapter = (panelsOrderMap && panelsOrderMap[slug]) || {};
+      for (const device of ['desktop', 'mobile', 'other']) {
+        const newArr: string[] = (chapterOrders[device] || []).map((p: any) => String(p));
+        const existingArr: any[] = existingChapter[device] || [];
+        if (existingArr && existingArr.length > 0) {
+          chapterOrders[device] = mergeInsertExisting(existingArr, newArr, naturalCompare);
+        } else {
+          // no existing ordering; use a natural-sorted new array
+          chapterOrders[device] = newArr.slice().sort(naturalCompare);
+        }
+      }
+      orders[slug] = chapterOrders;
+    }
     return orders;
   }
 
@@ -455,8 +709,8 @@
     // - If file has explicit published === false and user clicks publish -> remove explicit published flag (delete override)
     // - Else if effectivePublished === true -> set explicit published = false
     // - Else (effective false and no explicit false) -> set explicit published = true
-    const chapter = extractChapter(file.webkitRelativePath || file.name);
-    const slug = slugifyChapterKey(chapter);
+  const chapter = extractChapter(file.webkitRelativePath || file.name);
+  const slug = slugifyChapterKey(chapter || 'uncategorized');
     // Determine chapter-level published flag
     const chapterPublished = panelsOrderMap && panelsOrderMap[slug] && ('published' in panelsOrderMap[slug]) ? !!panelsOrderMap[slug].published : undefined;
     // helper to compute effective published for this file
@@ -674,6 +928,21 @@
       <input id="panel-folder-input" bind:this={panelInput} type="file" webkitdirectory multiple on:change={handleFileSelect} class="file-input" aria-hidden="true" />
     </div>
 
+    <!-- Overall progress bar -->
+    {#if overallProgress > 0}
+      <div class="overall-progress mt-3">
+        <div class="overall-label text-sm text-slate-400">Overall upload progress</div>
+        <div class="overall-bar" aria-hidden="true">
+          <div class="overall-fill" style="width:{overallProgress}%"></div>
+        </div>
+        <div class="flex items-center gap-3 mt-1">
+          <div class="overall-pct text-xs text-slate-400">{overallProgress}%</div>
+          {#if overallETA >= 0}
+            <div class="eta text-xs text-slate-400">ETA: {formatETA(overallETA)}</div>
+          {/if}
+        </div>
+      </div>
+    {/if}
     <div class="actions">
       <button class="btn btn-primary" type="submit" disabled={uploading || !filesToUpload.length || conflicts.errors.length > 0}>
         {uploading ? 'Uploading...' : 'Upload All'}
@@ -720,6 +989,7 @@
       {conflicts} 
       {inferredChapters} 
       {totalSize} 
+      estimatedTime={overallETA}
     />
     <!-- ThumbnailGallery removed: unified tree now handles all files -->
   {/if}
@@ -756,20 +1026,15 @@
       </div>
       
       {#if filesToUpload.length <= 6 || showAllFiles}
-        <ul class="space-y-1">
+        <ul class="tight-list">
           {#each filesToUpload as file}
-            <li class="text-slate-300 text-sm">
-              <div class="flex items-center justify-between">
-                <span class="truncate">{file.webkitRelativePath || file.name}</span>
-                <div class="flex items-center">
-                  <span class="text-slate-500 text-xs ml-2 flex-shrink-0">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
-                </div>
-              </div>
-              <div class="upload-meta mt-1 flex items-center gap-2">
-                <span class="text-xs text-slate-400">{file._status || 'queued'}</span>
-                <div class="progress" style="width:140px">
-                  <div class="bar" style="width:{file._uploadProgress || 0}%"></div>
-                </div>
+            <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
+              <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+              <div class="file-right">
+                            {#if ['uploading','retrying','chunking','attempting chunked upload','chunk-failed'].includes(String(file._status))}
+                              <span class="spinner" aria-hidden="true"></span>
+                            {/if}
+                <span class="file-size">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
               </div>
             </li>
           {/each}
@@ -777,18 +1042,13 @@
       {:else}
         <ul class="space-y-1">
           {#each filesToUpload.slice(0,3) as file}
-            <li class="text-slate-300 text-sm">
-              <div class="flex items-center justify-between">
-                <span class="truncate">{file.webkitRelativePath || file.name}</span>
-                <div class="flex items-center">
-                  <span class="text-slate-500 text-xs ml-2 flex-shrink-0">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
-                </div>
-              </div>
-              <div class="upload-meta mt-1 flex items-center gap-2">
-                <span class="text-xs text-slate-400">{file._status || 'queued'}</span>
-                <div class="progress" style="width:140px">
-                  <div class="bar" style="width:{file._uploadProgress || 0}%"></div>
-                </div>
+            <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
+              <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+              <div class="file-right">
+                {#if file._status !== 'done' && !file._status?.startsWith('failed')}
+                  <span class="spinner" aria-hidden="true"></span>
+                {/if}
+                <span class="file-size">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
               </div>
             </li>
           {/each}
@@ -796,18 +1056,13 @@
             ... {filesToUpload.length - 6} more files ...
           </li>
           {#each filesToUpload.slice(-3) as file}
-            <li class="text-slate-300 text-sm">
-              <div class="flex items-center justify-between">
-                <span class="truncate">{file.webkitRelativePath || file.name}</span>
-                <div class="flex items-center">
-                  <span class="text-slate-500 text-xs ml-2 flex-shrink-0">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
-                </div>
-              </div>
-              <div class="upload-meta mt-1 flex items-center gap-2">
-                <span class="text-xs text-slate-400">{file._status || 'queued'}</span>
-                <div class="progress" style="width:140px">
-                  <div class="bar" style="width:{file._uploadProgress || 0}%"></div>
-                </div>
+            <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
+              <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+              <div class="file-right">
+                {#if file._status !== 'done' && !file._status?.startsWith('failed')}
+                  <span class="spinner" aria-hidden="true"></span>
+                {/if}
+                <span class="file-size">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
               </div>
             </li>
           {/each}
@@ -910,6 +1165,51 @@
   height: 100%;
   background: #10b981; /* emerald-500 */
   transition: width 120ms linear;
+}
+
+/* Overall progress */
+.overall-progress .overall-bar {
+  background: #0b1220;
+  border-radius: 8px;
+  height: 12px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.overall-progress .overall-fill {
+  height: 100%;
+  background: linear-gradient(90deg,#10b981,#06b6d4);
+  transition: width 160ms linear;
+}
+
+/* Tight file list */
+.tight-list { list-style: none; margin: 0; padding: 0; }
+.file-line { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.02); font-size: 0.92rem; }
+.file-left { flex: 1 1 auto; margin-right: 0.5rem; color: #cbd5e1; }
+.file-right { flex: 0 0 auto; display: flex; align-items: center; gap: 0.6rem; }
+.file-size { color: #94a3b8; font-size: 0.85rem; white-space: nowrap; }
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.08); border-top-color: #10b981; animation: spin 900ms linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.file-done .file-left { color: #86efac; }
+.file-failed .file-left { color: #ffc7c7; }
+
+/* Smaller icons in validation block */
+.validation-errors svg {
+  width: 20px !important;
+  height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+  display: inline-block;
+}
+.validation-errors svg * { max-width: 20px !important; max-height: 20px !important; }
+
+/* Force small inline SVGs within the upload UI (constrain any unexpectedly large icons) */
+.upload-section svg, .upload-summary svg {
+  width: 18px !important;
+  height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
 }
 
 /* Button styles */

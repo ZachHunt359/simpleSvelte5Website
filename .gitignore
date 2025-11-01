@@ -46,3 +46,12 @@ scripts/reorg-upload-hardcode.ps1
 scripts/reorg-upload.ps1
 build/logs/server.log
 static/panels.json
+
+# Build & generated artifacts
+.svelte-kit/
+build/
+build/logs/
+
+# Node modules and env
+node_modules/
+.env

@@ -80,9 +80,10 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
     return results;
   }
 
-  // Get all chapter directories (ignore files)
+  // Get all chapter directories (ignore files). Exclude hidden directories (dot-prefixed) such as
+  // the upload temp folder ".upload_tmp" so they are not exposed as chapters in panels.json.
   const chapterDirs = fs.readdirSync(panelsDir)
-    .filter(f => fs.statSync(path.join(panelsDir, f)).isDirectory());
+    .filter(f => fs.statSync(path.join(panelsDir, f)).isDirectory() && !f.startsWith('.'));
 
   // Sort chapters numerically
   chapterDirs.sort(numericSort);

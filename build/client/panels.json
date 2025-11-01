@@ -1,29 +1,16 @@
 [
   {
+    "title": ".upload_tmp",
+    "slug": ".upload_tmp",
+    "desktop": [],
+    "mobile": [],
+    "thumbnail": ""
+  },
+  {
     "title": "chapter-1",
     "slug": "chapter-1",
-    "desktop": [
-      "/panels/chapter-1/desktop/Story1.png",
-      "/panels/chapter-1/desktop/Story2.png",
-      "/panels/chapter-1/desktop/Story3.png",
-      "/panels/chapter-1/desktop/Story4gif.png",
-      "/panels/chapter-1/desktop/Story5.png",
-      "/panels/chapter-1/desktop/Story6gif.png",
-      "/panels/chapter-1/desktop/Story7.png",
-      "/panels/chapter-1/desktop/Story8.png",
-      "/panels/chapter-1/desktop/Story9gif.png"
-    ],
-    "mobile": [
-      "/panels/chapter-1/mobile/Story1.png",
-      "/panels/chapter-1/mobile/Story2.png",
-      "/panels/chapter-1/mobile/Story3.png",
-      "/panels/chapter-1/mobile/Story4.webm",
-      "/panels/chapter-1/mobile/Story5.png",
-      "/panels/chapter-1/mobile/Story6.webm",
-      "/panels/chapter-1/mobile/Story7.png",
-      "/panels/chapter-1/mobile/Story8.png",
-      "/panels/chapter-1/mobile/Story9.webm"
-    ],
-    "thumbnail": "/panels/chapter-1/chapter-1.thumb.jpg"
+    "desktop": [],
+    "mobile": [],
+    "thumbnail": ""
   }
 ]

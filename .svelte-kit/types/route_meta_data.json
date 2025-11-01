@@ -96,6 +96,9 @@
 	"/api/panels/upload": [
 		"src/routes/api/panels/upload/+server.ts"
 	],
+	"/api/panels/upload/finish": [
+		"src/routes/api/panels/upload/finish/+server.ts"
+	],
 	"/api/whoami": [
 		"src/routes/api/whoami/+server.ts"
 	],

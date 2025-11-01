@@ -8,6 +8,68 @@ function slugifyChapterKey(key: string) {
   return key.toLowerCase().replace(/\s+/g, '-');
 }
 
+// Natural / numeric-aware sort helpers
+function tokenizeForSort(s: string) {
+  const norm = String(s).replace(/\s+/g, '');
+  const parts = norm.split(/(\d+)/).filter(Boolean).map(p => {
+    if (/^\d+$/.test(p)) return Number(p);
+    return (p || '').toLowerCase();
+  });
+  return parts;
+}
+
+function naturalCompare(a: string, b: string) {
+  const ta = tokenizeForSort(a);
+  const tb = tokenizeForSort(b);
+  for (let i = 0; i < Math.max(ta.length, tb.length); i++) {
+    const ia = ta[i];
+    const ib = tb[i];
+    if (ia === undefined) return -1;
+    if (ib === undefined) return 1;
+    if (typeof ia === 'number' && typeof ib === 'number') {
+      if (ia !== ib) return ia - ib;
+      continue;
+    }
+    if (typeof ia === 'number') return -1;
+    if (typeof ib === 'number') return 1;
+    const cmp = (ia as string).localeCompare(ib as string);
+    if (cmp !== 0) return cmp;
+  }
+  return 0;
+}
+
+function entryPath(e: any) {
+  if (typeof e === 'string') return e;
+  if (!e) return '';
+  return String(e.path || '');
+}
+
+function mergeInsertExisting(existing: any[], newItems: any[], naturalCompareFn: (a: string, b: string) => number) {
+  const existingPaths = (existing || []).map(entryPath);
+  const filteredNew = (newItems || []).filter(n => !existingPaths.includes(entryPath(n)));
+  if (filteredNew.length === 0) return (existing || []).slice();
+
+  const sortedNew = filteredNew.slice().sort((A, B) => naturalCompareFn(entryPath(A), entryPath(B)));
+
+  const existingWithPaths = (existing || []).map(e => ({ raw: e, path: entryPath(e) }));
+
+  for (const n of sortedNew) {
+    const nPath = entryPath(n);
+    let inserted = false;
+    for (let i = 0; i < existingWithPaths.length; i++) {
+      const cmp = naturalCompareFn(nPath, existingWithPaths[i].path);
+      if (cmp <= 0) {
+        existingWithPaths.splice(i, 0, { raw: n, path: nPath });
+        inserted = true;
+        break;
+      }
+    }
+    if (!inserted) existingWithPaths.push({ raw: n, path: nPath });
+  }
+
+  return existingWithPaths.map(x => x.raw);
+}
+
 export const POST = async ({ request }) => {
   try {
     const body = await request.json();
@@ -49,9 +111,18 @@ export const POST = async ({ request }) => {
       const slug = slugifyChapterKey(k);
       const val = incoming[k] || {};
       if (!normalizedExisting[slug] || typeof normalizedExisting[slug] !== 'object') normalizedExisting[slug] = {};
-      // Merge device arrays (desktop/mobile/other) - overwrite when provided
-      for (const dev of Object.keys(val)) {
-        normalizedExisting[slug][dev] = val[dev];
+
+      // For each device ensure we merge new items into existing arrays instead of overwriting
+      for (const dev of ['desktop', 'mobile', 'other']) {
+        const incomingArr = Array.isArray(val[dev]) ? val[dev] : [];
+        const existingArr = Array.isArray(normalizedExisting[slug][dev]) ? normalizedExisting[slug][dev] : [];
+        if (replace || !existingArr || existingArr.length === 0) {
+          // On replace or when no existing ordering, use incoming as provided (preserve objects)
+          normalizedExisting[slug][dev] = incomingArr.slice();
+        } else {
+          // Merge incoming items into existing ordering, preserving existing manual order
+          normalizedExisting[slug][dev] = mergeInsertExisting(existingArr, incomingArr, naturalCompare);
+        }
       }
     }
 

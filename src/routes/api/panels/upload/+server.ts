@@ -11,15 +11,55 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   if (!(await isAdmin(cookies))) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
-
-  const formData = await request.formData();
-  const files = formData.getAll('files') as File[];
-
-  if (!files.length) {
-    return new Response(JSON.stringify({ error: 'No files uploaded' }), { status: 400 });
-  }
+  // Support two modes:
+  // - regular upload: form field 'files' contains uploaded File objects
+  // - chunked upload: request URL contains ?chunk=true and the form contains a single 'chunk' file plus metadata
+  const url = new URL(request.url);
+  const isChunk = url.searchParams.get('chunk') === 'true';
 
   try {
+    if (isChunk) {
+      // handle a single chunk upload
+      const formData = await request.formData();
+      const chunk = formData.get('chunk') as File | null;
+      const relativePath = (formData.get('relativePath') as string) || (formData.get('relativepath') as string) || '';
+      const chunkIndex = Number(formData.get('chunkIndex'));
+      const totalChunks = Number(formData.get('totalChunks')) || undefined;
+
+      if (!chunk || !relativePath || Number.isNaN(chunkIndex)) {
+        return new Response(JSON.stringify({ error: 'Missing chunk, relativePath or chunkIndex' }), { status: 400 });
+      }
+
+      // normalize relative path and prevent traversal
+      let relPath = path.posix.normalize(relativePath).replace(/^\/+/, '');
+      if (relPath.includes('..')) return new Response(JSON.stringify({ error: 'Invalid relativePath' }), { status: 400 });
+
+      // ensure tmp dir exists
+      const tmpBase = path.join(PANELS_DIR, '.upload_tmp');
+      const safeDir = path.join(tmpBase, path.dirname(relPath));
+      if (!existsSync(safeDir)) mkdirSync(safeDir, { recursive: true });
+
+      // store chunk as: .upload_tmp/<relpath>.part<index>
+      const chunkName = `${path.basename(relPath)}.part${chunkIndex}`;
+      const chunkPath = path.join(safeDir, chunkName);
+      // @ts-ignore
+      const ab = await chunk.arrayBuffer();
+      await fs.writeFile(chunkPath, Buffer.from(ab));
+
+      // optionally log progress
+      try { logInfo('[panels:upload] chunk saved', { relPath, chunkIndex, totalChunks }); } catch {}
+
+      return new Response(JSON.stringify({ success: true, chunkIndex }), { status: 200 });
+    }
+
+    // regular non-chunked upload
+    const formData = await request.formData();
+    const files = formData.getAll('files') as File[];
+
+    if (!files.length) {
+      return new Response(JSON.stringify({ error: 'No files uploaded' }), { status: 400 });
+    }
+
     // Log how many files we received for traceability
     try { logInfo('[panels:upload] received files', { count: files.length }); } catch {}
 

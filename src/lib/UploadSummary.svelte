@@ -223,4 +223,12 @@
     border: 1px solid #4b5563;
     color: #d1d5db;
   }
+
+  /* Ensure any inline SVGs inside the summary are small */
+  .upload-summary svg {
+    width: 16px !important;
+    height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
+  }
 </style>
