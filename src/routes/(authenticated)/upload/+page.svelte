@@ -198,6 +198,23 @@
             
             // item may be a string or an object { path: '...' }
             let rel = (typeof item === 'string' ? item : (item && item.path))?.toString() || null;
+            
+            // Handle YouTube entries stored as strings (format: "youtube:VIDEO_ID")
+            if (rel && rel.startsWith('youtube:')) {
+              const videoId = rel.slice(8); // Remove "youtube:" prefix
+              const youtubeEntry = {
+                name: `YouTube: ${videoId}`,
+                webkitRelativePath: rel,
+                id: `youtube-${videoId}`,
+                size: 0,
+                type: 'youtube',
+                youtubeId: videoId,
+                // Preserve metadata if item is an object
+                ...(typeof item === 'object' && item ? item : {})
+              };
+              ordered.push(youtubeEntry);
+              continue;
+            }
             if (!rel) continue;
             // Normalize: strip leading slash and 'panels/' prefix
             rel = rel.replace(/^\/+/, '').replace(/^panels\//, '');
