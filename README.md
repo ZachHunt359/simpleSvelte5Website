@@ -111,25 +111,26 @@ npm run generate:panels
 
 - SvelteKit adapter-node enforces a default request body limit of 512KB. File uploads larger than this will fail with HTTP 500 before reaching your endpoint (so you won't see your own logs).
 - To allow uploads:
-	- Set the environment variable `BODY_SIZE_LIMIT` to a larger value (supports K/M/G suffix), e.g. `10M` or `50M`.
-	- Ensure your reverse proxy (e.g. Nginx) also allows large bodies: `client_max_body_size 50m;` within the appropriate `server`/`location` block.
+	- Set the environment variable `BODY_SIZE_LIMIT` to a larger value (supports K/M/G suffix), e.g. `10M` or `100M`.
+	- Ensure your reverse proxy (e.g. Nginx) also allows large bodies: `client_max_body_size 100m;` within the appropriate `server`/`location` block.
 	- Restart your app and proxy after changes.
 
 Examples (Linux/PM2):
 
 ```bash
 # in your PM2 ecosystem file for the app process
+
 env: {
 	NODE_ENV: 'production',
-	BODY_SIZE_LIMIT: '50M',
+	BODY_SIZE_LIMIT: '100M',
 	// ...other envs like DATABASE_URL, SITE_ORIGIN, SMTP_*
 }
 
 # or export before starting (not persistent)
-export BODY_SIZE_LIMIT=50M; pm2 restart your-app-name --update-env
+export BODY_SIZE_LIMIT=100M; pm2 restart your-app-name --update-env
 
 # Nginx (inside the server/location for your site)
-client_max_body_size 50m;
+client_max_body_size 100m;
 ```
 
 6) Useful admin utilities

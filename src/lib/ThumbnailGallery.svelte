@@ -36,9 +36,9 @@
   function initializeUppy() {
     uppyInstance = new Uppy({
       restrictions: {
-        maxFileSize: 50 * 1024 * 1024, // 50MB
-        allowedFileTypes: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.webm', '.mov']
-      },
+          maxFileSize: 100 * 1024 * 1024, // 100MB
+          allowedFileTypes: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.webm', '.mov']
+        },
       autoProceed: false
     });
     
@@ -57,7 +57,7 @@
       theme: 'dark',
       hideProgressDetails: false,
       showRemoveButtonAfterComplete: true,
-      note: 'Images and videos only, up to 50MB each',
+  note: 'Images and videos only, up to 100MB each',
       proudlyDisplayPoweredByUppy: false,
       hideUploadButton: true,
       hideCancelButton: false

@@ -26,7 +26,7 @@ export interface ConflictAnalysis {
 // Allowed file types and size limits
 const ALLOWED_IMAGE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 const ALLOWED_VIDEO_TYPES = ['mp4', 'webm', 'mov'];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB (fallback)
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB for images
 
 /**
