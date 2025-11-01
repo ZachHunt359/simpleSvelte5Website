@@ -724,12 +724,67 @@
   }
 
   // Handlers for ChapterTree dispatched events
-  function handleTreeDelete(file: any) {
+  async function handleTreeDelete(file: any) {
     // Remove from new uploads or existing panels depending on _isNew
     if (file._isNew) {
       filesToUpload = filesToUpload.filter(f => ((f as any).id || (f.webkitRelativePath || f.name)) !== (file.id || file.webkitRelativePath || file.name));
     } else {
       panelsFiles = panelsFiles.filter(f => (f.webkitRelativePath || f.name) !== (file.webkitRelativePath || file.name));
+      
+      // Also remove from _order.json
+      // Determine which chapter and device this file belongs to
+      const chapter = extractChapter(file.webkitRelativePath || file.name);
+      const slug = slugifyChapterKey(chapter || 'uncategorized');
+      let relPath = (file.webkitRelativePath || file.name || '').replace(/\\/g, '/');
+      // Normalize path: remove "panels/" prefix if present
+      relPath = relPath.replace(/^\/+/, '').replace(/^panels\//, '');
+      
+      // Determine device type
+      let device: 'desktop' | 'mobile' | 'other' = 'other';
+      if (/\/desktop\//i.test(relPath)) device = 'desktop';
+      else if (/\/mobile\//i.test(relPath)) device = 'mobile';
+      
+      // Build updated orders by filtering out this file (only first occurrence if duplicates exist)
+      const existingChapter = (panelsOrderMap && panelsOrderMap[slug]) || {};
+      const updatedChapterOrders: any = { ...existingChapter };
+      
+      for (const dev of ['desktop', 'mobile', 'other']) {
+        const arr = Array.isArray(existingChapter[dev]) ? existingChapter[dev] : [];
+        if (dev === device) {
+          // Remove only the first occurrence of this file
+          let removed = false;
+          updatedChapterOrders[dev] = arr.filter((entry: any) => {
+            const entryPath = typeof entry === 'string' ? entry : (entry.path || '');
+            const normalizedEntry = entryPath.replace(/^\/+/, '').replace(/^panels\//, '');
+            // For YouTube entries, check if it's a youtube type with matching ID
+            if (file.type === 'youtube' && file.youtubeId) {
+              if (typeof entry === 'object' && entry.type === 'youtube' && entry.id === file.youtubeId) {
+                if (!removed) {
+                  removed = true;
+                  return false; // Remove this entry
+                }
+              }
+            }
+            // For regular files, match by path
+            if (normalizedEntry === relPath) {
+              if (!removed) {
+                removed = true;
+                return false; // Remove this entry
+              }
+            }
+            return true; // Keep this entry
+          });
+        } else {
+          updatedChapterOrders[dev] = arr.slice();
+        }
+      }
+      
+      // Save updated orders
+      try {
+        await saveFullOrder({ [slug]: updatedChapterOrders }, false, false);
+      } catch (err) {
+        console.error('Failed to update _order.json after delete:', err);
+      }
     }
   }
 
