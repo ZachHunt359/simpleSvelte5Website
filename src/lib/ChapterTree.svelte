@@ -541,7 +541,42 @@
                 </div>
                 {/if}
                 <!-- Always show all device groups, even if empty -->
-                <div class="text-slate-400 text-xs mb-1">Desktop Panels:</div>
+                <!-- Other Files section first for quick access -->
+                <div class="text-slate-400 text-xs mb-1">Other Files:</div>
+                <ul style="padding:0;list-style:none;margin:0;">
+                  <li style="padding:0;margin:0;list-style:none;">
+                    <div
+                      use:dragHandleZone={{ items: (chapterMap[item.title].other ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
+                      on:consider={e => { chapterMap[item.title].other = e.detail.items; chapterMap = { ...chapterMap }; }}
+                      on:finalize={e => { chapterMap[item.title].other = e.detail.items; chapterMap = { ...chapterMap }; dispatch('orderChange', { chapter: item.title, device: 'other', order: e.detail.items.map((f:any) => f.webkitRelativePath || f.name) }); }}
+                      style="padding:0;margin:0;">
+                      {#each (chapterMap[item.title].other ?? []) as file (file.id)}
+                        <div class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''}" style={getPanelStatus(file) === 'new' ? 'font-weight:bold;color:#22c55e;display:flex;align-items:center;justify-content:space-between;' : 'display:flex;align-items:center;justify-content:space-between;'}>
+                          <div style="display:flex;align-items:center;">
+                            <span class="drag-handle" use:dragHandle style="cursor:grab;margin-right:0.5rem;opacity:0.9" aria-label="drag panel">☰</span>
+                            {#if file.type === 'youtube' && file.youtubeId}
+                              <span class="youtube-icon" style="display:inline-block;width:48px;height:48px;background:#ff0000;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#fff;">▶</span>
+                              <div style="flex:1;">
+                                <div style="color:#ef4444;font-weight:500;">{file.title || `YouTube: ${file.youtubeId}`}</div>
+                                <div style="font-size:0.8em;color:#94a3b8;">https://youtube.com/watch?v={file.youtubeId}</div>
+                              </div>
+                            {:else}
+                              <div>{file.name || file.webkitRelativePath || '[Unknown]'}</div>
+                            {/if}
+                          </div>
+                          <div style="display:flex;gap:0.5rem;align-items:center;">
+                            {#if file.type === 'youtube' && file.youtubeId}
+                              <button class="btn btn-ghost btn-xs text-blue-400" on:click={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
+                            {/if}
+                            <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
+                            <button class="btn btn-ghost btn-xs text-red-500" on:click={() => handleDelete(file)}>Delete</button>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  </li>
+                </ul>
+                <div class="text-slate-400 text-xs mb-1 mt-2">Desktop Panels:</div>
                 <ul style="padding:0;list-style:none;margin:0;">
                   <li style="padding:0;margin:0;list-style:none;">
                     <div
@@ -594,29 +629,6 @@
                             <span>{file.name}</span>
                             {#if getPanelStatus(file) === 'duplicate'}<span class="badge badge-warning ml-2">Duplicate</span>{/if}
                             {#if getPanelStatus(file) === 'error'}<span class="badge badge-error ml-2">Error</span>{/if}
-                          </div>
-                          <div style="display:flex;gap:0.5rem;align-items:center;">
-                            <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
-                            <button class="btn btn-ghost btn-xs text-red-500" on:click={() => handleDelete(file)}>Delete</button>
-                          </div>
-                        </div>
-                      {/each}
-                    </div>
-                  </li>
-                </ul>
-                <div class="text-slate-400 text-xs mb-1 mt-2">Other Files:</div>
-                <ul style="padding:0;list-style:none;margin:0;">
-                  <li style="padding:0;margin:0;list-style:none;">
-                    <div
-                      use:dragHandleZone={{ items: (chapterMap[item.title].other ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
-                      on:consider={e => { chapterMap[item.title].other = e.detail.items; chapterMap = { ...chapterMap }; }}
-                      on:finalize={e => { chapterMap[item.title].other = e.detail.items; chapterMap = { ...chapterMap }; dispatch('orderChange', { chapter: item.title, device: 'other', order: e.detail.items.map((f:any) => f.webkitRelativePath || f.name) }); }}
-                      style="padding:0;margin:0;">
-                      {#each (chapterMap[item.title].other ?? []) as file (file.id)}
-                        <div class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''}" style={getPanelStatus(file) === 'new' ? 'font-weight:bold;color:#22c55e;display:flex;align-items:center;justify-content:space-between;' : 'display:flex;align-items:center;justify-content:space-between;'}>
-                          <div style="display:flex;align-items:center;">
-                            <span class="drag-handle" use:dragHandle style="cursor:grab;margin-right:0.5rem;opacity:0.9" aria-label="drag panel">☰</span>
-                            <div>{file.name || file.webkitRelativePath || '[Unknown]'}</div>
                           </div>
                           <div style="display:flex;gap:0.5rem;align-items:center;">
                             <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>

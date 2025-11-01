@@ -181,6 +181,21 @@
         for (const dev of ['desktop', 'mobile', 'other']) {
           const arr = entry[dev] || [];
           for (const item of arr) {
+            // Handle YouTube entries (objects with type='youtube' and id)
+            if (typeof item === 'object' && item && item.type === 'youtube' && item.id) {
+              const youtubeEntry = {
+                name: `YouTube: ${item.id}`,
+                webkitRelativePath: `youtube:${item.id}`,
+                id: `youtube-${item.id}`,
+                size: 0,
+                type: 'youtube',
+                youtubeId: item.id,
+                ...item
+              };
+              ordered.push(youtubeEntry);
+              continue;
+            }
+            
             // item may be a string or an object { path: '...' }
             let rel = (typeof item === 'string' ? item : (item && item.path))?.toString() || null;
             if (!rel) continue;
