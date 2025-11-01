@@ -166,17 +166,34 @@
     const ordered: any[] = [];
     const added = new Set<string>();
     try {
-      for (const rawKey of Object.keys(panelsOrderMap || {})) {
-        const chapter = rawKey; // already slug form in file
+      // Sort chapter keys to ensure consistent chapter ordering (chapter-1, chapter-2, etc.)
+      const chapterKeys = Object.keys(panelsOrderMap || {}).sort((a, b) => {
+        const aMatch = a.match(/chapter-(\d+)/i);
+        const bMatch = b.match(/chapter-(\d+)/i);
+        if (aMatch && bMatch) {
+          return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+        }
+        return a.localeCompare(b);
+      });
+      
+      for (const chapter of chapterKeys) {
         const entry = panelsOrderMap[chapter] || {};
         for (const dev of ['desktop', 'mobile', 'other']) {
           const arr = entry[dev] || [];
           for (const item of arr) {
             // item may be a string or an object { path: '...' }
-            const rel = (typeof item === 'string' ? item : (item && item.path))?.toString().replace(/^\//, '') || null;
+            let rel = (typeof item === 'string' ? item : (item && item.path))?.toString() || null;
             if (!rel) continue;
+            // Normalize: strip leading slash and 'panels/' prefix
+            rel = rel.replace(/^\/+/, '').replace(/^panels\//, '');
             if (lookup[rel] && !added.has(rel)) {
-              ordered.push(lookup[rel]);
+              // Preserve any metadata from the order map entry
+              const fileObj = { ...lookup[rel] };
+              if (typeof item === 'object' && item) {
+                if ('published' in item) fileObj.published = item.published;
+                if ('publishDate' in item) fileObj.publishDate = item.publishDate;
+              }
+              ordered.push(fileObj);
               added.add(rel);
             }
           }
@@ -188,10 +205,7 @@
     }
 
     // Append remaining files that weren't in the order map, sorted naturally by path
-    const remaining = Object.keys(lookup).filter(k => !added.has(k)).sort((a, b) => {
-      // simple natural-ish compare using localeCompare with numeric option
-      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-    });
+    const remaining = Object.keys(lookup).filter(k => !added.has(k)).sort(naturalCompare);
     for (const r of remaining) ordered.push(lookup[r]);
 
     panelsFiles = ordered;
