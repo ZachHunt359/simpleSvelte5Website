@@ -44,3 +44,5 @@ static/panels/
 scripts/upload-envs.ps1
 scripts/reorg-upload-hardcode.ps1
 scripts/reorg-upload.ps1
+build/logs/server.log
+static/panels.json

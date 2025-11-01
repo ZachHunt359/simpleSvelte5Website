@@ -25,13 +25,18 @@ export const POST = async ({ request }) => {
     await fs.mkdir(panelsDir, { recursive: true });
     const orderFile = path.join(panelsDir, '_order.json');
 
-    // Read existing orders and normalize keys to slugs
+    // Allow clients to request a full replace of the ordering file by sending { orders, replace: true }
+    const replace = !!(body && (body.replace === true));
+
+    // Read existing orders and normalize keys to slugs (unless replace requested)
     let existing = {};
-    try {
-      const raw = await fs.readFile(orderFile, 'utf8');
-      existing = JSON.parse(raw || '{}');
-    } catch (e) {
-      existing = {};
+    if (!replace) {
+      try {
+        const raw = await fs.readFile(orderFile, 'utf8');
+        existing = JSON.parse(raw || '{}');
+      } catch (e) {
+        existing = {};
+      }
     }
 
     const normalizedExisting: Record<string, any> = {};
@@ -39,7 +44,7 @@ export const POST = async ({ request }) => {
       normalizedExisting[slugifyChapterKey(k)] = existing[k];
     }
 
-    // Normalize incoming keys and merge into existing
+    // Normalize incoming keys and merge into existing (or populate when replace=true)
     for (const k of Object.keys(incoming)) {
       const slug = slugifyChapterKey(k);
       const val = incoming[k] || {};
@@ -50,11 +55,79 @@ export const POST = async ({ request }) => {
       }
     }
 
-  const outJson = JSON.stringify(normalizedExisting, null, 2);
-  // Write atomically: write to a tmp file then rename
-  const tmpFile = orderFile + '.tmp';
-  await fs.writeFile(tmpFile, outJson, 'utf8');
-  await fs.rename(tmpFile, orderFile);
+    // If replace=true, drop any keys that were not part of incoming by rebuilding from incoming only
+    if (replace) {
+      const rebuilt: Record<string, any> = {};
+      for (const k of Object.keys(incoming)) {
+        const slug = slugifyChapterKey(k);
+        rebuilt[slug] = normalizedExisting[slug] || {};
+      }
+      // use rebuilt as the final payload
+      for (const k of Object.keys(normalizedExisting)) delete normalizedExisting[k];
+      for (const k of Object.keys(rebuilt)) normalizedExisting[k] = rebuilt[k];
+    }
+
+
+    // Run final cleanup only when explicitly requested by the client (cleanup=true).
+    // This prevents accidental removal of per-panel overrides for intermediate saves.
+    const doCleanup = !!(body && body.cleanup === true);
+    if (doCleanup) {
+      // Final cleanup: remove any per-panel `published` flags that are redundant because they
+      // match the chapter-level `published` value. Also collapse objects with no remaining
+      // metadata back to plain strings for a tidy _order.json.
+      for (const slug of Object.keys(normalizedExisting)) {
+        try {
+          const chapterMeta: any = normalizedExisting[slug] || {};
+          // Determine chapter-level published boolean if present (or via publishDate)
+          let chapterPublished: boolean | undefined = undefined;
+          if ('published' in chapterMeta) {
+            chapterPublished = !!chapterMeta.published;
+          } else if (chapterMeta && chapterMeta.publishDate) {
+            const cp = Date.parse(String(chapterMeta.publishDate));
+            if (!isNaN(cp) && cp <= Date.now()) chapterPublished = true;
+          }
+
+          // For each device array, prune per-item published flags that mirror chapterPublished
+          for (const dev of ['desktop', 'mobile', 'other']) {
+            const arr = chapterMeta[dev];
+            if (!Array.isArray(arr)) continue;
+            const newArr: any[] = [];
+            for (const item of arr) {
+              if (typeof item === 'string') {
+                newArr.push(item);
+                continue;
+              }
+              // item is object like { path, published?, publishDate?, ... }
+              const clone: any = { ...item };
+              if (chapterPublished !== undefined && ('published' in clone) && clone.published === chapterPublished) {
+                // redundant, remove
+                delete clone.published;
+              }
+              // if object has no metadata besides path, collapse to string
+              const keys = Object.keys(clone).filter(k => k !== 'path');
+              if (keys.length === 0) {
+                newArr.push(String(clone.path || '').replace(/^\//, ''));
+              } else {
+                newArr.push(clone);
+              }
+            }
+            chapterMeta[dev] = newArr;
+          }
+          // assign cleaned chapterMeta back
+          normalizedExisting[slug] = chapterMeta;
+        } catch (e) {
+          // on any error keep the original as-is
+          console.warn('Failed to clean chapter order for', slug, e);
+        }
+      }
+    }
+
+    const outJson = JSON.stringify(normalizedExisting, null, 2);
+
+    // Write atomically: write to a tmp file then rename
+    const tmpFile = orderFile + '.tmp';
+    await fs.writeFile(tmpFile, outJson, 'utf8');
+    await fs.rename(tmpFile, orderFile);
 
     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'content-type': 'application/json' } });
   } catch (err) {

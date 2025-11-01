@@ -115,6 +115,7 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
   const chapterMeta = (orderMap && orderMap[chapter]) || {};
   const chapterOrder = (chapterMeta && chapterMeta[deviceKey]) || null;
   const chapterPublishDate = chapterMeta && chapterMeta.publishDate ? String(chapterMeta.publishDate) : null;
+  const chapterPublished = (chapterMeta && ('published' in chapterMeta)) ? !!chapterMeta.published : undefined;
       let ordered = [];
       if (Array.isArray(chapterOrder) && chapterOrder.length > 0) {
         // Use specified order but allow non-file tokens (like youtube) and preserve objects with metadata.
@@ -165,27 +166,50 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
         ordered = all.sort(numericSort);
       }
 
-      // Filter out unpublished or future-dated items
+      // Filter: default to NOT published unless explicitly marked published=true or publishDate reached
       const now = Date.now();
       ordered = ordered.filter(entry => {
-        // If a chapter-level publishDate is set, items without their own publishDate inherit it
+        // If a chapter-level publishDate or published flag is set, items without their own publishDate may inherit
         if (entry && typeof entry === 'object') {
-          if ('published' in entry && entry.published === false) return false;
-          if ('publishDate' in entry && entry.publishDate) {
-            const pd = Date.parse(String(entry.publishDate));
-            if (!isNaN(pd) && pd > now) return false;
-          } else if (chapterPublishDate) {
-            const cp = Date.parse(String(chapterPublishDate));
-            if (!isNaN(cp) && cp > now) return false;
+          // youtube structured object
+          if (entry.type === 'youtube') {
+            if (entry.published === true) return true;
+            if (entry.publishDate) {
+              const pd = Date.parse(String(entry.publishDate));
+              if (!isNaN(pd) && pd <= now) return true;
+              return false;
+            }
+            if (chapterPublished === true) return true;
+            if (chapterPublishDate) {
+              const cp = Date.parse(String(chapterPublishDate));
+              if (!isNaN(cp) && cp <= now) return true;
+            }
+            return false;
           }
-          return true;
+          // object with path metadata
+          if (entry.path) {
+            if ('published' in entry) return entry.published === true;
+            if ('publishDate' in entry && entry.publishDate) {
+              const pd = Date.parse(String(entry.publishDate));
+              if (!isNaN(pd) && pd <= now) return true;
+              return false;
+            }
+            if (chapterPublished === true) return true;
+            if (chapterPublishDate) {
+              const cp = Date.parse(String(chapterPublishDate));
+              if (!isNaN(cp) && cp <= now) return true;
+            }
+            return false;
+          }
+          return false;
         }
-        // string path - inherit chapter publishDate if present
+        // string path - include only when chapter-level published flag is true or chapter publishDate reached
+        if (chapterPublished === true) return true;
         if (chapterPublishDate) {
           const cp = Date.parse(String(chapterPublishDate));
-          if (!isNaN(cp) && cp > now) return false;
+          if (!isNaN(cp) && cp <= now) return true;
         }
-        return true;
+        return false;
       });
 
       // Convert to /panels/<rel>?v=<mtime> OR leave structured objects (e.g. youtube)

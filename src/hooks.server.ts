@@ -169,7 +169,7 @@ try {
 // Scheduled regeneration: run periodically to catch scheduled publish dates.
 // Skip regeneration while any admin is actively viewing the upload/ChapterTree UI
 try {
-	const intervalMs = Number(process.env.PANELS_REGEN_INTERVAL_MS ?? 60_000); // default 60s
+	const intervalMs = Number(process.env.PANELS_REGEN_INTERVAL_MS ?? 300_000); // default 300s (5 minutes)
 
 	// Log scheduled regeneration cadence once at startup so logs show configured interval
 	try { logInfo(`Generating Panels every ${Math.round(intervalMs/60000)} minute(s)`, { intervalMs }); } catch (_) {}

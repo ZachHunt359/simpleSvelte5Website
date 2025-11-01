@@ -220,6 +220,25 @@
     return false;
   }
 
+  // Compute the effective published state for a panel: explicit per-panel override wins,
+  // then per-file publishDate if in the past, then chapter-level published/publishDate
+  function getEffectivePublished(file: any, chapter: string) {
+    if (!file) return false;
+    if ('published' in file) return !!file.published;
+    if (file.publishDate) {
+      const pd = Date.parse(String(file.publishDate));
+      if (!isNaN(pd) && pd <= Date.now()) return true;
+      return false;
+    }
+    const meta = getChapterMeta(chapter) || {};
+    if (meta && ('published' in meta) && meta.published === true) return true;
+    if (meta && meta.publishDate) {
+      const cp = Date.parse(String(meta.publishDate));
+      if (!isNaN(cp) && cp <= Date.now()) return true;
+    }
+    return false;
+  }
+
   function preventDragUnlessHandle(e: DragEvent) {
     try {
       const el = e.target as HTMLElement | null;
@@ -502,7 +521,7 @@
                 <span class="ml-2">{openChapters[item.title] ? '▼' : '▶'}</span>
               </button>
               <div style="display:flex;gap:0.5rem;align-items:center;">
-                <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublishChapter(item.title)}>Toggle Publish</button>
+                <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublishChapter(item.title)}>{getChapterMeta(item.title).published ? 'Unpublish Chapter' : 'Publish Chapter'}</button>
                 <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => openSchedulePickerChapter(item.title)}>Schedule Chapter</button>
                 <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => dispatch('insertYouTube', { chapter: item.title })}>Insert YouTube</button>
                 <button class="btn btn-ghost btn-xs text-red-500" on:click={() => handleDeleteChapter(item.title)}>Delete Chapter</button>
@@ -548,7 +567,7 @@
                             {#if getPanelStatus(file) === 'error'}<span class="badge badge-error ml-2">Error</span>{/if}
                           </div>
                                     <div style="display:flex;gap:0.5rem;align-items:center;">
-                                      <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{file.published ? 'Unpublish' : 'Publish'}</button>
+                                      <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
                                       <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => openSchedulePicker(file, item.title)}>Schedule</button>
                                         {#if openPickerId === file.id}
                                           <input data-picker-id={file.id} class="picker-input" placeholder="YYYY-MM-DD HH:mm" style="margin-left:0.5rem;padding:0.15rem 0.4rem;border-radius:4px;background:#111;color:#fff;border:1px solid #333;" />
@@ -577,7 +596,7 @@
                             {#if getPanelStatus(file) === 'error'}<span class="badge badge-error ml-2">Error</span>{/if}
                           </div>
                           <div style="display:flex;gap:0.5rem;align-items:center;">
-                            <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{file.published ? 'Unpublish' : 'Publish'}</button>
+                            <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
                             <button class="btn btn-ghost btn-xs text-red-500" on:click={() => handleDelete(file)}>Delete</button>
                           </div>
                         </div>
@@ -600,7 +619,7 @@
                             <div>{file.name || file.webkitRelativePath || '[Unknown]'}</div>
                           </div>
                           <div style="display:flex;gap:0.5rem;align-items:center;">
-                            <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{file.published ? 'Unpublish' : 'Publish'}</button>
+                            <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
                             <button class="btn btn-ghost btn-xs text-red-500" on:click={() => handleDelete(file)}>Delete</button>
                           </div>
                         </div>
