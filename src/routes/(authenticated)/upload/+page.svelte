@@ -709,6 +709,86 @@
   // Persist order changes to server (writes static/panels/_order.json)
   async function savePanelsOrder(detail: { chapter: string; device: string; order: any[] }) {
     try {
+      const slug = slugifyChapterKey(detail.chapter);
+      
+      console.log('🔄 [DRAG] savePanelsOrder START:', {
+        chapter: detail.chapter,
+        slug,
+        device: detail.device,
+        orderLength: detail.order.length,
+        firstThreeItems: detail.order.slice(0, 3).map(item => 
+          typeof item === 'string' ? item.substring(item.lastIndexOf('/') + 1) : item.title
+        )
+      });
+      
+      // **CRITICAL: Update local state FIRST (optimistic update)**
+      // This prevents the UI from snapping back while the server request is in flight
+      const updatedOrderMap = { ...panelsOrderMap };
+      if (!updatedOrderMap[slug]) updatedOrderMap[slug] = {};
+      updatedOrderMap[slug] = { ...updatedOrderMap[slug], [detail.device]: detail.order };
+      panelsOrderMap = updatedOrderMap;
+      
+      console.log('✅ [DRAG] panelsOrderMap updated locally (optimistic)');
+      
+      // **CRITICAL: Also rebuild panelsFiles to match the new order**
+      // This ensures ChapterTree receives the updated order immediately
+      console.log('🔄 [DRAG] Rebuilding panelsFiles to match new order...');
+      const newPanelsFiles: any[] = [];
+      const lookup: Record<string, any> = {};
+      const youtubeUsed = new Set<string>(); // Track which YouTube entries we've added
+      
+      // Build lookup from current panelsFiles (for regular files only)
+      for (const f of panelsFiles) {
+        if (f.type === 'youtube' && f.youtubeId) {
+          // Don't add YouTube to lookup - we'll handle them separately
+          continue;
+        }
+        const key = f.webkitRelativePath || f.name;
+        lookup[key] = f;
+      }
+      
+      // Rebuild panelsFiles from updated order map
+      for (const [chapterSlug, chapterData] of Object.entries(updatedOrderMap)) {
+        for (const device of ['desktop', 'mobile', 'other']) {
+          const deviceArray = (chapterData as any)[device] || [];
+          for (const entry of deviceArray) {
+            if (typeof entry === 'string') {
+              // Regular file path
+              if (lookup[entry]) {
+                newPanelsFiles.push(lookup[entry]);
+                delete lookup[entry]; // Remove so we don't add it twice
+              }
+            } else if (entry.type === 'youtube') {
+              // YouTube entry - find it in panelsFiles (only add once)
+              if (!youtubeUsed.has(entry.id)) {
+                const existingYt = panelsFiles.find(f => f.type === 'youtube' && f.youtubeId === entry.id);
+                if (existingYt) {
+                  newPanelsFiles.push(existingYt);
+                  youtubeUsed.add(entry.id);
+                }
+              }
+            } else if (entry.path) {
+              // Object with path property
+              if (lookup[entry.path]) {
+                newPanelsFiles.push(lookup[entry.path]);
+                delete lookup[entry.path];
+              }
+            }
+          }
+        }
+      }
+      
+      // Add any remaining regular files not in order map (shouldn't happen, but be defensive)
+      // Don't add YouTube entries here - they should already be in the order map
+      for (const f of Object.values(lookup)) {
+        if (f.type !== 'youtube') {
+          newPanelsFiles.push(f);
+        }
+      }
+      
+      panelsFiles = newPanelsFiles;
+      console.log('✅ [DRAG] panelsFiles rebuilt:', newPanelsFiles.length, 'files');
+      
       // Check if we're moving a YouTube entry - if so, we need to remove it from all other locations
       const youtubeEntries = detail.order.filter(item => {
         // Handle object format (what we now send from ChapterTree)
@@ -722,10 +802,13 @@
         // Get current full order map and remove YouTube entries from all other locations
         const fullOrderPayload: any = {};
         
+        // Slugify the target chapter for comparison
+        const targetSlug = slug;
+        
         // For each chapter in the order map, remove the YouTube entries from all device sections
         // except the target chapter+device
         for (const [chapterSlug, chapterData] of Object.entries(panelsOrderMap)) {
-          const isTargetChapter = chapterSlug === detail.chapter;
+          const isTargetChapter = chapterSlug === targetSlug;
           fullOrderPayload[chapterSlug] = {};
           
           for (const device of ['desktop', 'mobile', 'other']) {
@@ -756,19 +839,22 @@
           }
         }
         
+        // Update local order map with cleaned version
+        panelsOrderMap = { ...fullOrderPayload };
+        
+        console.log('📡 [DRAG] Sending YouTube cleanup to server...');
+        
         // Save the full modified order map to remove duplicates
         const res = await fetch('/api/admin/panels/order', { 
           method: 'POST', 
-          body: JSON.stringify({ orders: fullOrderPayload }), 
+          body: JSON.stringify({ orders: fullOrderPayload, replace: true }), 
           headers: { 'content-type': 'application/json' }, 
           credentials: 'same-origin' 
         });
         if (!res.ok) {
-          console.warn('Failed to save panels order with YouTube cleanup:', res.status);
+          console.warn('❌ [DRAG] Failed to save panels order with YouTube cleanup:', res.status);
         } else {
-          // Update local order map
-          panelsOrderMap = { ...fullOrderPayload };
-          
+          console.log('✅ [DRAG] Server saved YouTube cleanup successfully');
           // Update _chapter and _device properties on YouTube entries in local state
           panelsFiles = panelsFiles.map(f => {
             if (f.type === 'youtube' && f.youtubeId) {
@@ -789,15 +875,31 @@
           });
         }
       } else {
-        // No YouTube entries, use simple save
-        const payload = { orders: { [detail.chapter]: { [detail.device]: detail.order } } };
+        // No YouTube entries, use simple save - but send the full chapter to preserve order
+        console.log('📡 [DRAG] Sending simple order to server...');
+        // Send all three device arrays for this chapter to ensure exact order is preserved
+        const chapterData = updatedOrderMap[slug] || {};
+        const payload = { 
+          orders: { 
+            [slug]: {
+              desktop: chapterData.desktop || [],
+              mobile: chapterData.mobile || [],
+              other: chapterData.other || []
+            }
+          },
+          replace: true  // Tell server to use exact order, not merge/sort
+        };
         const res = await fetch('/api/admin/panels/order', { method: 'POST', body: JSON.stringify(payload), headers: { 'content-type': 'application/json' }, credentials: 'same-origin' });
         if (!res.ok) {
-          console.warn('Failed to save panels order:', res.status);
+          console.warn('❌ [DRAG] Failed to save panels order:', res.status);
+        } else {
+          console.log('✅ [DRAG] Server saved simple order successfully');
         }
       }
+      
+      console.log('🏁 [DRAG] savePanelsOrder COMPLETE');
     } catch (err) {
-      console.warn('Error saving panels order', err);
+      console.warn('❌ [DRAG] Error saving panels order', err);
     }
   }
 
@@ -806,10 +908,12 @@
   // `cleanup` when true instructs the server to prune redundant per-panel published flags
   // that match the chapter — only use cleanup=true when the admin clicks "Save Order".
   async function saveFullOrder(orders: Record<string, any>, replace = false, cleanup = false) {
+    console.log('[saveFullOrder] Called with:', { orders, replace, cleanup });
     try {
       const payload: any = { orders };
       if (replace) payload.replace = true;
       if (cleanup) payload.cleanup = true;
+      console.log('[saveFullOrder] Sending payload:', JSON.stringify(payload, null, 2));
       const res = await fetch('/api/admin/panels/order', { method: 'POST', body: JSON.stringify(payload), headers: { 'content-type': 'application/json' }, credentials: 'same-origin' });
       if (!res.ok) {
         console.warn('Failed to save full panels order:', res.status);
@@ -941,12 +1045,23 @@
   }
 
   async function handleTreeTogglePublish(file: any) {
+    console.log('[handleTreeTogglePublish] File:', {
+      name: file.name,
+      webkitRelativePath: file.webkitRelativePath,
+      type: file.type,
+      youtubeId: file.youtubeId,
+      id: file.id,
+      published: file.published,
+      _isNew: file._isNew
+    });
     // Toggle panel-level published override. Rules:
     // - If file has explicit published === false and user clicks publish -> remove explicit published flag (delete override)
     // - Else if effectivePublished === true -> set explicit published = false
     // - Else (effective false and no explicit false) -> set explicit published = true
-  const chapter = extractChapter(file.webkitRelativePath || file.name);
+  // For YouTube entries and other files with explicit _chapter, use that; otherwise extract from path
+  const chapter = file._chapter || extractChapter(file.webkitRelativePath || file.name);
   const slug = slugifyChapterKey(chapter || 'uncategorized');
+  console.log('[handleTreeTogglePublish] Using chapter:', chapter, 'slug:', slug);
     // Determine chapter-level published flag
     const chapterPublished = panelsOrderMap && panelsOrderMap[slug] && ('published' in panelsOrderMap[slug]) ? !!panelsOrderMap[slug].published : undefined;
     // helper to compute effective published for this file
@@ -987,26 +1102,36 @@
         return clone;
       });
     } else {
+      console.log('[handleTreeTogglePublish] Updating panelsFiles for existing file');
       panelsFiles = panelsFiles.map(f => {
         if ((f.webkitRelativePath || f.name) !== (file.webkitRelativePath || file.name)) return f;
         const clone = { ...f } as any;
+        console.log('[handleTreeTogglePublish] Found matching file, updating published flag. Before:', { published: clone.published, eff });
         if ('published' in clone && clone.published === false) {
           delete clone.published;
+          console.log('[handleTreeTogglePublish] Deleted explicit false flag');
         } else if (eff) {
           clone.published = false;
+          console.log('[handleTreeTogglePublish] Set to false (was effectively published)');
         } else {
           clone.published = true;
+          console.log('[handleTreeTogglePublish] Set to true (was effectively unpublished)');
         }
+        console.log('[handleTreeTogglePublish] After update:', { published: clone.published });
         return clone;
       });
+      console.log('[handleTreeTogglePublish] panelsFiles updated, count:', panelsFiles.length);
     }
 
     // Persist chapter-level mapping for this chapter (merge behavior)
     try {
+      // For YouTube entries and other files with explicit _chapter, use that; otherwise extract from path
+      const getFileChapter = (pf: any) => pf._chapter || extractChapter(pf.webkitRelativePath || pf.name);
       const chapterFiles = [
-        ...panelsFiles.filter(pf => extractChapter(pf.webkitRelativePath || pf.name) === chapter),
-        ...filesToUpload.filter(pf => extractChapter(pf.webkitRelativePath || pf.name) === chapter)
+        ...panelsFiles.filter(pf => getFileChapter(pf) === chapter),
+        ...filesToUpload.filter(pf => getFileChapter(pf) === chapter)
       ];
+      console.log('[handleTreeTogglePublish] chapterFiles for', chapter, ':', chapterFiles.length, 'files');
       function mapEntryLocal(f: any) {
         // Handle YouTube entries specially
         if (f.type === 'youtube' && f.youtubeId) {
@@ -1015,7 +1140,10 @@
             id: f.youtubeId
           };
           if (f.title) out.title = f.title;
-          if ('published' in f) out.published = !!f.published;
+          // Include published if explicitly set (true/false), omit if undefined
+          if ('published' in f && f.published !== undefined) {
+            out.published = !!f.published;
+          }
           if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
           return out;
         }
@@ -1024,7 +1152,10 @@
         const outHasMeta = ('published' in f) || ('publishDate' in f);
         if (outHasMeta) {
           const out: any = { path: rel };
-          if ('published' in f) out.published = !!f.published;
+          // Include published if explicitly set (true/false), omit if undefined
+          if ('published' in f && f.published !== undefined) {
+            out.published = !!f.published;
+          }
           if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
           return out;
         }
@@ -1047,8 +1178,8 @@
           other: chapterFiles.filter((c:any) => getFileDevice(c) === 'other').map(mapEntryLocal)
         }
       };
-      // Merge save (no replace) so other chapters are preserved
-      await saveFullOrder(ordersForChapter, false);
+      // Use replace=true to ensure metadata updates are persisted for this chapter
+      await saveFullOrder(ordersForChapter, true);
     } catch (e) {
       console.warn('Failed to persist panel publish override', e);
     }

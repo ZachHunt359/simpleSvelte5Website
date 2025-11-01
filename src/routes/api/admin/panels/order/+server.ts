@@ -121,6 +121,20 @@ export const POST = async ({ request }) => {
       const val = incoming[k] || {};
       if (!normalizedExisting[slug] || typeof normalizedExisting[slug] !== 'object') normalizedExisting[slug] = {};
 
+      // Copy over non-array metadata properties (published, publishDate, etc.)
+      for (const prop of Object.keys(val)) {
+        if (prop !== 'desktop' && prop !== 'mobile' && prop !== 'other') {
+          console.log(`[API] Copying metadata property "${prop}" = ${val[prop]} to chapter ${slug}`);
+          normalizedExisting[slug][prop] = val[prop];
+        }
+      }
+      console.log(`[API] After metadata copy, chapter ${slug} has:`, {
+        published: normalizedExisting[slug].published,
+        publishDate: normalizedExisting[slug].publishDate,
+        hasDesktop: !!normalizedExisting[slug].desktop,
+        hasMobile: !!normalizedExisting[slug].mobile
+      });
+
       // For each device ensure we merge new items into existing arrays instead of overwriting
       for (const dev of ['desktop', 'mobile', 'other']) {
         const incomingArr = Array.isArray(val[dev]) ? val[dev] : [];
@@ -203,6 +217,14 @@ export const POST = async ({ request }) => {
     }
 
     const outJson = JSON.stringify(normalizedExisting, null, 2);
+
+    console.log('[API] About to write _order.json. Chapter metadata:', Object.keys(normalizedExisting).map(slug => ({
+      chapter: slug,
+      published: normalizedExisting[slug].published,
+      publishDate: normalizedExisting[slug].publishDate,
+      desktopCount: normalizedExisting[slug].desktop?.length || 0,
+      mobileCount: normalizedExisting[slug].mobile?.length || 0
+    })));
 
     // Write atomically: write to a tmp file then rename
     const tmpFile = orderFile + '.tmp';

@@ -28,6 +28,11 @@
   // Ensure newFiles have unique id for dndzone
   $: newFilesWithId = newFiles.map((f, i) => ({ ...f, id: f.id || `${f.webkitRelativePath || f.name}-${i}` }));
   $: chapterMap = (() => {
+    console.log('🔄 [TREE] chapterMap recalculating...', {
+      existingFilesCount: existingFiles.length,
+      newFilesCount: newFiles.length
+    });
+    
     type ChapterMap = Record<string, { desktop: any[]; mobile: any[]; other: any[] }>;
     const allFiles = [
       ...existingFiles.map(f => ({ ...f, _isNew: false })),
@@ -74,6 +79,12 @@
         if (!newChapterMap[chapter]) newChapterMap[chapter] = { desktop: [], mobile: [], other: [] };
         (newChapterMap[chapter][device] as any[]).push(fileObj);
       });
+      
+      console.log('✅ [TREE] chapterMap recalculated:', {
+        chapters: Object.keys(newChapterMap),
+        totalFiles: allFiles.length
+      });
+      
       return newChapterMap;
     }
     return {};
@@ -163,14 +174,11 @@
   let isChapterDragging = false;
 
   onMount(() => {
-    // Enable internal library debug when component debug is enabled
+    // Disable svelte-dnd-action debug to reduce console noise
     try {
-      setDebugMode(true);
-      // expose available feature flag names for debugging
-      try { console.log('[ChapterTree] s-d-a FEATURE_FLAG_NAMES:', FEATURE_FLAG_NAMES); } catch (_) {}
+      setDebugMode(false);
       // enable computed-style-based bounding rect as a fallback for some browsers/layouts
       try { setFeatureFlag(FEATURE_FLAG_NAMES.USE_COMPUTED_STYLE_INSTEAD_OF_BOUNDING_RECT, true); } catch (_) {}
-      console.warn('[ChapterTree] svelte-dnd-action debug and feature-flag enabled');
     } catch (_) {}
   });
 
@@ -565,6 +573,7 @@
                       use:dragHandleZone={{ items: (chapterMap[item.title].other ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
                       on:consider={e => { chapterMap[item.title].other = e.detail.items; chapterMap = { ...chapterMap }; }}
                       on:finalize={e => { 
+                        console.log('🎯 [TREE] OTHER finalize START:', item.title);
                         chapterMap[item.title].other = e.detail.items; 
                         chapterMap = { ...chapterMap }; 
                         // Map entries properly: YouTube as objects, files as paths
@@ -574,6 +583,7 @@
                           }
                           return f.webkitRelativePath || f.name;
                         });
+                        console.log('📤 [TREE] Dispatching orderChange:', { chapter: item.title, device: 'other', orderLength: order.length });
                         dispatch('orderChange', { chapter: item.title, device: 'other', order }); 
                       }}
                       style="padding:0;margin:0;">
@@ -610,6 +620,7 @@
                       use:dragHandleZone={{ items: (chapterMap[item.title].desktop ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
                       on:consider={e => { chapterMap[item.title].desktop = e.detail.items; chapterMap = { ...chapterMap }; }}
                       on:finalize={e => { 
+                        console.log('🎯 [TREE] DESKTOP finalize START:', item.title);
                         chapterMap[item.title].desktop = e.detail.items; 
                         chapterMap = { ...chapterMap }; 
                         // Map entries properly: YouTube as objects, files as paths
@@ -619,6 +630,7 @@
                           }
                           return f.webkitRelativePath || f.name;
                         });
+                        console.log('📤 [TREE] Dispatching orderChange:', { chapter: item.title, device: 'desktop', orderLength: order.length });
                         dispatch('orderChange', { chapter: item.title, device: 'desktop', order }); 
                       }}
                       style="padding:0;margin:0;">
@@ -669,6 +681,7 @@
                       use:dragHandleZone={{ items: (chapterMap[item.title].mobile ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
                       on:consider={e => { chapterMap[item.title].mobile = e.detail.items; chapterMap = { ...chapterMap }; }}
                       on:finalize={e => { 
+                        console.log('🎯 [TREE] MOBILE finalize START:', item.title);
                         chapterMap[item.title].mobile = e.detail.items; 
                         chapterMap = { ...chapterMap }; 
                         // Map entries properly: YouTube as objects, files as paths
@@ -678,6 +691,7 @@
                           }
                           return f.webkitRelativePath || f.name;
                         });
+                        console.log('📤 [TREE] Dispatching orderChange:', { chapter: item.title, device: 'mobile', orderLength: order.length });
                         dispatch('orderChange', { chapter: item.title, device: 'mobile', order }); 
                       }}
                       style="padding:0;margin:0;">
