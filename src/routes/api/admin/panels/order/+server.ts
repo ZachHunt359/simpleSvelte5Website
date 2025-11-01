@@ -39,9 +39,18 @@ function naturalCompare(a: string, b: string) {
 }
 
 function entryPath(e: any) {
-  if (typeof e === 'string') return e;
+  if (typeof e === 'string') return normalizePath(e);
   if (!e) return '';
-  return String(e.path || '');
+  return normalizePath(String(e.path || ''));
+}
+
+// Normalize paths: strip leading "panels/" or "/panels/" prefix and leading slashes
+function normalizePath(p: string): string {
+  let normalized = String(p || '').replace(/\\/g, '/').replace(/^\/+/, '');
+  if (normalized.startsWith('panels/')) {
+    normalized = normalized.slice(7);
+  }
+  return normalized;
 }
 
 function mergeInsertExisting(existing: any[], newItems: any[], naturalCompareFn: (a: string, b: string) => number) {

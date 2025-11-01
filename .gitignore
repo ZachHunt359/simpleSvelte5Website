@@ -41,6 +41,7 @@ Thumbs.db
 
 # Static panels (media) - keep to avoid committing large assets
 static/panels/
+static/panels/_order.json
 scripts/upload-envs.ps1
 scripts/reorg-upload-hardcode.ps1
 scripts/reorg-upload.ps1
