@@ -43,22 +43,38 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
     }
   }
 
-  // Helper: extract all numbers from a string as an array of integers
-  function extractNumbers(str) {
-    return (str.match(/\d+/g) || []).map(Number);
+  // Natural sort helpers (match client and server implementations)
+  function tokenizeForSort(s) {
+    const norm = String(s).replace(/\s+/g, '');
+    const parts = norm.split(/(\d+)/).filter(Boolean).map(p => {
+      if (/^\d+$/.test(p)) return Number(p);
+      return p.toLowerCase();
+    });
+    return parts;
   }
 
-  // Sort by numbers in order, then by string as tie-breaker
-  function numericSort(a, b) {
-    const numsA = extractNumbers(a);
-    const numsB = extractNumbers(b);
-    for (let i = 0; i < Math.max(numsA.length, numsB.length); i++) {
-      const na = numsA[i] ?? 0;
-      const nb = numsB[i] ?? 0;
-      if (na !== nb) return na - nb;
+  function naturalCompare(a, b) {
+    const ta = tokenizeForSort(a);
+    const tb = tokenizeForSort(b);
+    for (let i = 0; i < Math.max(ta.length, tb.length); i++) {
+      const ia = ta[i];
+      const ib = tb[i];
+      if (ia === undefined) return -1;
+      if (ib === undefined) return 1;
+      if (typeof ia === 'number' && typeof ib === 'number') {
+        if (ia !== ib) return ia - ib;
+        continue;
+      }
+      if (typeof ia === 'number') return -1;
+      if (typeof ib === 'number') return 1;
+      const cmp = ia.localeCompare(ib);
+      if (cmp !== 0) return cmp;
     }
-    return a.localeCompare(b);
+    return 0;
   }
+
+  // Alias for backward compatibility within this script
+  const numericSort = naturalCompare;
 
   // Helper: recursively find all image/video files in a folder
   function findFilesRecursive(dir) {
