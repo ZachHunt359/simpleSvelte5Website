@@ -39,7 +39,7 @@
         <li>
             <a href="https://ko-fi.com/mikiib" aria-label="Ko-fi link" target="_blank" rel="noopener noreferrer">
                 <!-- Ko-fi -->
-                <iconify-icon icon="simple-icons:ko-fi"></iconify-icon>
+                <iconify-icon icon="simple-icons:kofi"></iconify-icon>
             </a>
         </li>
         <li>
