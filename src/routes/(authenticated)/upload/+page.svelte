@@ -157,7 +157,7 @@
         relPath = relPath.replace(/\\/g, '/');
         return !normalizedExisting.includes(relPath);
       })
-      // Explicitly copy all relevant properties from File objects
+      // Explicitly copy all relevant properties from File objects and keep a reference to the original File
       .map((file, idx) => {
         const out: any = {
           name: file.name,
@@ -165,7 +165,9 @@
           size: file.size,
           type: file.type,
           id: (file as any).id || `${file.webkitRelativePath || file.name}-${idx}`,
-          _isNew: true
+          _isNew: true,
+          // keep the original File/Blob so uploads can append a real Blob to FormData
+          _file: file
         };
         // Copy preview if present
         if ('preview' in file) out.preview = (file as any).preview;
@@ -214,9 +216,11 @@
     for (const file of filesToUpload) {
       let relPath = file.webkitRelativePath || file.name;
       // Remove the top-level folder from the relative path
-  if (topFolder && relPath.startsWith(topFolder + '/')) relPath = relPath.slice(topFolder.length + 1);
-  if (topFolder && relPath.startsWith(topFolder + "\\")) relPath = relPath.slice(topFolder.length + 1);
-      formData.append('files', file, relPath);
+      if (topFolder && relPath.startsWith(topFolder + '/')) relPath = relPath.slice(topFolder.length + 1);
+      if (topFolder && relPath.startsWith(topFolder + "\\")) relPath = relPath.slice(topFolder.length + 1);
+      // Use the original File/Blob if available (mapped objects store it in _file).
+      const blobOrFile = (file as any)._file || file;
+      formData.append('files', blobOrFile, relPath);
       formData.append('relativePaths', relPath);
     }
     const res = await fetch('/api/panels/upload', { method: 'POST', body: formData, credentials: 'same-origin'});
