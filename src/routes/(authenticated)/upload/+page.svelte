@@ -200,10 +200,11 @@
                 size: 0,
                 type: 'youtube',
                 youtubeId: item.id,
-                _device: dev, // Preserve device placement from _order.json
-                _chapter: chapterName, // Preserve chapter placement from _order.json (formatted name)
-                ...item
+                ...item, // Spread item first to get title, etc.
+                _device: dev, // Then explicitly set device (overrides any _device from item)
+                _chapter: chapterName // Then explicitly set chapter (overrides any _chapter from item)
               };
+              console.log('[fetchPanelsFiles] YouTube entry created:', { id: item.id, dev, chapterName, _device: youtubeEntry._device, _chapter: youtubeEntry._chapter });
               ordered.push(youtubeEntry);
               youtubeIds.add(item.id); // Mark this YouTube video as processed
               continue;
@@ -228,11 +229,12 @@
                 size: 0,
                 type: 'youtube',
                 youtubeId: videoId,
-                _device: dev, // Preserve device placement from _order.json
-                _chapter: chapterName, // Preserve chapter placement from _order.json (formatted name)
                 // Preserve metadata if item is an object
-                ...(typeof item === 'object' && item ? item : {})
+                ...(typeof item === 'object' && item ? item : {}),
+                _device: dev, // Then explicitly set device (overrides any _device from item)
+                _chapter: chapterName // Then explicitly set chapter (overrides any _chapter from item)
               };
+              console.log('[fetchPanelsFiles] YouTube string entry created:', { videoId, dev, chapterName, _device: youtubeEntry._device, _chapter: youtubeEntry._chapter });
               
               // Try to fetch title if not already present
               if (!youtubeEntry.title) {
