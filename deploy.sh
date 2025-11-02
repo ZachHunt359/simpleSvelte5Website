@@ -213,6 +213,10 @@ mkdir -p static/panels build/logs
 log "Installing dependencies (npm ci)"
 npm ci
 
+# Ensure YouTube entries are in place
+log "Ensuring YouTube entries in _order.json"
+npm run ensure-youtube
+
 # Generate panels.json
 log "Generating panels.json"
 npm run generate:panels
