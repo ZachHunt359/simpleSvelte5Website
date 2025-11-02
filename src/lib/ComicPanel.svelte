@@ -155,19 +155,26 @@
     on:touchend={handleTouchEnd}>
     {#if panels.length > 0 && displayedPanelIndex >= 0 && displayedPanelIndex < panels.length}
         {#if typeof panels[displayedPanelIndex] === 'object' && panels[displayedPanelIndex].type === 'youtube'}
-            <!-- YouTube embed -->
-            <iframe
-                src={`https://www.youtube.com/embed/${panels[displayedPanelIndex].id}?rel=0&showinfo=0`}
-                title={`YouTube video ${panels[displayedPanelIndex].id}`}
-                width="100%"
-                height="480"
-                frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-                aria-hidden="true"
-                tabindex="-1"
-                on:load={handleMediaLoad}
-            ></iframe>
+            <!-- YouTube embed with wrapper to prevent event capture -->
+            <div class="youtube-wrapper">
+                <iframe
+                    src={`https://www.youtube.com/embed/${panels[displayedPanelIndex].id}?rel=0&showinfo=0`}
+                    title={`YouTube video ${panels[displayedPanelIndex].id}`}
+                    width="100%"
+                    height="480"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                    aria-hidden="true"
+                    tabindex="-1"
+                    on:load={handleMediaLoad}
+                ></iframe>
+                <!-- Navigation hint for mobile users -->
+                <div class="youtube-hint" aria-hidden="true">
+                    <p>Click here after video to navigate forward</p>
+                    <iconify-icon icon="icon-park-outline:right-two" style="font-size: 2rem; color: #ffd700;"></iconify-icon>
+                </div>
+            </div>
         {:else if /\.(webm)$/i.test(panels[displayedPanelIndex])}
             <!-- decorative animated panel: mark as non-interactive for assistive tech -->
             <video
@@ -231,6 +238,51 @@
         -webkit-user-select: none;
         user-select: none;
         -webkit-touch-callout: none;
+    }
+
+    .youtube-wrapper {
+        width: 90vw;
+        max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        /* Allow pointer events to pass through the wrapper, but iframe will still capture them */
+        pointer-events: auto;
+    }
+
+    .youtube-wrapper iframe {
+        width: 100%;
+        max-width: 854px; /* 16:9 aspect ratio max width for 480px height */
+        height: 480px;
+        /* Iframe captures events - this is expected for video controls */
+        pointer-events: auto;
+    }
+
+    .youtube-hint {
+        margin-top: 1rem;
+        padding: 0.75rem 1rem;
+        background: rgba(0, 0, 0, 0.7);
+        border-radius: 4px;
+        text-align: center;
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 90%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .youtube-hint p {
+        margin: 0;
+    }
+
+    /* Hide hint on desktop or when navs are visible */
+    @media (min-width: 801px) {
+        .youtube-hint {
+            display: none;
+        }
     }
 
     :global(.active) {

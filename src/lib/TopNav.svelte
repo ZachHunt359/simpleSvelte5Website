@@ -87,16 +87,25 @@
     margin: 0;
     padding: 0;
     display: flex;
-    gap: 0.5rem;
+    gap: 0.2rem;
     align-items: center;
+    justify-content: center;
+}
+
+/* Increase gap on larger screens */
+@media (min-width: 600px) {
+    .top-nav ul {
+        gap: 1rem;
+    }
 }
 
 /* Make all interactive elements visually seamless like BottomNav */
-button {
+button,
+a {
     background: none;
     border: none;
-    /* add padding similar to BottomNav so buttons have comfortable click targets */
-    padding: 0.45rem 0.6rem;
+    /* Reduced horizontal padding to keep icons closer together */
+    padding: 0.45rem 0.3rem;
     margin: 0;
     color: inherit;
     cursor: pointer;
@@ -105,6 +114,7 @@ button {
     align-items: center;
     justify-content: center;
     border-radius: 6px;
+    text-decoration: none;
 }
 
 button:focus {
