@@ -14,6 +14,8 @@
     "lint": "prettier --check .",
     "generate:panels": "node scripts/generate-panels-json.js",
     "update-panels": "node scripts/generate-panels-json.js",
+    "ensure-youtube": "node scripts/ensure-youtube-entries.js",
+    "test:navigation": "node scripts/test-navigation-logic.js",
     "migrate": "node scripts/apply-migrations.js",
     "seed:admin": "node scripts/seed-admin-mysql.js",
     "seed:admin:dev": "cross-env NODE_ENV=development node scripts/seed-admin-mysql.js",

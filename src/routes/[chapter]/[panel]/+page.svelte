@@ -109,9 +109,9 @@
             if (!base) return undefined;
             return base.replace(/\.[^/.]+$/, '');
         }
-        // If object (structured), create an identifier
+        // If object (YouTube video), return just the video ID for URL compatibility
         if (typeof item === 'object' && item.type === 'youtube' && item.id) {
-            return `youtube-${item.id}`;
+            return item.id;
         }
         return undefined;
     }
@@ -297,8 +297,16 @@
                 currentChapter = chapterIdx;
                 const newPanels = buildPanelsForChapter(chapterIdx, isDesktop);
                 const panelIdx = newPanels.findIndex(p => {
-                    if (typeof p === 'string') return p.includes(panelFile);
-                    if (typeof p === 'object' && p.type === 'youtube' && `youtube-${p.id}` === panelFile) return true;
+                    if (typeof p === 'string') {
+                        // Extract basename without extension from the panel path
+                        const panelBasename = basenameNoExt(p);
+                        // Use exact match, not includes, to avoid matching Spread7.3.b when looking for Spread7.3
+                        return panelBasename === panelFile;
+                    }
+                    // For YouTube entries, match either the video ID directly or with youtube- prefix
+                    if (typeof p === 'object' && p.type === 'youtube') {
+                        return p.id === panelFile || `youtube-${p.id}` === panelFile;
+                    }
                     return false;
                 });
                 if (panelIdx !== -1) {
