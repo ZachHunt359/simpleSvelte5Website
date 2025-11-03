@@ -962,18 +962,6 @@
     return orders;
   }
 
-  // Handler wrapper that serializes save-order operations and exposes a saving flag
-  async function handleSaveOrderAndWait(orders: Record<string, any>) {
-    savingOrder = true;
-    try {
-      // This is the explicit "Save Order" action: request server-side cleanup to tidy _order.json
-      await saveFullOrder(orders, false, true);
-    } finally {
-      // small debounce to avoid flicker UI if save is super-fast
-      setTimeout(() => { savingOrder = false; }, 150);
-    }
-  }
-
   // Handlers for ChapterTree dispatched events
   async function handleTreeDelete(file: any) {
     // Remove from new uploads or existing panels depending on _isNew
@@ -1334,7 +1322,6 @@
   // Admin-triggered regenerate panels (calls server endpoint)
   let regenerating = false;
   let regenerateStatus = '';
-  let savingOrder = false;
 
   // ref to the hidden input so a button can trigger it
   let panelInput: HTMLInputElement | null = null;

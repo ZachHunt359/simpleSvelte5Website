@@ -20,8 +20,11 @@
                         const data = await resp.json();
                         console.log('[Homepage] panels.json data:', data);
                         
-                        if (data.chapters && data.chapters.length > 0) {
-                            const firstChapter = data.chapters[0];
+                        // panels.json is an array directly, not an object with chapters property
+                        const chapters = Array.isArray(data) ? data : (data.chapters || []);
+                        
+                        if (chapters.length > 0) {
+                            const firstChapter = chapters[0];
                             console.log('[Homepage] First chapter:', firstChapter);
                             
                             const firstPanel = firstChapter.mobile?.[0] || firstChapter.desktop?.[0];
@@ -42,7 +45,8 @@
                                 }
                                 
                                 if (panelSlug) {
-                                    const targetUrl = `/${firstChapter.chapter}/${panelSlug}`;
+                                    const chapterSlug = firstChapter.slug || firstChapter.chapter || 'chapter-1';
+                                    const targetUrl = `/${chapterSlug}/${panelSlug}`;
                                     console.log('[Homepage] Redirecting to:', targetUrl);
                                     goto(targetUrl, { replaceState: true });
                                     return;
