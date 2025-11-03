@@ -1502,8 +1502,7 @@
       on:togglePublish={e => handleTreeTogglePublish(e.detail.file)}
       on:deleteChapter={e => handleTreeDeleteChapter(e.detail.chapter)}
       on:togglePublishChapter={e => handleTreeTogglePublishChapter(e.detail.chapter)}
-    on:orderChange={e => savePanelsOrder(e.detail)}
-    on:saveOrder={e => handleSaveOrderAndWait(e.detail.orders)}
+      on:orderChange={e => savePanelsOrder(e.detail)}
       on:insertYouTube={e => handleInsertYouTube(e.detail.chapter)}
       on:setPublishDate={e => handleTreeSetPublishDate(e.detail)}
     />
