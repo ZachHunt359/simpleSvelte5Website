@@ -1116,7 +1116,9 @@
         const cp = Date.parse(String(chapterMeta.publishDate));
         if (!isNaN(cp) && cp <= Date.now()) return true;
       }
-      return false;
+      // Default: NEW files are unpublished, EXISTING files are published
+      // This prevents all existing content from being hidden when no explicit flag is set
+      return !f._isNew;
     }
 
     const eff = effectivePublishedFor(file);
