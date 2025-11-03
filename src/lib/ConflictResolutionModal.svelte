@@ -142,15 +142,33 @@
               
               <div class="resolution-choices">
                 <label class="radio-label">
-                  <input type="radio" name="resolution-{key}" value="keep-existing" bind:group={resolutions[key]} />
+                  <input 
+                    type="radio" 
+                    name="resolution-{key}" 
+                    value="keep-existing" 
+                    checked={resolutions[key] === 'keep-existing'}
+                    on:change={() => { resolutions[key] = 'keep-existing'; resolutions = {...resolutions}; }}
+                  />
                   <span>Keep Existing</span>
                 </label>
                 <label class="radio-label">
-                  <input type="radio" name="resolution-{key}" value="replace" bind:group={resolutions[key]} />
+                  <input 
+                    type="radio" 
+                    name="resolution-{key}" 
+                    value="replace" 
+                    checked={resolutions[key] === 'replace'}
+                    on:change={() => { resolutions[key] = 'replace'; resolutions = {...resolutions}; }}
+                  />
                   <span>Replace</span>
                 </label>
                 <label class="radio-label">
-                  <input type="radio" name="resolution-{key}" value="keep-both" bind:group={resolutions[key]} />
+                  <input 
+                    type="radio" 
+                    name="resolution-{key}" 
+                    value="keep-both" 
+                    checked={resolutions[key] === 'keep-both'}
+                    on:change={() => { resolutions[key] = 'keep-both'; resolutions = {...resolutions}; }}
+                  />
                   <span>Keep Both</span>
                 </label>
               </div>
