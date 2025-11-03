@@ -50,7 +50,8 @@
         // Check if it's an image type by extension
         const ext = c.existingPath.split('.').pop()?.toLowerCase();
         if (ext && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-          existingFilePreviews[key] = `/panels/${c.existingPath}`;
+          // Add timestamp to bust browser cache
+          existingFilePreviews[key] = `/panels/${c.existingPath}?t=${Date.now()}`;
         }
       });
     }

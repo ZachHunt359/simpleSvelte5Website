@@ -1226,9 +1226,8 @@
         console.warn('[togglePublish] Ensure YouTube failed:', err);
       }
       
-      // Refresh panels files to reflect changes
-      console.log('[togglePublish] Refreshing panels files...');
-      await fetchPanelsFiles();
+      // Don't refresh from server - we already have the correct state locally
+      // and refreshing causes the UI to revert to the server's cached state
       console.log('[togglePublish] Complete');
     } catch (e) {
       console.warn('Failed to persist panel publish override', e);
@@ -1266,9 +1265,8 @@
         console.warn('[togglePublishChapter] Ensure YouTube failed:', err);
       }
       
-      // Refresh panels files to reflect changes
-      console.log('[togglePublishChapter] Refreshing panels files...');
-      await fetchPanelsFiles();
+      // Don't refresh from server - we already have the correct state locally
+      // and refreshing causes the UI to revert to the server's cached state
       console.log('[togglePublishChapter] Complete');
     } catch (e) {
       console.warn('Failed to persist chapter publish flag', e);
