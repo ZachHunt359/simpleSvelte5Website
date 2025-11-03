@@ -1361,7 +1361,7 @@
 
   // Simplified upload: flatten all files into chapter-1/mobile
   async function handleFlattenedUpload() {
-    if (!filesToUpload.length) return;
+    if (!selectedFiles.length) return;
     uploading = true; uploadError = ''; uploadSuccess = '';
     overallProgress = 1;
     filesCompletedSinceLastCalc = 0;
@@ -1372,17 +1372,27 @@
     bpsSamples = [];
     overallETA = -1;
 
+    // Create file objects from selectedFiles for upload tracking
+    const filesToProcess = selectedFiles.map((file, idx) => ({
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      _file: file,
+      _uploadProgress: 0,
+      _status: 'queued',
+      id: `flattened-${idx}`
+    }));
+
     let anyFailure = false;
-    for (let i = 0; i < filesToUpload.length; i++) {
-      const file = filesToUpload[i];
+    for (let i = 0; i < filesToProcess.length; i++) {
+      const fileObj = filesToProcess[i];
       // Force all files into chapter-1/mobile, preserving only the filename
-      const fileName = file.name;
+      const fileName = fileObj.name;
       const targetPath = `chapter-1/mobile/${fileName}`;
       
-      file._uploadProgress = 0;
-      file._status = 'queued';
-      updateOverallProgress();
-      const ok = await uploadWithRetries(file, targetPath, 3);
+      fileObj._uploadProgress = 0;
+      fileObj._status = 'queued';
+      const ok = await uploadWithRetries(fileObj, targetPath, 3);
       if (!ok) {
         anyFailure = true;
         uploadError = uploadError ? uploadError : `Some files failed to upload.`;
@@ -1433,7 +1443,7 @@
       <button class="btn btn-primary" type="submit" disabled={uploading || !filesToUpload.length || conflicts.errors.length > 0}>
         {uploading ? 'Uploading...' : 'Upload All'}
       </button>
-      <button type="button" class="btn btn-accent" style="margin-left:0.5rem" on:click={handleFlattenedUpload} disabled={uploading || !filesToUpload.length || conflicts.errors.length > 0}>
+      <button type="button" class="btn btn-accent" style="margin-left:0.5rem" on:click={handleFlattenedUpload} disabled={uploading || selectedFiles.length === 0}>
         {uploading ? 'Uploading...' : 'Upload to Ch1/Mobile'}
       </button>
       <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={regeneratePanels} disabled={regenerating || savingOrder || ensuringYouTube}>
