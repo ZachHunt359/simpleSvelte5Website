@@ -361,6 +361,20 @@
     let showInquiryModal = false;
     let showEmailPrompt = false;
     let lastInquiryId: string | null = null;
+    let hasAutoOpenedInquiry = false; // Track if we've already auto-opened on this session
+
+    // Auto-open inquiry modal on final panel
+    $: if (browser && !hasAutoOpenedInquiry && chapters.length > 0 && panels.length > 0) {
+        const isLastPanel = currentPanel >= panels.length - 1;
+        const isLastChapter = currentChapter >= chapters.length - 1;
+        if (isLastPanel && isLastChapter) {
+            // Small delay to let the panel render first
+            setTimeout(() => {
+                showInquiryModal = true;
+                hasAutoOpenedInquiry = true;
+            }, 500);
+        }
+    }
 
     async function submitInquiry() {
         const userId = getOrCreateUserId();
@@ -551,7 +565,7 @@
     on:show={e => showTopNav = e.detail}
     onChapterSelect={() => showChapterModal = true}
     chaptersCount={chapters.length}
-    canGoForward={currentPanel < panels.length - 1 || currentChapter < chapters.length - 1}
+    canGoForward={canGoForward}
     onInquiry={() => showInquiryModal = true}
     hasUnreadReplies={hasUnreadReplies}
     on:showNotifications={() => showNotifications = true}
@@ -585,7 +599,7 @@
         bind:show={showBottomNav}
         isDesktop={isPointerDesktop}
         canGoBack={currentPanel > 0 || currentChapter > 0}
-        canGoForward={currentPanel < panels.length - 1 || currentChapter < chapters.length - 1}
+        canGoForward={canGoForward}
         onFirst={withNavTimer(first, 'bottom')}
         onBack={withNavTimer(prev, 'bottom')}
         onForward={withNavTimer(next, 'bottom')}
@@ -625,8 +639,8 @@
     <!-- dev-note: Backdrop is an overlay intentionally implemented as a focusable div with role/aria-label, tabindex and a guarded keydown handler (checks e.target === e.currentTarget). Using a div keeps markup simple while preserving keyboard access. -->
     <div class="modal-backdrop" on:click={() => showInquiryModal = false} role="button" aria-label="Close inquiry dialog" tabindex="0" on:keydown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { showInquiryModal = false; } }}>
         <div bind:this={inquiryModalEl} class="modal" role="dialog" aria-modal="true" tabindex="-1" on:click|stopPropagation>
-            <h3>Submit a Question or Statement</h3>
-            <textarea bind:value={inquiryText} rows="4" placeholder="Type your question or statement here..."></textarea>
+            <h3>The Void Beckons a Response...</h3>
+            <textarea bind:value={inquiryText} rows="4" placeholder="Have a question for the creators? Type your question here..."></textarea>
             <div class="modal-actions">
                 <button on:click={submitInquiry}>Submit</button>
                 <button on:click={() => showInquiryModal = false}>Cancel</button>
@@ -642,7 +656,7 @@
         <div bind:this={emailModalEl} class="modal" role="dialog" aria-modal="true" tabindex="-1" on:click|stopPropagation>
             <button class="close-x" on:click={() => showEmailPrompt = false} aria-label="Close">&times;</button>
             <h3>Email Address</h3>
-            <input type="email" bind:value={userEmail} placeholder="Enter your email (optional)" />
+            <input type="email" bind:value={userEmail} placeholder="Enter your email (optional, if you want your reply sent to your email)" />
             <div class="modal-actions">
                 <button on:click={submitEmail}>Submit</button>
                 <button on:click={() => showEmailPrompt = false}>No thanks</button>

@@ -135,8 +135,9 @@ button.logo {
 }
 
 /* Disabled state for buttons: visual hint but no animation */
-.disabled {
-    opacity: 0.6;
+button.disabled {
+    color: #888;
+    opacity: 0.5;
     cursor: default;
     pointer-events: none;
 }

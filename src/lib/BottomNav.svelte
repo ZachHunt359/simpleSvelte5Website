@@ -106,6 +106,12 @@
         cursor: pointer;
         color: inherit;
     }
+    button.disabled {
+        color: #888;
+        opacity: 0.5;
+        cursor: default;
+        pointer-events: none;
+    }
     button.saved {
         color: #888;
         opacity: 0.5;
