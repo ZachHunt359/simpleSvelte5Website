@@ -1336,6 +1336,69 @@
       regenerating = false;
     }
   }
+
+  // Run ensure-youtube script and refresh tree
+  let ensuringYouTube = false;
+  async function ensureYouTubeEntries() {
+    ensuringYouTube = true;
+    regenerateStatus = '';
+    try {
+      const res = await fetch('/api/admin/panels/ensure-youtube', { method: 'POST', credentials: 'same-origin' });
+      if (!res.ok) {
+        regenerateStatus = `Ensure YouTube failed: ${res.status}`;
+      } else {
+        const data = await res.json().catch(() => ({}));
+        regenerateStatus = data && data.success ? 'YouTube entries ensured successfully.' : (data && data.error) || 'YouTube entries processed.';
+        // Refresh the tree after ensuring YouTube entries
+        await fetchPanelsFiles();
+      }
+    } catch (err: any) {
+      regenerateStatus = `Ensure YouTube error: ${err?.message || String(err)}`;
+    } finally {
+      ensuringYouTube = false;
+    }
+  }
+
+  // Simplified upload: flatten all files into chapter-1/mobile
+  async function handleFlattenedUpload() {
+    if (!filesToUpload.length) return;
+    uploading = true; uploadError = ''; uploadSuccess = '';
+    overallProgress = 1;
+    filesCompletedSinceLastCalc = 0;
+    uploadStartTime = null;
+    lastUpdateTime = null;
+    lastBytesSeen = 0;
+    emaBytesPerSec = 0;
+    bpsSamples = [];
+    overallETA = -1;
+
+    let anyFailure = false;
+    for (let i = 0; i < filesToUpload.length; i++) {
+      const file = filesToUpload[i];
+      // Force all files into chapter-1/mobile, preserving only the filename
+      const fileName = file.name;
+      const targetPath = `chapter-1/mobile/${fileName}`;
+      
+      file._uploadProgress = 0;
+      file._status = 'queued';
+      updateOverallProgress();
+      const ok = await uploadWithRetries(file, targetPath, 3);
+      if (!ok) {
+        anyFailure = true;
+        uploadError = uploadError ? uploadError : `Some files failed to upload.`;
+      }
+    }
+    uploading = false;
+    if (!anyFailure) {
+      uploadSuccess = 'Upload complete! Files added to chapter-1/mobile.';
+      overallProgress = 100;
+      setTimeout(() => { overallProgress = 0; updateOverallProgress(); }, 1500);
+      selectedFiles = [];
+      filesToUpload = [];
+      // Refresh the tree
+      await fetchPanelsFiles();
+    }
+  }
 </script>
 
 <section class="prose upload-section">
@@ -1370,8 +1433,14 @@
       <button class="btn btn-primary" type="submit" disabled={uploading || !filesToUpload.length || conflicts.errors.length > 0}>
         {uploading ? 'Uploading...' : 'Upload All'}
       </button>
-      <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={regeneratePanels} disabled={regenerating || savingOrder}>
+      <button type="button" class="btn btn-accent" style="margin-left:0.5rem" on:click={handleFlattenedUpload} disabled={uploading || !filesToUpload.length || conflicts.errors.length > 0}>
+        {uploading ? 'Uploading...' : 'Upload to Ch1/Mobile'}
+      </button>
+      <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={regeneratePanels} disabled={regenerating || savingOrder || ensuringYouTube}>
         {regenerating || savingOrder ? 'Processing...' : 'Regenerate panels'}
+      </button>
+      <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={ensureYouTubeEntries} disabled={ensuringYouTube || regenerating || savingOrder}>
+        {ensuringYouTube ? 'Processing...' : 'Ensure YouTube'}
       </button>
     </div>
   </form>
@@ -1668,6 +1737,21 @@
 }
 .btn-secondary:hover {
   background-color: #374151;
+}
+.btn-secondary:disabled {
+  background-color: #4b5563;
+  color: #9ca3af;
+}
+.btn-accent {
+  background-color: #059669;
+  color: white;
+}
+.btn-accent:hover {
+  background-color: #047857;
+}
+.btn-accent:disabled {
+  background-color: #4b5563;
+  color: #9ca3af;
 }
 .btn-xs {
   padding: 0.25rem 0.5rem;
