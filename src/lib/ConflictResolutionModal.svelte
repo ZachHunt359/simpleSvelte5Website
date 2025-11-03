@@ -23,18 +23,23 @@
   // Track preview URLs for existing files (from server)
   let existingFilePreviews: Record<string, string> = {};
   
+  // Track if we've initialized for the current set of conflicts
+  let initializedForConflicts = '';
+  
   // Initialize with default choice (skip individual files, user must choose)
   $: {
-    if (conflicts.length > 0) {
+    // Create a unique key for the current conflicts to prevent re-initialization
+    const conflictsKey = conflicts.map(c => c.existingPath).join('|');
+    
+    if (conflicts.length > 0 && conflictsKey !== initializedForConflicts) {
+      initializedForConflicts = conflictsKey;
       resolutions = {};
       newFilePreviews = {};
       existingFilePreviews = {};
       
       conflicts.forEach(c => {
         const key = c.existingPath;
-        if (!(key in resolutions)) {
-          resolutions[key] = 'skip';
-        }
+        resolutions[key] = 'skip';
         
         // Create preview URL for new file if it's an image
         if (c.file.type.startsWith('image/')) {
