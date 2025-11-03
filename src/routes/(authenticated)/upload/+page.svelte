@@ -2,6 +2,7 @@
   import UploadSummary from '$lib/UploadSummary.svelte';
   // import ThumbnailGallery from '$lib/ThumbnailGallery.svelte';
   import ChapterTree from '$lib/ChapterTree.svelte';
+  import ConflictResolutionModal from '$lib/ConflictResolutionModal.svelte';
   import { analyzeConflicts, getExistingPanels, preprocessFiles, type ConflictAnalysis } from '$lib/uploadValidation';
   
   let selectedFiles: File[] = [];
@@ -21,6 +22,17 @@
   let conflicts: ConflictAnalysis = { duplicates: [], missing: [], errors: [], warnings: [], mismatched: [] };
   let validationInProgress = false;
   let totalSize = 0;
+  
+  // Conflict resolution modal state
+  let showConflictModal = false;
+  let conflictUploadMode: 'regular' | 'flattened' = 'regular'; // Track which upload mode triggered conflicts
+  let pendingConflicts: Array<{
+    file: File;
+    existingPath: string;
+    size: number;
+    existingSize?: number;
+  }> = [];
+  let conflictResolutions: Record<string, 'keep-existing' | 'replace' | 'keep-both' | 'skip'> = {};
   // Overall upload progress (0-100)
   let overallProgress = 0;
   // ETA (seconds remaining), -1 when unknown
@@ -345,6 +357,10 @@
       // Analyze conflicts with enhanced validation
       conflicts = await analyzeConflicts(selectedFiles, existingFiles);
       
+      // Detect actual file conflicts (duplicates that need resolution)
+      pendingConflicts = [];
+      conflictResolutions = {};
+      
       // Determine the selected folder name (top-level)
       let topFolder = '';
       if (selectedFiles.length > 0) {
@@ -356,7 +372,31 @@
   if (treeDebug) console.log('[validateFiles] selectedFiles sample:', selectedFiles.slice(0,3));
       // Normalize all existing file paths to use forward slashes
       const normalizedExisting = existingFiles.map(f => f.replace(/\\/g, '/'));
-      // Filter files (remove duplicates)
+      
+      // Build conflicts list for modal
+      for (const file of selectedFiles) {
+        let relPath = file.webkitRelativePath || file.name;
+        if (topFolder && relPath.startsWith(topFolder + '/')) relPath = relPath.slice(topFolder.length + 1);
+        if (topFolder && relPath.startsWith(topFolder + "\\")) relPath = relPath.slice(topFolder.length + 1);
+        relPath = relPath.replace(/\\/g, '/');
+        
+        if (normalizedExisting.includes(relPath)) {
+          // Found a conflict - try to get existing file size
+          const existingFile = panelsFiles.find(pf => {
+            const pfPath = (pf.webkitRelativePath || pf.name || '').replace(/\\/g, '/');
+            return pfPath.endsWith(relPath) || pfPath === relPath;
+          });
+          
+          pendingConflicts.push({
+            file,
+            existingPath: relPath,
+            size: file.size,
+            existingSize: existingFile?.size
+          });
+        }
+      }
+      
+      // Filter files (remove duplicates for now - will be re-added based on resolution)
       filesToUpload = selectedFiles.filter(file => {
         let relPath = file.webkitRelativePath || file.name;
         // Remove the top-level folder from the relative path
@@ -411,6 +451,12 @@
       inferredChapters = [...new Set(
         selectedFiles.map(file => extractChapter(file.webkitRelativePath || file.name)).filter((chapter): chapter is string => chapter !== null)
       )].sort();
+      
+      // Show conflict resolution modal if there are conflicts
+      if (pendingConflicts.length > 0) {
+        conflictUploadMode = 'regular';
+        showConflictModal = true;
+      }
       
     } catch (error) {
       console.error('Error validating files:', error);
@@ -1374,10 +1420,235 @@
       ensuringYouTube = false;
     }
   }
+  
+  // Handle conflict resolution from modal
+  async function handleConflictResolution(event: CustomEvent) {
+    const { resolutions } = event.detail;
+    conflictResolutions = resolutions;
+    showConflictModal = false;
+    
+    if (conflictUploadMode === 'flattened') {
+      // Handle flattened upload mode - prepare files with resolutions applied
+      uploading = true; uploadError = ''; uploadSuccess = '';
+      overallProgress = 1;
+      filesCompletedSinceLastCalc = 0;
+      uploadStartTime = null;
+      lastUpdateTime = null;
+      lastBytesSeen = 0;
+      emaBytesPerSec = 0;
+      bpsSamples = [];
+      overallETA = -1;
+      
+      const filesToProcess: any[] = [];
+      
+      for (const conflict of pendingConflicts) {
+        const resolution = resolutions[conflict.existingPath];
+        
+        if (resolution === 'replace') {
+          // Upload with original name (will replace)
+          filesToProcess.push({
+            name: conflict.file.name,
+            size: conflict.file.size,
+            type: conflict.file.type,
+            _file: conflict.file,
+            _uploadProgress: 0,
+            _status: 'queued',
+            targetPath: `chapter-1/mobile/${conflict.file.name}`,
+            id: `flattened-${conflict.file.name}-${Date.now()}`
+          });
+        } else if (resolution === 'keep-both') {
+          // Upload with versioned name
+          const ext = conflict.file.name.split('.').pop();
+          const baseName = conflict.file.name.slice(0, conflict.file.name.length - (ext ? ext.length + 1 : 0));
+          const versionedName = `${baseName}-v2.${ext}`;
+          
+          filesToProcess.push({
+            name: versionedName,
+            size: conflict.file.size,
+            type: conflict.file.type,
+            _file: conflict.file,
+            _uploadProgress: 0,
+            _status: 'queued',
+            targetPath: `chapter-1/mobile/${versionedName}`,
+            id: `flattened-${versionedName}-${Date.now()}`
+          });
+        }
+        // 'keep-existing' means skip this file
+      }
+      
+      // Process uploads
+      let anyFailure = false;
+      for (let i = 0; i < filesToProcess.length; i++) {
+        const fileObj = filesToProcess[i];
+        fileObj._uploadProgress = 0;
+        fileObj._status = 'queued';
+        const ok = await uploadWithRetries(fileObj, fileObj.targetPath, 3);
+        if (!ok) {
+          anyFailure = true;
+          uploadError = uploadError ? uploadError : `Some files failed to upload.`;
+        }
+      }
+      
+      uploading = false;
+      if (!anyFailure) {
+        // Update _order.json with the newly uploaded files
+        try {
+          const mockFiles = filesToProcess.map(f => ({
+            name: f.name,
+            size: f.size,
+            webkitRelativePath: f.targetPath
+          }));
+          
+          const orders = buildOrdersFromFiles(mockFiles, '');
+          if (Object.keys(orders).length > 0) {
+            await saveFullOrder(orders, false);
+          }
+        } catch (e) {
+          console.warn('Failed to update _order.json after flattened upload', e);
+        }
+        
+        uploadSuccess = 'Upload complete! Files added to chapter-1/mobile.';
+        overallProgress = 100;
+        setTimeout(() => { overallProgress = 0; updateOverallProgress(); }, 1500);
+        selectedFiles = [];
+        filesToUpload = [];
+        await fetchPanelsFiles();
+      }
+      return;
+    }
+    
+    // Regular upload mode - process resolutions and update filesToUpload
+    const topFolder = selectedFiles.length > 0 ? (selectedFiles[0].webkitRelativePath || selectedFiles[0].name).split(/\\|\//)[0] : '';
+    
+    for (const conflict of pendingConflicts) {
+      const resolution = resolutions[conflict.existingPath];
+      
+      if (resolution === 'replace') {
+        // Add to filesToUpload - will overwrite existing
+        let relPath = conflict.file.webkitRelativePath || conflict.file.name;
+        if (topFolder && relPath.startsWith(topFolder + '/')) relPath = relPath.slice(topFolder.length + 1);
+        if (topFolder && relPath.startsWith(topFolder + "\\")) relPath = relPath.slice(topFolder.length + 1);
+        
+        const fileObj: any = {
+          name: conflict.file.name,
+          webkitRelativePath: relPath.replace(/\\/g, '/'),
+          size: conflict.file.size,
+          type: conflict.file.type,
+          id: `${relPath}-${Date.now()}`,
+          _isNew: true,
+          _file: conflict.file,
+          _uploadProgress: 0,
+          _status: 'queued',
+          _replaceExisting: true // Flag to indicate this should replace
+        };
+        filesToUpload.push(fileObj);
+      } else if (resolution === 'keep-both') {
+        // Add with versioned name
+        let relPath = conflict.file.webkitRelativePath || conflict.file.name;
+        if (topFolder && relPath.startsWith(topFolder + '/')) relPath = relPath.slice(topFolder.length + 1);
+        if (topFolder && relPath.startsWith(topFolder + "\\")) relPath = relPath.slice(topFolder.length + 1);
+        
+        // Generate versioned filename
+        const ext = conflict.file.name.split('.').pop();
+        const baseName = conflict.file.name.slice(0, conflict.file.name.length - (ext ? ext.length + 1 : 0));
+        const versionedName = `${baseName}-v2.${ext}`;
+        const versionedPath = relPath.replace(conflict.file.name, versionedName);
+        
+        const fileObj: any = {
+          name: versionedName,
+          webkitRelativePath: versionedPath.replace(/\\/g, '/'),
+          size: conflict.file.size,
+          type: conflict.file.type,
+          id: `${versionedPath}-${Date.now()}`,
+          _isNew: true,
+          _file: conflict.file,
+          _uploadProgress: 0,
+          _status: 'queued',
+          _versionedUpload: true // Flag to indicate versioned upload
+        };
+        filesToUpload.push(fileObj);
+      }
+      // 'keep-existing' means do nothing - file is already filtered out
+    }
+    
+    // Sort and update
+    filesToUpload.sort((A, B) => {
+      const aPath = (A.webkitRelativePath || A.name || '').replace(/\\/g, '/');
+      const bPath = (B.webkitRelativePath || B.name || '').replace(/\\/g, '/');
+      return naturalCompare(aPath, bPath);
+    });
+    
+    // Recalculate total size
+    const { totalValidSize } = preprocessFiles(filesToUpload);
+    totalSize = totalValidSize;
+    
+    uploadSuccess = `Resolved ${pendingConflicts.length} conflict${pendingConflicts.length === 1 ? '' : 's'}. Ready to upload.`;
+  }
+  
+  function handleConflictCancel() {
+    showConflictModal = false;
+    pendingConflicts = [];
+    conflictResolutions = {};
+    selectedFiles = [];
+    filesToUpload = [];
+    uploadError = 'Upload cancelled due to file conflicts.';
+  }
 
   // Simplified upload: flatten all files into chapter-1/mobile
   async function handleFlattenedUpload() {
     if (!selectedFiles.length) return;
+    
+    // Check for conflicts first
+    try {
+      loadingExisting = true;
+      const res = await fetch('/api/panels/list', { credentials: 'same-origin' });
+      if (!res.ok) {
+        uploadError = `Failed to fetch existing files: ${res.status}`;
+        loadingExisting = false;
+        return;
+      }
+      const existingFilesList = await res.json();
+      loadingExisting = false;
+      
+      // Normalize existing files to forward slashes
+      const normalizedExisting = existingFilesList.map((f: string) => f.replace(/\\/g, '/'));
+      
+      // Check for conflicts in chapter-1/mobile
+      const flattenedConflicts = [];
+      for (const file of selectedFiles) {
+        const targetPath = `chapter-1/mobile/${file.name}`;
+        
+        if (normalizedExisting.includes(targetPath)) {
+          // Found a conflict - get existing file size
+          const existingFile = panelsFiles.find(pf => {
+            const pfPath = (pf.webkitRelativePath || pf.name || '').replace(/\\/g, '/');
+            return pfPath === targetPath || pfPath.endsWith(targetPath);
+          });
+          
+          flattenedConflicts.push({
+            file,
+            existingPath: targetPath,
+            size: file.size,
+            existingSize: existingFile?.size
+          });
+        }
+      }
+      
+      // If conflicts found, show modal
+      if (flattenedConflicts.length > 0) {
+        pendingConflicts = flattenedConflicts;
+        conflictResolutions = {};
+        conflictUploadMode = 'flattened';
+        showConflictModal = true;
+        return; // Wait for user resolution
+      }
+    } catch (e) {
+      console.error('Failed to check conflicts:', e);
+      uploadError = 'Failed to check for conflicts.';
+      return;
+    }
+    
+    // No conflicts, proceed with upload
     uploading = true; uploadError = ''; uploadSuccess = '';
     overallProgress = 1;
     filesCompletedSinceLastCalc = 0;
@@ -1416,6 +1687,23 @@
     }
     uploading = false;
     if (!anyFailure) {
+      // Update _order.json with the newly uploaded files
+      try {
+        // Build a fake file list for chapter-1/mobile with proper structure
+        const mockFiles = selectedFiles.map(f => ({
+          name: f.name,
+          size: f.size,
+          webkitRelativePath: `chapter-1/mobile/${f.name}`
+        }));
+        
+        const orders = buildOrdersFromFiles(mockFiles, '');
+        if (Object.keys(orders).length > 0) {
+          await saveFullOrder(orders, false);
+        }
+      } catch (e) {
+        console.warn('Failed to update _order.json after flattened upload', e);
+      }
+      
       uploadSuccess = 'Upload complete! Files added to chapter-1/mobile.';
       overallProgress = 100;
       setTimeout(() => { overallProgress = 0; updateOverallProgress(); }, 1500);
@@ -1588,6 +1876,14 @@
     </div>
   {/if}
 </section>
+
+<!-- Conflict Resolution Modal -->
+<ConflictResolutionModal 
+  bind:visible={showConflictModal}
+  conflicts={pendingConflicts}
+  on:resolve={handleConflictResolution}
+  on:cancel={handleConflictCancel}
+/>
 
 <style>
 .upload-section { 
