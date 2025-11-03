@@ -1181,7 +1181,21 @@
         }
       };
       // Use replace=true to ensure metadata updates are persisted for this chapter
+      console.log('[togglePublish] Saving panel publish state for chapter:', slug);
       await saveFullOrder(ordersForChapter, true);
+      
+      // Auto-run Ensure YouTube to position YouTube entries correctly
+      console.log('[togglePublish] Running Ensure YouTube...');
+      try {
+        await ensureYouTubeEntries(true); // silent mode - no status messages
+      } catch (err) {
+        console.warn('[togglePublish] Ensure YouTube failed:', err);
+      }
+      
+      // Refresh panels files to reflect changes
+      console.log('[togglePublish] Refreshing panels files...');
+      await fetchPanelsFiles();
+      console.log('[togglePublish] Complete');
     } catch (e) {
       console.warn('Failed to persist panel publish override', e);
     }
@@ -1201,12 +1215,27 @@
     panelsOrderMap = { ...panelsOrderMap, [slug]: { ...(panelsOrderMap[slug] || {}), published: desired } };
     const payload = { orders: { [slug]: { published: desired } } };
     try {
+      console.log('[togglePublishChapter] Saving chapter publish state:', { chapter, slug, desired });
       const res = await fetch('/api/admin/panels/order', { method: 'POST', body: JSON.stringify(payload), headers: { 'content-type': 'application/json' }, credentials: 'same-origin' });
       if (!res.ok) {
         console.warn('Failed to persist chapter publish flag:', res.status);
         // revert optimistic update
         panelsOrderMap = { ...panelsOrderMap, [slug]: { ...(panelsOrderMap[slug] || {}), published: current } };
+        return;
       }
+      
+      // Auto-run Ensure YouTube to position YouTube entries correctly
+      console.log('[togglePublishChapter] Running Ensure YouTube...');
+      try {
+        await ensureYouTubeEntries(true); // silent mode - no status messages
+      } catch (err) {
+        console.warn('[togglePublishChapter] Ensure YouTube failed:', err);
+      }
+      
+      // Refresh panels files to reflect changes
+      console.log('[togglePublishChapter] Refreshing panels files...');
+      await fetchPanelsFiles();
+      console.log('[togglePublishChapter] Complete');
     } catch (e) {
       console.warn('Failed to persist chapter publish flag', e);
       // revert optimistic update
@@ -1339,21 +1368,21 @@
 
   // Run ensure-youtube script and refresh tree
   let ensuringYouTube = false;
-  async function ensureYouTubeEntries() {
+  async function ensureYouTubeEntries(silent = false) {
     ensuringYouTube = true;
-    regenerateStatus = '';
+    if (!silent) regenerateStatus = '';
     try {
       const res = await fetch('/api/admin/panels/ensure-youtube', { method: 'POST', credentials: 'same-origin' });
       if (!res.ok) {
-        regenerateStatus = `Ensure YouTube failed: ${res.status}`;
+        if (!silent) regenerateStatus = `Ensure YouTube failed: ${res.status}`;
       } else {
         const data = await res.json().catch(() => ({}));
-        regenerateStatus = data && data.success ? 'YouTube entries ensured successfully.' : (data && data.error) || 'YouTube entries processed.';
+        if (!silent) regenerateStatus = data && data.success ? 'YouTube entries ensured successfully.' : (data && data.error) || 'YouTube entries processed.';
         // Refresh the tree after ensuring YouTube entries
         await fetchPanelsFiles();
       }
     } catch (err: any) {
-      regenerateStatus = `Ensure YouTube error: ${err?.message || String(err)}`;
+      if (!silent) regenerateStatus = `Ensure YouTube error: ${err?.message || String(err)}`;
     } finally {
       ensuringYouTube = false;
     }
@@ -1446,11 +1475,8 @@
       <button type="button" class="btn btn-accent" style="margin-left:0.5rem" on:click={handleFlattenedUpload} disabled={uploading || selectedFiles.length === 0}>
         {uploading ? 'Uploading...' : 'Upload to Ch1/Mobile'}
       </button>
-      <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={regeneratePanels} disabled={regenerating || savingOrder || ensuringYouTube}>
-        {regenerating || savingOrder ? 'Processing...' : 'Regenerate panels'}
-      </button>
-      <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={ensureYouTubeEntries} disabled={ensuringYouTube || regenerating || savingOrder}>
-        {ensuringYouTube ? 'Processing...' : 'Ensure YouTube'}
+      <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={regeneratePanels} disabled={regenerating || ensuringYouTube}>
+        {regenerating ? 'Processing...' : 'Regenerate panels'}
       </button>
     </div>
   </form>
