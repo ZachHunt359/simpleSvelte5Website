@@ -262,39 +262,42 @@
     } catch (_) {}
   }
 
+  // Shared helper to map file entries for order saving
+  // Preserves YouTube entries, published flags, and publishDate metadata
+  // cleanPath: if true, remove /panels/ prefix and ?v= query params
+  function mapOrderEntry(f: any, cleanPath = false) {
+    // Handle YouTube entries specially
+    if (f.type === 'youtube' && f.youtubeId) {
+      return { type: 'youtube', id: f.youtubeId, title: f.title, published: f.published || false };
+    }
+    
+    let path = (f.webkitRelativePath || f.name || '').toString();
+    if (cleanPath) {
+      path = path.replace(/^\/panels\//, '').replace(/\?v=.*$/, '');
+    }
+    
+    // Check if there's any metadata to preserve
+    const hasMeta = ('published' in f) || ('publishDate' in f);
+    if (hasMeta) {
+      const out: any = { path };
+      if ('published' in f) out.published = !!f.published;
+      if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
+      return out;
+    }
+    
+    // Otherwise save as string (existing files default to published in generation script)
+    return path;
+  }
+
   // Save full order: dispatch 'saveOrder' with normalized mapping
   function saveFullOrder() {
     const orders: Record<string, any> = {};
     Object.keys(chapterMap).forEach(ch => {
       const slug = slugifyChapterKey(ch);
-      // Preserve metadata if present (published/publishDate) by emitting objects for those entries
-      function mapEntry(f:any) {
-        // Handle YouTube entries specially
-        if (f.type === 'youtube' && f.youtubeId) {
-          const out: any = {
-            type: 'youtube',
-            id: f.youtubeId
-          };
-          if (f.title) out.title = f.title;
-          if ('published' in f) out.published = !!f.published;
-          if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
-          return out;
-        }
-        
-        const rel = (f.webkitRelativePath || f.name || '').toString().replace(/^\/panels\//, '').replace(/\?v=.*$/, '');
-        const hasMeta = ('published' in f) || ('publishDate' in f);
-        if (hasMeta) {
-          const out: any = { path: rel };
-          if ('published' in f) out.published = !!f.published;
-          if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
-          return out;
-        }
-        return rel;
-      }
       orders[slug] = {
-        desktop: (chapterMap[ch].desktop || []).map(mapEntry),
-        mobile: (chapterMap[ch].mobile || []).map(mapEntry),
-        other: (chapterMap[ch].other || []).map(mapEntry)
+        desktop: (chapterMap[ch].desktop || []).map(mapOrderEntry),
+        mobile: (chapterMap[ch].mobile || []).map(mapOrderEntry),
+        other: (chapterMap[ch].other || []).map(mapOrderEntry)
       };
     });
     dispatch('saveOrder', { orders });
@@ -340,22 +343,11 @@
           const publishTZ = (typeof Intl !== 'undefined' && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : null;
           // dispatch with current chapter ordering so server can persist without losing order
           const slug = slugifyChapterKey(chapter);
-          function mapEntryLocal(f:any) {
-            const rel = (f.webkitRelativePath || f.name || '').toString().replace(/^\/panels\//, '').replace(/\?v=.*$/, '');
-            const hasMeta = ('published' in f) || ('publishDate' in f);
-            if (hasMeta) {
-              const out: any = { path: rel };
-              if ('published' in f) out.published = !!f.published;
-              if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
-              return out;
-            }
-            return rel;
-          }
           const ordersForChapter = {
             [slug]: {
-              desktop: (chapterMap[chapter].desktop || []).map(mapEntryLocal),
-              mobile: (chapterMap[chapter].mobile || []).map(mapEntryLocal),
-              other: (chapterMap[chapter].other || []).map(mapEntryLocal)
+              desktop: (chapterMap[chapter].desktop || []).map(f => mapOrderEntry(f, true)),
+              mobile: (chapterMap[chapter].mobile || []).map(f => mapOrderEntry(f, true)),
+              other: (chapterMap[chapter].other || []).map(f => mapOrderEntry(f, true))
             }
           };
           dispatch('setPublishDate', { file, publishDate, publishTZ, chapter, orders: ordersForChapter });
@@ -433,22 +425,11 @@
           const publishDateIso = (selectedDates && selectedDates[0]) ? selectedDates[0].toISOString() : null;
           const publishTZ = (typeof Intl !== 'undefined' && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : null;
           const slug = slugifyChapterKey(chapter);
-          function mapEntryLocal(f:any) {
-            const rel = (f.webkitRelativePath || f.name || '').toString().replace(/^\/panels\//, '').replace(/\?v=.*$/, '');
-            const hasMeta = ('published' in f) || ('publishDate' in f);
-            if (hasMeta) {
-              const out: any = { path: rel };
-              if ('published' in f) out.published = !!f.published;
-              if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
-              return out;
-            }
-            return rel;
-          }
           const ordersForChapter: any = {
             [slug]: {
-              desktop: (chapterMap[chapter].desktop || []).map(mapEntryLocal),
-              mobile: (chapterMap[chapter].mobile || []).map(mapEntryLocal),
-              other: (chapterMap[chapter].other || []).map(mapEntryLocal)
+              desktop: (chapterMap[chapter].desktop || []).map(f => mapOrderEntry(f, true)),
+              mobile: (chapterMap[chapter].mobile || []).map(f => mapOrderEntry(f, true)),
+              other: (chapterMap[chapter].other || []).map(f => mapOrderEntry(f, true))
             }
           };
           // Attach chapter-level publishDate/tz
@@ -475,23 +456,11 @@
         const publishTZ = (typeof Intl !== 'undefined' && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : null;
         const publishDateIso = input.trim() ? new Date(input).toISOString() : null;
         const slug = slugifyChapterKey(chapter);
-        // local helper used in other branches; define here for the fallback path as well
-        function mapEntryLocal(f:any) {
-          const rel = (f.webkitRelativePath || f.name || '').toString().replace(/^\/panels\//, '').replace(/\?v=.*$/, '');
-          const hasMeta = ('published' in f) || ('publishDate' in f);
-          if (hasMeta) {
-            const out: any = { path: rel };
-            if ('published' in f) out.published = !!f.published;
-            if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
-            return out;
-          }
-          return rel;
-        }
         const ordersForChapter: any = {
           [slug]: {
-            desktop: (chapterMap[chapter].desktop || []).map(mapEntryLocal),
-            mobile: (chapterMap[chapter].mobile || []).map(mapEntryLocal),
-            other: (chapterMap[chapter].other || []).map(mapEntryLocal)
+            desktop: (chapterMap[chapter].desktop || []).map(f => mapOrderEntry(f, true)),
+            mobile: (chapterMap[chapter].mobile || []).map(f => mapOrderEntry(f, true)),
+            other: (chapterMap[chapter].other || []).map(f => mapOrderEntry(f, true))
           }
         };
         if (publishDateIso) { ordersForChapter[slug].publishDate = publishDateIso; ordersForChapter[slug].publishTZ = publishTZ; }
@@ -576,13 +545,7 @@
                         console.log('🎯 [TREE] OTHER finalize START:', item.title);
                         chapterMap[item.title].other = e.detail.items; 
                         chapterMap = { ...chapterMap }; 
-                        // Map entries properly: YouTube as objects, files as paths
-                        const order = e.detail.items.map((f:any) => {
-                          if (f.type === 'youtube' && f.youtubeId) {
-                            return { type: 'youtube', id: f.youtubeId, title: f.title, published: f.published || false };
-                          }
-                          return f.webkitRelativePath || f.name;
-                        });
+                        const order = e.detail.items.map(mapOrderEntry);
                         console.log('📤 [TREE] Dispatching orderChange:', { chapter: item.title, device: 'other', orderLength: order.length });
                         dispatch('orderChange', { chapter: item.title, device: 'other', order }); 
                       }}
@@ -623,13 +586,7 @@
                         console.log('🎯 [TREE] DESKTOP finalize START:', item.title);
                         chapterMap[item.title].desktop = e.detail.items; 
                         chapterMap = { ...chapterMap }; 
-                        // Map entries properly: YouTube as objects, files as paths
-                        const order = e.detail.items.map((f:any) => {
-                          if (f.type === 'youtube' && f.youtubeId) {
-                            return { type: 'youtube', id: f.youtubeId, title: f.title, published: f.published || false };
-                          }
-                          return f.webkitRelativePath || f.name;
-                        });
+                        const order = e.detail.items.map(mapOrderEntry);
                         console.log('📤 [TREE] Dispatching orderChange:', { chapter: item.title, device: 'desktop', orderLength: order.length });
                         dispatch('orderChange', { chapter: item.title, device: 'desktop', order }); 
                       }}
@@ -684,13 +641,7 @@
                         console.log('🎯 [TREE] MOBILE finalize START:', item.title);
                         chapterMap[item.title].mobile = e.detail.items; 
                         chapterMap = { ...chapterMap }; 
-                        // Map entries properly: YouTube as objects, files as paths
-                        const order = e.detail.items.map((f:any) => {
-                          if (f.type === 'youtube' && f.youtubeId) {
-                            return { type: 'youtube', id: f.youtubeId, title: f.title, published: f.published || false };
-                          }
-                          return f.webkitRelativePath || f.name;
-                        });
+                        const order = e.detail.items.map(mapOrderEntry);
                         console.log('📤 [TREE] Dispatching orderChange:', { chapter: item.title, device: 'mobile', orderLength: order.length });
                         dispatch('orderChange', { chapter: item.title, device: 'mobile', order }); 
                       }}

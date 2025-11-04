@@ -1411,8 +1411,10 @@
       } else {
         const data = await res.json().catch(() => ({}));
         if (!silent) regenerateStatus = data && data.success ? 'YouTube entries ensured successfully.' : (data && data.error) || 'YouTube entries processed.';
-        // Refresh the tree after ensuring YouTube entries
-        await fetchPanelsFiles();
+        // Only refresh if not in silent mode (to avoid race conditions with publish toggles)
+        if (!silent) {
+          await fetchPanelsFiles();
+        }
       }
     } catch (err: any) {
       if (!silent) regenerateStatus = `Ensure YouTube error: ${err?.message || String(err)}`;

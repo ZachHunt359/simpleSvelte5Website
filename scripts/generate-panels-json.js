@@ -183,25 +183,26 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
         ordered = all.sort(numericSort);
       }
 
-      // Filter: default to NOT published unless explicitly marked published=true or publishDate reached
+      // Filter: default to published for existing files unless explicitly marked published=false or future publishDate
       const now = Date.now();
       ordered = ordered.filter(entry => {
         // If a chapter-level publishDate or published flag is set, items without their own publishDate may inherit
         if (entry && typeof entry === 'object') {
           // youtube structured object
           if (entry.type === 'youtube') {
-            if (entry.published === true) return true;
+            if ('published' in entry) return entry.published === true;
             if (entry.publishDate) {
               const pd = Date.parse(String(entry.publishDate));
               if (!isNaN(pd) && pd <= now) return true;
               return false;
             }
-            if (chapterPublished === true) return true;
+            if (chapterPublished !== undefined) return chapterPublished === true;
             if (chapterPublishDate) {
               const cp = Date.parse(String(chapterPublishDate));
               if (!isNaN(cp) && cp <= now) return true;
+              return false;
             }
-            return false;
+            return true; // default to published
           }
           // object with path metadata
           if (entry.path) {
@@ -211,22 +212,23 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
               if (!isNaN(pd) && pd <= now) return true;
               return false;
             }
-            if (chapterPublished === true) return true;
+            if (chapterPublished !== undefined) return chapterPublished === true;
             if (chapterPublishDate) {
               const cp = Date.parse(String(chapterPublishDate));
               if (!isNaN(cp) && cp <= now) return true;
+              return false;
             }
-            return false;
+            return true; // default to published
           }
-          return false;
+          return true; // default to published
         }
-        // string path - include only when chapter-level published flag is true or chapter publishDate reached
-        if (chapterPublished === true) return true;
+        // string path - default to published unless chapter-level flags explicitly hide it
+        if (chapterPublished === false) return false;
         if (chapterPublishDate) {
           const cp = Date.parse(String(chapterPublishDate));
-          if (!isNaN(cp) && cp <= now) return true;
+          if (!isNaN(cp) && cp > now) return false; // future publish date
         }
-        return false;
+        return true; // default to published
       });
 
       // Convert to /panels/<rel>?v=<mtime> OR leave structured objects (e.g. youtube)
