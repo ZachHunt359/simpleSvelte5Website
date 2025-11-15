@@ -25,13 +25,6 @@
             dispatch('show', true);
         }
     }}
-    on:mouseleave={() => {
-        if (isDesktop) {
-            show = false;
-            dispatch('show', false);
-        }
-    }}
-    
 >
     <ul>
         <li>

@@ -21,12 +21,6 @@
             dispatch('show', true);
         }
     }}
-    on:mouseleave={() => {
-        if (isDesktop) {
-            show = false;
-            dispatch('show', false);
-        }
-    }}
     style="pointer-events: {show ? 'auto' : 'none'}"
 >
     <ul>

@@ -187,25 +187,29 @@
     function showNav(setter: (v: boolean) => void, timeoutVar: 'bottom' | 'top') {
         setter(true);
         if (timeoutVar === 'bottom') {
-            if (bottomNavTimeout) clearTimeout(bottomNavTimeout);
-            bottomNavTimeout = setTimeout(() => {
-                setter(false);
-                const nav = document.querySelector('.bottom-nav.show');
-                if (nav && nav.contains(document.activeElement)) {
-                    (document.activeElement as HTMLElement).blur();
-                }
-                //('BottomNav auto-hid');
-            }, 5000);
+            // Only reset timer if there isn't already one running
+            if (!bottomNavTimeout) {
+                bottomNavTimeout = setTimeout(() => {
+                    setter(false);
+                    const nav = document.querySelector('.bottom-nav.show');
+                    if (nav && nav.contains(document.activeElement)) {
+                        (document.activeElement as HTMLElement).blur();
+                    }
+                    bottomNavTimeout = null;
+                }, 3000);
+            }
         } else {
-            if (topNavTimeout) clearTimeout(topNavTimeout);
-            topNavTimeout = setTimeout(() => {
-                setter(false);
-                const nav = document.querySelector('.top-nav.show');
-                if (nav && nav.contains(document.activeElement)) {
-                    (document.activeElement as HTMLElement).blur();
-                }
-                //console.log('TopNav auto-hid');
-            }, 5000);
+            // Only reset timer if there isn't already one running
+            if (!topNavTimeout) {
+                topNavTimeout = setTimeout(() => {
+                    setter(false);
+                    const nav = document.querySelector('.top-nav.show');
+                    if (nav && nav.contains(document.activeElement)) {
+                        (document.activeElement as HTMLElement).blur();
+                    }
+                    topNavTimeout = null;
+                }, 3000);
+            }
         }
     }
 
@@ -553,8 +557,7 @@
 {#if isPointerDesktop}
     <div
         class="nav-hover-zone top"
-        on:mouseenter={() => showTopNav = true}
-        on:mouseleave={() => showTopNav = false}
+        on:mouseenter={() => showNav(v => showTopNav = v, 'top')}
         role="presentation"
     ></div>
 {/if}
@@ -589,8 +592,7 @@
 {#if isPointerDesktop}
     <div
         class="nav-hover-zone bottom"
-        on:mouseenter={() => showBottomNav = true}
-        on:mouseleave={() => showBottomNav = false}
+        on:mouseenter={() => showNav(v => showBottomNav = v, 'bottom')}
         role="presentation"
     ></div>
 {/if}
