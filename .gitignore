@@ -47,6 +47,7 @@ scripts/reorg-upload-hardcode.ps1
 scripts/reorg-upload.ps1
 build/logs/server.log
 static/panels.json
+static/inquiry-images/
 
 # Build & generated artifacts
 .svelte-kit/
@@ -56,3 +57,4 @@ build/logs/
 # Node modules and env
 node_modules/
 .env
+data/db.db

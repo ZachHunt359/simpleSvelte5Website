@@ -8,7 +8,9 @@ export async function load(event) {
     try {
       // Defense-in-depth: ensure caller is admin before returning inquiries
       const admin = await isAdmin(event.cookies);
-      if (!admin) throw redirect(303, '/login');
+      if (!admin) {
+        throw redirect(303, '/login');
+      }
 
       const rows = await query(`
         SELECT
@@ -18,6 +20,7 @@ export async function load(event) {
           Message as message,
           Email as email,
           Reply as reply,
+          ReplyImageUrl as replyImageUrl,
           SeenByUser as seenByUser,
           CAST(MessTimestamp AS INTEGER) AS timestamp,
           ReplyTimestamp AS replyTimestamp

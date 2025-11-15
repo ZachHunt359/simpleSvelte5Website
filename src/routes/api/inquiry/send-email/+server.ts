@@ -63,6 +63,10 @@ export const POST: RequestHandler = async ({ request }) => {
       return new Response(JSON.stringify({ error: 'Missing fields' }), { status: 400 });
     }
 
+    // Fetch the image URL from the database
+    const inquiryRow = await get('SELECT ReplyImageUrl FROM Inquiries WHERE Id = ?', [id]);
+    const imageUrl = inquiryRow?.ReplyImageUrl || null;
+
     // Rate-limit and SendAttempts table handling
     try {
       await run('CREATE TABLE IF NOT EXISTS SendAttempts (Id INTEGER PRIMARY KEY AUTOINCREMENT, InquiryId INTEGER NOT NULL, AttemptedAt INTEGER NOT NULL, Success INTEGER NOT NULL, MessageId TEXT, Response TEXT)');
@@ -77,13 +81,23 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     const fromHeader = (process.env.SMTP_FROM || process.env.SMTP_USER || '"Comic Replies" <no-reply@local>').toString().trim();
+    
+    // Build email text with optional image
+    let emailText = `Your question:\n${message}\n\nOur reply:\n${reply}`;
+    if (imageUrl) {
+      // Get the full URL for the image
+      const baseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:5173';
+      const fullImageUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`;
+      emailText += `\n\nImage attachment: ${fullImageUrl}`;
+    }
+
     let info;
     try {
       info = await transporter.sendMail({
         from: fromHeader,
         to: email,
         subject: 'Reply to your inquiry',
-        text: `Your question:\n${message}\n\nOur reply:\n${reply}`
+        text: emailText
       });
     } catch (e: any) {
       // Log with richer details for diagnosis

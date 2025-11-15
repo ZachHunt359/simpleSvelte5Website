@@ -72,11 +72,10 @@ export const cookie: AuthAdapter = {
   const epoch = Math.floor(Date.now() / 1000);
   const expiresAt = epoch + SESSION_MAX_AGE;
 
+  // Use REPLACE for SQLite compatibility (works in both SQLite and MySQL)
   await run(`
-    INSERT INTO Sessions (Token, UserId, CreatedAt, ExpiresAt)
+    REPLACE INTO Sessions (Token, UserId, CreatedAt, ExpiresAt)
     VALUES (?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-    Token = VALUES(Token), CreatedAt = VALUES(CreatedAt), ExpiresAt = VALUES(ExpiresAt)
   `, [sessionToken, String(row.Id), epoch, expiresAt]);
 
   // set cookie as "<userId>:<sessionToken>"

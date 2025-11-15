@@ -682,6 +682,10 @@
                         <li>
                             <strong>Q:</strong> {reply.message}<br>
                             <strong>A:</strong> {reply.reply}
+                            {#if reply.replyImageUrl}
+                                <br>
+                                <img src={reply.replyImageUrl} alt="Reply attachment" class="reply-notification-image" />
+                            {/if}
                             <br>
                             <button class="btn btn-warning btn-xs" on:click={() => clearSingleReply(reply.id)}>Clear</button>
                         </li>
@@ -792,6 +796,13 @@
     .nav-hover-zone.bottom {
         bottom: 0;
         left: 0;
+    }
+    .reply-notification-image {
+        max-width: 300px;
+        max-height: 200px;
+        margin: 0.5rem 0;
+        border-radius: 0.5rem;
+        display: block;
     }
 </style>
 

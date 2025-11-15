@@ -15,6 +15,7 @@ export const GET: RequestHandler = async ({ url }) => {
           Message AS message,
           Email AS email,
           Reply AS reply,
+          ReplyImageUrl AS replyImageUrl,
           SeenByUser AS seen,
           CAST(MessTimestamp AS INTEGER) AS messTimestamp,
           ReplyTimestamp AS replyTimestamp

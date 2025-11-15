@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { applyAction, enhance } from "$app/forms";
-	import { session } from "$lib/stores/session";
 	import { faWarning } from "@fortawesome/free-solid-svg-icons";
 	import debug from "debug";
 	import Fa from "svelte-fa";
@@ -17,12 +15,7 @@
 	<form
 		class="flex flex-col gap-6 my-6"
 		method="POST"
-		use:enhance={() =>
-			async ({ result }) => {
-				// No need to manually update session or goto
-				await applyAction(result);
-			}
-		}
+		data-sveltekit-reload
 	>
 		{#if form?.error}
 			<div class="alert alert-error">

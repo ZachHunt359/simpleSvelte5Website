@@ -8,21 +8,10 @@ const log = debug("app:routes:(authenticated):layout");
 
 export async function load(event: LayoutServerLoadEvent) {
     try {
-        // Prefer server-provided user data sources only. Using server-side
-        // values prevents client-side stores from causing stale UI to appear
-        // authenticated when the server does not agree.
-        const parent_user = (await event.parent())?.user;
-        const locals_user = event.locals?.user;
-
-        log("parent_user:", parent_user);
-        log("locals_user:", locals_user);
-
-        const user = locals_user || parent_user;
-
-        log("user:", user);
+        // Use ONLY event.locals.user (set by hooks.server.ts)
+        const user = event.locals?.user;
 
         if (!user) {
-            log("no user, redirecting to /login");
             throw redirect(301, "/login");
         }
 
