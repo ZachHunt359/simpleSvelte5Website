@@ -185,6 +185,7 @@
     }
 
     function showNav(setter: (v: boolean) => void, timeoutVar: 'bottom' | 'top') {
+        let navTimeoutDuration = 2000; //Was 3000 ms
         setter(true);
         if (timeoutVar === 'bottom') {
             // Only reset timer if there isn't already one running
@@ -196,7 +197,7 @@
                         (document.activeElement as HTMLElement).blur();
                     }
                     bottomNavTimeout = null;
-                }, 3000);
+                }, navTimeoutDuration);
             }
         } else {
             // Only reset timer if there isn't already one running
@@ -208,7 +209,7 @@
                         (document.activeElement as HTMLElement).blur();
                     }
                     topNavTimeout = null;
-                }, 3000);
+                }, navTimeoutDuration);
             }
         }
     }
