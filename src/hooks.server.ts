@@ -195,7 +195,9 @@ try {
 
 export const handle: Handle = async ({ event, resolve }) => {
 	try {
+		console.log('[hooks] handle called for:', event.url.pathname);
 		const user = await getUserFromCookies(event.cookies);
+		console.log('[hooks] user from cookies:', user ? `${user.id}:${user.email}` : 'NULL');
 		event.locals.user = user ?? null;
 	} catch (err) {
 		console.error('[hooks] getUserFromCookies error', err);
