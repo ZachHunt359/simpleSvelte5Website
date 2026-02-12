@@ -12,7 +12,7 @@ export async function load(event: LayoutServerLoadEvent) {
         const user = event.locals?.user;
 
         if (!user) {
-            throw redirect(301, "/login");
+            throw redirect(303, "/login");
         }
 
         const admin = await isAdmin(event.cookies);
