@@ -26,10 +26,17 @@ export async function getUserFromCookies(cookies: import('@sveltejs/kit').Cookie
 
 export async function isAdmin(cookies: import('@sveltejs/kit').Cookies) {
   const user = await getUserFromCookies(cookies);
-  if (!user || !user.email) return false;
+  console.log('[helpers.isAdmin] user from cookies:', user ? `${user.id}:${user.email}` : 'NULL');
+  if (!user || !user.email) {
+    console.log('[helpers.isAdmin] returning false - no user or email');
+    return false;
+  }
   try {
     const row = await get('SELECT Id FROM AdminUsers WHERE lower(Email) = lower(?)', [user.email]);
-    return !!row;
+    console.log('[helpers.isAdmin] AdminUsers row:', row);
+    const result = !!row;
+    console.log('[helpers.isAdmin] returning:', result);
+    return result;
   } catch (err) {
     console.error('[auth:helpers] isAdmin db check error', err);
     return false;
