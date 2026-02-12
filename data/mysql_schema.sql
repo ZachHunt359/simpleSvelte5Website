@@ -23,6 +23,7 @@ CREATE TABLE Inquiries (
   Message TEXT NOT NULL,
   Email TEXT,
   Reply TEXT,
+  ReplyImageUrl TEXT,
   SeenByUser TINYINT NOT NULL DEFAULT 0,
   MessTimestamp INT NOT NULL DEFAULT 0,
   ReplyTimestamp INT,
