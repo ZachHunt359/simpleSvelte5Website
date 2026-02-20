@@ -5,8 +5,15 @@
 CREATE DATABASE IF NOT EXISTS `paranoid_DB` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `paranoid_DB`;
 
--- AdminUsers
+-- Drop tables in correct order (child tables before parent tables)
+DROP TABLE IF EXISTS SendAttempts;
+DROP TABLE IF EXISTS Migrations;
+DROP TABLE IF EXISTS Sessions;
+DROP TABLE IF EXISTS InviteCodes;
+DROP TABLE IF EXISTS Inquiries;
 DROP TABLE IF EXISTS AdminUsers;
+
+-- AdminUsers
 CREATE TABLE AdminUsers (
   Id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   Email VARCHAR(255) NOT NULL UNIQUE,
@@ -15,7 +22,6 @@ CREATE TABLE AdminUsers (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Inquiries
-DROP TABLE IF EXISTS Inquiries;
 CREATE TABLE Inquiries (
   Id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   UserId VARCHAR(255) NOT NULL,
@@ -32,7 +38,6 @@ CREATE TABLE Inquiries (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- InviteCodes
-DROP TABLE IF EXISTS InviteCodes;
 CREATE TABLE InviteCodes (
   Code VARCHAR(128) PRIMARY KEY,
   Used TINYINT NOT NULL DEFAULT 0,
@@ -43,7 +48,6 @@ CREATE TABLE InviteCodes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Sessions
-DROP TABLE IF EXISTS Sessions;
 CREATE TABLE Sessions (
   Token VARCHAR(255) PRIMARY KEY,
   UserId VARCHAR(255) NOT NULL,
@@ -53,7 +57,6 @@ CREATE TABLE Sessions (
 CREATE INDEX IX_Sessions_UserId ON Sessions(UserId);
 
 -- SendAttempts
-DROP TABLE IF EXISTS SendAttempts;
 CREATE TABLE SendAttempts (
   Id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   InquiryId INT NOT NULL,
@@ -65,7 +68,6 @@ CREATE TABLE SendAttempts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Migrations tracking table
-DROP TABLE IF EXISTS Migrations;
 CREATE TABLE Migrations (
   Name VARCHAR(255) PRIMARY KEY,
   AppliedAt INT
