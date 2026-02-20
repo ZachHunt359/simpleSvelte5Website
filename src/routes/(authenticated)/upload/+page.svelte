@@ -156,23 +156,42 @@
 
   // Fetch all files in /panels and build a File[] for tree rendering
   async function fetchPanelsFiles() {
+    console.log('[fetchPanelsFiles] Starting fetch...');
     // Fetch file list and _order.json (if present) then reorder files according to _order.json
     const [listRes, orderRes] = await Promise.all([
       fetch('/api/panels/list', { credentials: 'same-origin' }).catch(() => null),
       fetch('/panels/_order.json', { credentials: 'same-origin' }).catch(() => null)
     ]);
     if (!listRes || !listRes.ok) return;
-    const fileList: string[] = await listRes.json();
+    const fileList: string[]  = await listRes.json();
+    console.log('[fetchPanelsFiles] File list length:', fileList.length);
 
     // Load order map if available
     try {
       if (orderRes && orderRes.ok) {
         panelsOrderMap = await orderRes.json();
+        console.log('[fetchPanelsFiles] Loaded _order.json, chapters:', Object.keys(panelsOrderMap));
+        // Log YouTube entries found
+        for (const chapter of Object.keys(panelsOrderMap)) {
+          const chapterData = panelsOrderMap[chapter];
+          for (const device of ['desktop', 'mobile', 'other']) {
+            const arr = chapterData[device] || [];
+            const youtubeEntries = arr.filter((item: any) => 
+              (typeof item === 'object' && item.type === 'youtube') || 
+              (typeof item === 'string' && item.startsWith('youtube:'))
+            );
+            if (youtubeEntries.length > 0) {
+              console.log(`[fetchPanelsFiles] Found ${youtubeEntries.length} YouTube entries in ${chapter}/${device}:`, youtubeEntries);
+            }
+          }
+        }
       } else {
         panelsOrderMap = {};
+        console.log('[fetchPanelsFiles] No _order.json found, using empty map');
       }
     } catch (e) {
       panelsOrderMap = {};
+      console.error('[fetchPanelsFiles] Error loading _order.json:', e);
     }
 
     // Build lookup map for quick access
@@ -1321,6 +1340,8 @@
     if (!url) return;
     const id = extractYouTubeId(url);
     
+    console.log('[handleInsertYouTube] Starting insertion:', { chapter, url, id });
+    
     // Fetch video title from YouTube
     let videoTitle = `YouTube: ${id}`;
     try {
@@ -1337,7 +1358,12 @@
       // Continue with default title
     }
     
+    console.log('[handleInsertYouTube] Video title fetched:', videoTitle);
+    
     const slug = slugifyChapterKey(chapter);
+    
+    console.log('[handleInsertYouTube] Chapter slug:', slug);
+    console.log('[handleInsertYouTube] Current panelsOrderMap for this chapter:', panelsOrderMap && panelsOrderMap[slug]);
     
     // Save to _order.json with the fetched title
     const existingChapter = (panelsOrderMap && panelsOrderMap[slug]) || {};
@@ -1354,10 +1380,19 @@
       ]
     };
     
+    console.log('[handleInsertYouTube] Updated chapter orders:', updatedChapterOrders);
+    console.log('[handleInsertYouTube] Updated "other" array:', updatedChapterOrders.other);
+    
     try {
+      console.log('[handleInsertYouTube] Calling saveFullOrder with:', { [slug]: updatedChapterOrders });
       await saveFullOrder({ [slug]: updatedChapterOrders }, false, false);
+      console.log('[handleInsertYouTube] saveFullOrder completed successfully');
+      
       // Refresh the panels files to show the new YouTube entry
+      console.log('[handleInsertYouTube] Calling fetchPanelsFiles to refresh UI...');
       await fetchPanelsFiles();
+      console.log('[handleInsertYouTube] fetchPanelsFiles completed');
+      
       window.alert(`YouTube video "${videoTitle}" added successfully! You can drag it to reorder within Other Files.`);
     } catch (err) {
       console.error('Failed to save YouTube entry:', err);

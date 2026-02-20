@@ -86,11 +86,13 @@ function mergeInsertExisting(existing: any[], newItems: any[], naturalCompareFn:
 export const POST = async ({ request }) => {
   try {
     const body = await request.json();
+    console.log('[API /panels/order] Received POST request, body:', JSON.stringify(body, null, 2));
     if (!body || typeof body !== 'object') {
       return new Response(JSON.stringify({ error: 'Invalid payload' }), { status: 400 });
     }
 
     const incoming = body.orders || body;
+    console.log('[API /panels/order] Incoming orders:', JSON.stringify(incoming, null, 2));
     if (!incoming || typeof incoming !== 'object') {
       return new Response(JSON.stringify({ error: 'Invalid orders payload' }), { status: 400 });
     }
@@ -143,12 +145,18 @@ export const POST = async ({ request }) => {
       for (const dev of ['desktop', 'mobile', 'other']) {
         const incomingArr = Array.isArray(val[dev]) ? val[dev] : [];
         const existingArr = Array.isArray(normalizedExisting[slug][dev]) ? normalizedExisting[slug][dev] : [];
+        console.log(`[API /panels/order] Merging ${dev} for ${slug}:`, {
+          incomingCount: incomingArr.length,
+          existingCount: existingArr.length,
+          incomingItems: incomingArr.map(i => typeof i === 'object' && i.type === 'youtube' ? `YT:${i.id}` : typeof i === 'string' ? i.substring(0, 30) : JSON.stringify(i).substring(0, 30))
+        });
         if (replace || !existingArr || existingArr.length === 0) {
           // On replace or when no existing ordering, use incoming as provided (preserve objects)
           normalizedExisting[slug][dev] = incomingArr.slice();
         } else {
           // Merge incoming items into existing ordering, preserving existing manual order
           normalizedExisting[slug][dev] = mergeInsertExisting(existingArr, incomingArr, naturalCompare);
+          console.log(`[API /panels/order] After merge, ${dev} for ${slug} has ${normalizedExisting[slug][dev].length} items`);
         }
       }
     }
