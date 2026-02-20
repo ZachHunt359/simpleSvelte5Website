@@ -1223,8 +1223,10 @@
       function getFileDevice(f: any): 'desktop' | 'mobile' | 'other' {
         if (f._device) return f._device;
         const path = f.webkitRelativePath || f.name;
-        if (/\/desktop\//i.test(path)) return 'desktop';
-        if (/\/mobile\//i.test(path)) return 'mobile';
+        // Look for "desktop" or "mobile" as whole words anywhere in path (case-insensitive)
+        // This handles nested folders like "Chapter-1/Desktop/SUBFOLDER/Spread01/..."
+        if (/\bdesktop\b/i.test(path)) return 'desktop';
+        if (/\bmobile\b/i.test(path)) return 'mobile';
         return 'other';
       }
       

@@ -48,8 +48,10 @@
         // Respect explicit device placement (e.g., from _order.json), otherwise infer from path
         let device: DeviceType = file._device || 'other';
         if (!file._device) {
-          if (/\/desktop\//i.test(path)) device = 'desktop';
-          else if (/\/mobile\//i.test(path)) device = 'mobile';
+          // Look for "desktop" or "mobile" as whole words anywhere in path (case-insensitive)
+          // This handles nested folders like "Chapter-1/Desktop/SUBFOLDER/Spread01/..."
+          if (/\bdesktop\b/i.test(path)) device = 'desktop';
+          else if (/\bmobile\b/i.test(path)) device = 'mobile';
         }
         let fileObj: any;
         if (device === 'other') {
