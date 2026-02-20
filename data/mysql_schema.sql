@@ -1,9 +1,7 @@
 -- MariaDB / MySQL schema adapted from newDB.sql
--- Use this file to create the production database on NixiHost (import via phpMyAdmin or mysql CLI)
+-- Use this file to import into an existing database (e.g., paranoid_DB, paranoid_staging_DB)
 -- Note: uses INT AUTO_INCREMENT and UNIX_TIMESTAMP() defaults where appropriate.
-
-CREATE DATABASE IF NOT EXISTS `paranoid_DB` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `paranoid_DB`;
+-- Note: Database must be created and specified externally (e.g., mysql dbname < mysql_schema.sql)
 
 -- Drop tables in correct order (child tables before parent tables)
 DROP TABLE IF EXISTS SendAttempts;
