@@ -41,6 +41,10 @@ function naturalCompare(a: string, b: string) {
 function entryPath(e: any) {
   if (typeof e === 'string') return normalizePath(e);
   if (!e) return '';
+  // Handle YouTube entries specially - use a unique identifier based on their id
+  if (e.type === 'youtube' && e.id) {
+    return `youtube:${e.id}`;
+  }
   return normalizePath(String(e.path || ''));
 }
 
@@ -189,6 +193,16 @@ export const POST = async ({ request }) => {
             for (const item of arr) {
               if (typeof item === 'string') {
                 newArr.push(item);
+                continue;
+              }
+              // YouTube entries should always be preserved as objects
+              if (item && item.type === 'youtube' && item.id) {
+                const clone: any = { ...item };
+                if (chapterPublished !== undefined && ('published' in clone) && clone.published === chapterPublished) {
+                  // redundant, remove
+                  delete clone.published;
+                }
+                newArr.push(clone);
                 continue;
               }
               // item is object like { path, published?, publishDate?, ... }
