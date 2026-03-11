@@ -114,7 +114,7 @@ function naturalCompare(a, b) {
 }
 
 /**
- * Read panel files from filesystem for a given chapter/device
+ * Read panel files from filesystem for a given chapter/device (recursive)
  */
 function readFilesystemPanels(chapter, device) {
     const devicePath = path.join(PANELS_DIR, chapter, device);
@@ -123,14 +123,27 @@ function readFilesystemPanels(chapter, device) {
     }
     
     const files = [];
-    const entries = fs.readdirSync(devicePath);
-    for (const entry of entries) {
-        const fullPath = path.join(devicePath, entry);
-        if (fs.statSync(fullPath).isFile() && /\.(png|jpg|jpeg|gif|webm)$/i.test(entry)) {
-            // Store relative path (chapter/device/filename)
-            files.push(`${chapter}/${device}/${entry}`);
+    
+    // Recursive function to scan directories
+    function scanDirectory(dirPath, relativePath) {
+        const entries = fs.readdirSync(dirPath);
+        for (const entry of entries) {
+            const fullPath = path.join(dirPath, entry);
+            const stats = fs.statSync(fullPath);
+            
+            if (stats.isDirectory()) {
+                // Recursively scan subdirectory
+                scanDirectory(fullPath, path.join(relativePath, entry));
+            } else if (stats.isFile() && /\.(png|jpg|jpeg|gif|webm)$/i.test(entry)) {
+                // Store relative path (chapter/device/subfolder/filename)
+                const relativeFilePath = path.join(relativePath, entry).replace(/\\/g, '/');
+                files.push(relativeFilePath);
+            }
         }
     }
+    
+    // Start scanning from device directory
+    scanDirectory(devicePath, `${chapter}/${device}`);
     
     // Sort using natural comparison
     files.sort(naturalCompare);
