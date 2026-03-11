@@ -213,7 +213,7 @@ mkdir -p static/panels build/logs
 log "Installing dependencies (npm ci)"
 npm ci
 
-# Ensure YouTube entries are in place (reads filesystem directly if needed)
+# Ensure YouTube entries are in place (populates arrays from filesystem if empty)
 log "Ensuring YouTube entries in _order.json"
 npm run ensure-youtube
 

@@ -190,9 +190,27 @@ function ensureYouTubeEntries() {
 
         const array = orderData[chapter][device];
 
+        // If array is empty or only has YouTube entries, populate with filesystem panels first
+        const panelFiles = array.filter(item => typeof item === 'string');
+        const hasOnlyYouTube = panelFiles.length === 0 && array.length > 0;
+        
+        if (array.length === 0 || hasOnlyYouTube) {
+            console.log(`   📂 Array ${hasOnlyYouTube ? 'has only YouTube entries' : 'is empty'}, populating from filesystem...`);
+            const filesystemPanels = readFilesystemPanels(chapter, device);
+            if (filesystemPanels.length > 0) {
+                // Set array to filesystem panels (discarding any stale YouTube entries)
+                orderData[chapter][device] = filesystemPanels;
+                console.log(`   ✅ Populated with ${filesystemPanels.length} panel files from filesystem`);
+                modified = true;
+            }
+        }
+
+        // Get updated array reference after potential filesystem population
+        const updatedArray = orderData[chapter][device];
+
         // Remove any existing instances of this YouTube entry
-        const cleanedArray = removeEntry(array, entry);
-        const wasRemoved = cleanedArray.length !== array.length;
+        const cleanedArray = removeEntry(updatedArray, entry);
+        const wasRemoved = cleanedArray.length !== updatedArray.length;
         
         if (wasRemoved) {
             console.log(`   🧹 Removed existing instance(s)`);
