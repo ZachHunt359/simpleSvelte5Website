@@ -254,9 +254,12 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
 
     // Generate thumbnail in the chapter root
     let thumbnail = '';
-    let lastPanel = desktopFiles.length
-      ? desktopFiles[desktopFiles.length - 1]
-      : (mobileFiles.length ? mobileFiles[mobileFiles.length - 1] : null);
+    // Find last actual panel file (skip YouTube objects)
+    const panelFiles = desktopFiles.filter(f => typeof f === 'string');
+    const mobilePanelFiles = mobileFiles.filter(f => typeof f === 'string');
+    let lastPanel = panelFiles.length
+      ? panelFiles[panelFiles.length - 1]
+      : (mobilePanelFiles.length ? mobilePanelFiles[mobilePanelFiles.length - 1] : null);
 
     if (lastPanel) {
       const lastPanelAbs = path.join(panelsDir, lastPanel.replace(/^\/panels\//, ''));
