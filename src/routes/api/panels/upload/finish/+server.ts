@@ -7,6 +7,26 @@ import { logError, logInfo } from '$lib/logger';
 
 const PANELS_DIR = path.resolve('static/panels');
 
+/**
+ * Normalize upload path: lowercase chapter and device folder names for consistency
+ * Example: "Chapter-1/Desktop/file.png" -> "chapter-1/desktop/file.png"
+ */
+function normalizeUploadPath(relPath: string): string {
+  const parts = relPath.split('/');
+  
+  // Normalize chapter folder (first segment matching chapter-N pattern)
+  if (parts.length > 0 && /^chapter-\d+$/i.test(parts[0])) {
+    parts[0] = parts[0].toLowerCase();
+  }
+  
+  // Normalize device folder (second segment matching desktop/mobile)
+  if (parts.length > 1 && /^(desktop|mobile)$/i.test(parts[1])) {
+    parts[1] = parts[1].toLowerCase();
+  }
+  
+  return parts.join('/');
+}
+
 export const POST: RequestHandler = async ({ request, cookies }) => {
   if (!(await isAdmin(cookies))) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -22,8 +42,11 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     }
 
     // normalize and safety
-    const relPath = path.posix.normalize(relativePath).replace(/^\/+/, '');
+    let relPath = path.posix.normalize(relativePath).replace(/^\/+/, '');
     if (relPath.includes('..')) return new Response(JSON.stringify({ error: 'Invalid relativePath' }), { status: 400 });
+    
+    // Normalize chapter and device folder names to lowercase
+    relPath = normalizeUploadPath(relPath);
 
     const tmpBase = path.join(PANELS_DIR, '.upload_tmp');
     const safeDir = path.join(tmpBase, path.dirname(relPath));
