@@ -42,7 +42,7 @@ const YOUTUBE_ENTRIES = [
         },
         description: 'Video after Spread18.3.png, before Spread19.1.png'
     },
-    // Desktop entries (same videos)
+    // Desktop entries
     {
         chapter: 'chapter-1',
         device: 'desktop',
@@ -57,13 +57,13 @@ const YOUTUBE_ENTRIES = [
     {
         chapter: 'chapter-1',
         device: 'desktop',
-        beforePanel: 'Spread19.1.png', // Insert before this panel (once desktop has it)
+        beforePanel: 'Spread19.1.png', // Insert before this panel (uses fallback to mobile array position)
         entry: {
             type: 'youtube',
             id: '9t9IHg2DQ3I',
             title: 'The Wolf Who Cried'
         },
-        description: 'Video after Spread18, before Spread19 (desktop)'
+        description: 'Video after Spread18.3, before Spread19.1 (desktop)'
     }
 ];
 
@@ -162,9 +162,28 @@ function ensureYouTubeEntries() {
                 console.log(`   ✅ Inserted before ${beforePanel} at index ${panelIndex}`);
                 modified = true;
             } else {
-                console.log(`   ⚠️  Warning: Could not find panel ${beforePanel}, appending to end`);
-                cleanedArray.push(entry);
-                modified = true;
+                // Panel not found in target array - try to find it in the opposite array
+                // This maintains correct story position for index-based fallback
+                const oppositeDevice = device === 'desktop' ? 'mobile' : 'desktop';
+                const oppositeArray = orderData[chapter][oppositeDevice] || [];
+                const oppositeIndex = oppositeArray.findIndex(item => {
+                    if (typeof item === 'string') {
+                        return item.includes(beforePanel);
+                    }
+                    return false;
+                });
+
+                if (oppositeIndex !== -1) {
+                    // Insert at the same index position from opposite array
+                    cleanedArray.splice(oppositeIndex, 0, entry);
+                    console.log(`   ✅ Panel not in ${device}, found in ${oppositeDevice} at index ${oppositeIndex}`);
+                    console.log(`   ✅ Inserted at matching index ${oppositeIndex} for correct story position`);
+                    modified = true;
+                } else {
+                    console.log(`   ⚠️  Warning: Could not find panel ${beforePanel} in ${device} or ${oppositeDevice}, appending to end`);
+                    cleanedArray.push(entry);
+                    modified = true;
+                }
             }
         }
 
