@@ -52,7 +52,7 @@
   const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB
   let inferredChapters: string[] = [];
   // Local debug toggle to control tree/component debug output
-  let treeDebug = false;
+  let treeDebug = true;
 
   // Natural / numeric-aware sort helpers (shared so merging uses same ordering)
   function tokenizeForSort(s: string) {
