@@ -69,19 +69,19 @@ function removeEntry(array, entry) {
 function ensureYouTubeEntries() {
     console.log('🎬 Ensuring YouTube entries in _order.json...\n');
 
-    // Read the _order.json file
-    if (!fs.existsSync(ORDER_FILE)) {
-        console.error(`❌ Error: _order.json not found at ${ORDER_FILE}`);
-        process.exit(1);
-    }
-
+    // Read the _order.json file (create if missing)
     let orderData;
-    try {
-        const content = fs.readFileSync(ORDER_FILE, 'utf8');
-        orderData = JSON.parse(content);
-    } catch (err) {
-        console.error(`❌ Error reading or parsing _order.json: ${err.message}`);
-        process.exit(1);
+    if (!fs.existsSync(ORDER_FILE)) {
+        console.log(`ℹ️  _order.json not found, creating empty structure at ${ORDER_FILE}`);
+        orderData = {};
+    } else {
+        try {
+            const content = fs.readFileSync(ORDER_FILE, 'utf8');
+            orderData = JSON.parse(content);
+        } catch (err) {
+            console.error(`❌ Error reading or parsing _order.json: ${err.message}`);
+            process.exit(1);
+        }
     }
 
     let modified = false;
