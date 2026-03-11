@@ -16,6 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const ORDER_FILE = path.join(__dirname, '..', 'static', 'panels', '_order.json');
+const PANELS_DIR = path.join(__dirname, '..', 'static', 'panels');
 
 // Define the YouTube entries to ensure
 const YOUTUBE_ENTRIES = [
@@ -78,6 +79,62 @@ function entriesEqual(a, b) {
         return a.type === b.type && a.id === b.id;
     }
     return false;
+}
+
+/**
+ * Natural sort helpers (matching generate-panels-json.js)
+ */
+function tokenizeForSort(s) {
+    const norm = String(s).replace(/\s+/g, '');
+    const parts = norm.split(/(\d+)/).filter(Boolean).map(p => {
+        if (/^\d+$/.test(p)) return Number(p);
+        return p.toLowerCase();
+    });
+    return parts;
+}
+
+function naturalCompare(a, b) {
+    const ta = tokenizeForSort(a);
+    const tb = tokenizeForSort(b);
+    for (let i = 0; i < Math.max(ta.length, tb.length); i++) {
+        const ia = ta[i];
+        const ib = tb[i];
+        if (ia === undefined) return -1;
+        if (ib === undefined) return 1;
+        if (typeof ia === 'number' && typeof ib === 'number') {
+            if (ia !== ib) return ia - ib;
+            continue;
+        }
+        if (typeof ia === 'number') return -1;
+        if (typeof ib === 'number') return 1;
+        const cmp = ia.localeCompare(ib);
+        if (cmp !== 0) return cmp;
+    }
+    return 0;
+}
+
+/**
+ * Read panel files from filesystem for a given chapter/device
+ */
+function readFilesystemPanels(chapter, device) {
+    const devicePath = path.join(PANELS_DIR, chapter, device);
+    if (!fs.existsSync(devicePath)) {
+        return [];
+    }
+    
+    const files = [];
+    const entries = fs.readdirSync(devicePath);
+    for (const entry of entries) {
+        const fullPath = path.join(devicePath, entry);
+        if (fs.statSync(fullPath).isFile() && /\.(png|jpg|jpeg|gif|webm)$/i.test(entry)) {
+            // Store relative path (chapter/device/filename)
+            files.push(`${chapter}/${device}/${entry}`);
+        }
+    }
+    
+    // Sort using natural comparison
+    files.sort(naturalCompare);
+    return files;
 }
 
 /**
@@ -162,8 +219,7 @@ function ensureYouTubeEntries() {
                 console.log(`   ✅ Inserted before ${beforePanel} at index ${panelIndex}`);
                 modified = true;
             } else {
-                // Panel not found in target array - try to find it in the opposite array
-                // This maintains correct story position for index-based fallback
+                // Panel not found in target array - try opposite array from _order.json
                 const oppositeDevice = device === 'desktop' ? 'mobile' : 'desktop';
                 const oppositeArray = orderData[chapter][oppositeDevice] || [];
                 const oppositeIndex = oppositeArray.findIndex(item => {
@@ -180,9 +236,34 @@ function ensureYouTubeEntries() {
                     console.log(`   ✅ Inserted at matching index ${oppositeIndex} for correct story position`);
                     modified = true;
                 } else {
-                    console.log(`   ⚠️  Warning: Could not find panel ${beforePanel} in ${device} or ${oppositeDevice}, appending to end`);
-                    cleanedArray.push(entry);
-                    modified = true;
+                    // Not found in _order.json - try filesystem
+                    console.log(`   ⚠️  Panel ${beforePanel} not found in _order.json, checking filesystem...`);
+                    
+                    // Check filesystem for both target and opposite device
+                    const filesystemPanels = readFilesystemPanels(chapter, device);
+                    const filesystemIndex = filesystemPanels.findIndex(f => f.includes(beforePanel));
+                    
+                    if (filesystemIndex !== -1) {
+                        cleanedArray.splice(filesystemIndex, 0, entry);
+                        console.log(`   ✅ Found in ${device} filesystem at index ${filesystemIndex}`);
+                        console.log(`   ✅ Inserted at matching index ${filesystemIndex}`);
+                        modified = true;
+                    } else {
+                        // Try opposite device filesystem
+                        const oppositeFilesystemPanels = readFilesystemPanels(chapter, oppositeDevice);
+                        const oppositeFilesystemIndex = oppositeFilesystemPanels.findIndex(f => f.includes(beforePanel));
+                        
+                        if (oppositeFilesystemIndex !== -1) {
+                            cleanedArray.splice(oppositeFilesystemIndex, 0, entry);
+                            console.log(`   ✅ Found in ${oppositeDevice} filesystem at index ${oppositeFilesystemIndex}`);
+                            console.log(`   ✅ Inserted at matching index ${oppositeFilesystemIndex} for correct story position`);
+                            modified = true;
+                        } else {
+                            console.log(`   ⚠️  Warning: Could not find panel ${beforePanel} in ${device} or ${oppositeDevice} (filesystem or _order.json), appending to end`);
+                            cleanedArray.push(entry);
+                            modified = true;
+                        }
+                    }
                 }
             }
         }
