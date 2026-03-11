@@ -59,8 +59,8 @@ function tryLoadDotenv(mode = null) {
           if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
             val = val.slice(1, -1);
           }
-          // Later files override earlier ones, but existing env vars have highest priority
-          if (!process.env[key]) process.env[key] = val;
+          // Let later env files override earlier ones (e.g., .env.staging overrides .env)
+          process.env[key] = val;
         }
         console.log(`[seed-admin] loaded ${file}`);
       }
