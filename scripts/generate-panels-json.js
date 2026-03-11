@@ -299,6 +299,16 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
   fs.renameSync(tmpFile, outFile);
   console.log('Atomically wrote panels.json with data:', json);
 
+  // Also write to build directory if it exists (for production updates without full rebuild)
+  const buildFile = path.resolve(projectRoot, 'build', 'client', 'panels.json');
+  const buildDir = path.dirname(buildFile);
+  if (fs.existsSync(buildDir)) {
+    const buildTmpFile = buildFile + '.tmp';
+    fs.writeFileSync(buildTmpFile, json, 'utf8');
+    fs.renameSync(buildTmpFile, buildFile);
+    console.log('✓ Also updated build/client/panels.json (production hot-update)');
+  }
+
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
