@@ -19,6 +19,7 @@ const ORDER_FILE = path.join(__dirname, '..', 'static', 'panels', '_order.json')
 
 // Define the YouTube entries to ensure
 const YOUTUBE_ENTRIES = [
+    // Mobile entries
     {
         chapter: 'chapter-1',
         device: 'mobile',
@@ -40,6 +41,29 @@ const YOUTUBE_ENTRIES = [
             title: 'The Wolf Who Cried'
         },
         description: 'Video after Spread18.3.png, before Spread19.1.png'
+    },
+    // Desktop entries (same videos)
+    {
+        chapter: 'chapter-1',
+        device: 'desktop',
+        position: 0, // First position (index 0)
+        entry: {
+            type: 'youtube',
+            id: 'Q-1wOb8LOAA',
+            title: 'Little Town of Nowhere'
+        },
+        description: 'Opening video before Spread01.1 (desktop)'
+    },
+    {
+        chapter: 'chapter-1',
+        device: 'desktop',
+        beforePanel: 'Spread19.1.png', // Insert before this panel (once desktop has it)
+        entry: {
+            type: 'youtube',
+            id: '9t9IHg2DQ3I',
+            title: 'The Wolf Who Cried'
+        },
+        description: 'Video after Spread18, before Spread19 (desktop)'
     }
 ];
 
