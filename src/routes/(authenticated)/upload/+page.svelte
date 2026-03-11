@@ -130,7 +130,9 @@
 
   // Shared chapter extraction function (top-level)
   function extractChapter(path: string): string | null {
-    const parts = path.split(/\\|\//);
+    // Normalize path: strip leading slash and 'panels/' prefix before extracting chapter
+    const normalizedPath = path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/^panels\//, '');
+    const parts = normalizedPath.split(/\\|\//);
     let result = null;
     if (parts.length > 1 && /^chapter-\d+$/i.test(parts[0])) {
       const num = parts[0].match(/chapter-(\d+)/i);
@@ -138,11 +140,11 @@
     }
     if (!result) {
       // fallback: look for any chapter-N in the path
-      const chapterMatch = path.match(/chapter-(\d+)/i);
+      const chapterMatch = normalizedPath.match(/chapter-(\d+)/i);
       if (chapterMatch && chapterMatch[1]) result = `Chapter ${chapterMatch[1]}`;
     }
     if (!result) result = 'Uncategorized';
-    if (treeDebug) console.log('extractChapter:', { path, result });
+    if (treeDebug) console.log('extractChapter:', { path, normalizedPath, result });
     return result;
   }
 
