@@ -10,6 +10,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -163,7 +164,7 @@ function removeEntry(array, entry) {
 /**
  * Main function to ensure YouTube entries are in place
  */
-function ensureYouTubeEntries() {
+export function ensureYouTubeEntries() {
     console.log('🎬 Ensuring YouTube entries in _order.json...\n');
 
     // Read the _order.json file (create if missing)
@@ -324,5 +325,7 @@ function ensureYouTubeEntries() {
     console.log('\n🎉 Done!');
 }
 
-// Run the script
-ensureYouTubeEntries();
+// Run when called directly from CLI
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+    ensureYouTubeEntries();
+}

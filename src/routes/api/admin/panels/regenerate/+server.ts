@@ -1,4 +1,5 @@
 import { generatePanelsJson } from '../../../../../../scripts/generate-panels-json.js';
+import { ensureYouTubeEntries } from '../../../../../../scripts/ensure-youtube-entries.js';
 import { isAdmin, getUserFromCookies } from '$lib/auth/helpers';
 import { logInfo } from '$lib/logger';
 
@@ -19,7 +20,15 @@ export const POST = async ({ cookies }) => {
         try { logInfo('Generating Panels (Manual)', {}); } catch (_) {}
       }
 
+      // Step 1: Ensure YouTube entries are in _order.json
+      console.log('📹 Step 1/2: Ensuring YouTube entries in _order.json...');
+      ensureYouTubeEntries();
+      
+      // Step 2: Generate panels.json with cache-busting timestamps
+      console.log('🎨 Step 2/2: Generating panels.json...');
       generatePanelsJson({ regenThumbnails: false, log: true });
+      
+      console.log('✅ Panel regeneration complete!');
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (e) {
       return new Response(JSON.stringify({ error: 'Generation failed', message: String(e?.message ?? e) }), { status: 500 });
