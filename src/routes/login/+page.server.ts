@@ -7,10 +7,13 @@ import { getUserFromCookies } from "$lib/auth/helpers";
 
 const log = debug("app:routes:login:page.server");
 
-export const load: PageServerLoad = async ({ cookies }) => {
-    // Don't redirect here - let the user access the login page even if logged in
-    // The form action will handle the redirect after successful login
-    return { title: "Log In" };
+export const load: PageServerLoad = async ({ cookies, url }) => {
+    // Check if coming from successful password reset
+    const resetSuccess = url.searchParams.get('reset') === 'success';
+    return { 
+        title: "Log In",
+        resetSuccess 
+    };
 };
 
 export const actions: Actions = {

@@ -21,6 +21,10 @@
     "seed:admin:dev": "cross-env NODE_ENV=development node scripts/seed-admin-mysql.js",
     "seed:admin:staging": "cross-env NODE_ENV=staging node scripts/seed-admin-mysql.js",
     "seed:admin:prod": "cross-env NODE_ENV=production node scripts/seed-admin-mysql.js",
+    "reset:password": "node scripts/generate-password-reset.js",
+    "reset:password:dev": "cross-env NODE_ENV=development node scripts/generate-password-reset.js",
+    "reset:password:staging": "cross-env NODE_ENV=staging node scripts/generate-password-reset.js",
+    "reset:password:prod": "cross-env NODE_ENV=production node scripts/generate-password-reset.js",
     "test:login": "node scripts/test-login-http.js http://localhost:5173",
     "test:login:dev": "cross-env NODE_ENV=development node scripts/test-login-http.js http://localhost:5173",
     "test": "vitest"
