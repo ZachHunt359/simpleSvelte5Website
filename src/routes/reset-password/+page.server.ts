@@ -67,23 +67,28 @@ export const actions: Actions = {
 				[token]
 			);
 			
-			if (!reset || reset.Used || reset.ExpiresAt < now) {
+			if (!reset || reset.ExpiresAt < now) {
 				return fail(400, { tokenError: 'Invalid or expired reset token.' });
+			}
+			
+			// Check if already used - but this might mean it was just used successfully
+			if (reset.Used) {
+				return fail(400, { tokenError: 'This reset token has already been used. If you just reset your password, please try logging in.' });
 			}
 			
 			// Hash new password
 			const hash = bcrypt.hashSync(password, 10);
 			
-			// Update admin password
-			await run(
-				'UPDATE AdminUsers SET PasswordHash = ? WHERE Id = ?',
-				[hash, reset.AdminUserId]
-			);
-			
-			// Mark token as used
+			// Mark token as used FIRST (prevents double-use)
 			await run(
 				'UPDATE PasswordResets SET Used = 1 WHERE Token = ?',
 				[token]
+			);
+			
+			// Then update admin password
+			await run(
+				'UPDATE AdminUsers SET PasswordHash = ? WHERE Id = ?',
+				[hash, reset.AdminUserId]
 			);
 			
 			console.log('[reset-password] Password reset successful for admin ID:', reset.AdminUserId);
