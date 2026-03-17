@@ -10,34 +10,27 @@ export const load: PageServerLoad = async ({ url }) => {
 		return { error: 'No reset token provided.' };
 	}
 	
-	try {
-		const now = Math.floor(Date.now() / 1000);
-		const reset = await get(
-			'SELECT Token, AdminUserId, ExpiresAt, Used FROM PasswordResets WHERE Token = ?',
-			[token]
-		);
-		
-		if (!reset) {
-			return { error: 'Invalid or expired reset token.' };
-		}
-		
-		if (reset.Used) {
-			// Token was already used - likely a successful password reset
-			// Redirect to login instead of showing error
-			throw redirect(303, '/login?reset=success');
-		}
-		
-		if (reset.ExpiresAt < now) {
-			return { error: 'This reset link has expired.' };
-		}
-		
-		return { token, valid: true };
-		
-	} catch (error) {
-		if (error instanceof Response) throw error; // Re-throw redirects
-		console.error('[reset-password] Error:', error);
-		return { error: 'An error occurred. Please try again.' };
+	const now = Math.floor(Date.now() / 1000);
+	const reset = await get(
+		'SELECT Token, AdminUserId, ExpiresAt, Used FROM PasswordResets WHERE Token = ?',
+		[token]
+	);
+	
+	if (!reset) {
+		return { error: 'Invalid or expired reset token.' };
 	}
+	
+	if (reset.Used) {
+		// Token was already used - likely a successful password reset
+		// Redirect to login instead of showing error
+		throw redirect(303, '/login?reset=success');
+	}
+	
+	if (reset.ExpiresAt < now) {
+		return { error: 'This reset link has expired.' };
+	}
+	
+	return { token, valid: true };
 };
 
 export const actions: Actions = {
