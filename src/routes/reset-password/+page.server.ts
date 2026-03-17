@@ -22,7 +22,9 @@ export const load: PageServerLoad = async ({ url }) => {
 		}
 		
 		if (reset.Used) {
-			return { error: 'This reset link has already been used.' };
+			// Token was already used - likely a successful password reset
+			// Redirect to login instead of showing error
+			throw redirect(303, '/login?reset=success');
 		}
 		
 		if (reset.ExpiresAt < now) {
@@ -32,6 +34,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		return { token, valid: true };
 		
 	} catch (error) {
+		if (error instanceof Response) throw error; // Re-throw redirects
 		console.error('[reset-password] Error:', error);
 		return { error: 'An error occurred. Please try again.' };
 	}
