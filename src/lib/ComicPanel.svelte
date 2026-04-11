@@ -226,6 +226,7 @@
     .comic-area img,
     .comic-area video {
         width: 90vw;
+        max-width: none; /* Override global 1000px limit */
         max-height: 100vh;
         display: block;
         margin: 0;
