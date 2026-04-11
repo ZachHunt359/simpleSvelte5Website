@@ -239,6 +239,11 @@
         -webkit-user-select: none;
         user-select: none;
         -webkit-touch-callout: none;
+        /* Vertical centering using transform */
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
     }
 
     /* Wider images on desktop for less wasted space */
