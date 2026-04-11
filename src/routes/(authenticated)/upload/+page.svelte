@@ -2166,7 +2166,7 @@
         <ul class="tight-list">
           {#each filesToUpload as file, idx}
             <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
-              <div class="flex items-center gap-2" style="flex: 1 1 auto; min-width: 0;">
+              <div class="flex items-center gap-2" style="flex: 1; min-width: 0;">
                 <input 
                   type="checkbox" 
                   checked={selectedFilesForRemoval.has(idx)}
@@ -2178,10 +2178,10 @@
                     }
                     selectedFilesForRemoval = selectedFilesForRemoval;
                   }}
-                  class="checkbox checkbox-sm"
+                  class="checkbox checkbox-sm flex-shrink-0"
                   disabled={uploading}
                 />
-                <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+                <span class="truncate" style="color: #cbd5e1;">{file.webkitRelativePath || file.name}</span>
               </div>
               <div class="file-right">
                             {#if ['uploading','retrying','chunking','attempting chunked upload','chunk-failed'].includes(String(file._status))}
@@ -2197,7 +2197,7 @@
           {#each filesToUpload.slice(0,3) as file, rawIdx}
             {@const idx = rawIdx}
             <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
-              <div class="flex items-center gap-2" style="flex: 1 1 auto; min-width: 0;">
+              <div class="flex items-center gap-2" style="flex: 1; min-width: 0;">
                 <input 
                   type="checkbox" 
                   checked={selectedFilesForRemoval.has(idx)}
@@ -2209,10 +2209,10 @@
                     }
                     selectedFilesForRemoval = selectedFilesForRemoval;
                   }}
-                  class="checkbox checkbox-sm"
+                  class="checkbox checkbox-sm flex-shrink-0"
                   disabled={uploading}
                 />
-                <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+                <span class="truncate" style="color: #cbd5e1;">{file.webkitRelativePath || file.name}</span>
               </div>
               <div class="file-right">
                 {#if file._status !== 'done' && !file._status?.startsWith('failed')}
@@ -2228,7 +2228,7 @@
           {#each filesToUpload.slice(-3) as file, rawIdx}
             {@const idx = filesToUpload.length - 3 + rawIdx}
             <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
-              <div class="flex items-center gap-2" style="flex: 1 1 auto; min-width: 0;">
+              <div class="flex items-center gap-2" style="flex: 1; min-width: 0;">
                 <input 
                   type="checkbox" 
                   checked={selectedFilesForRemoval.has(idx)}
@@ -2240,10 +2240,10 @@
                     }
                     selectedFilesForRemoval = selectedFilesForRemoval;
                   }}
-                  class="checkbox checkbox-sm"
+                  class="checkbox checkbox-sm flex-shrink-0"
                   disabled={uploading}
                 />
-                <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+                <span class="truncate" style="color: #cbd5e1;">{file.webkitRelativePath || file.name}</span>
               </div>
               <div class="file-right">
                 {#if file._status !== 'done' && !file._status?.startsWith('failed')}
