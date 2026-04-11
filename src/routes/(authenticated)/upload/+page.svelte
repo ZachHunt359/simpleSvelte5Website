@@ -53,6 +53,15 @@
   let inferredChapters: string[] = [];
   // Local debug toggle to control tree/component debug output
   let treeDebug = true;
+  
+  // Missing metadata prompt state
+  let showMissingMetadataModal = false;
+  let missingChapter = false;
+  let missingDevice = false;
+  let detectedChapter: string | null = null;
+  let detectedDevice: 'desktop' | 'mobile' | null = null;
+  let userSelectedChapter = '1';  // Default to chapter 1
+  let userSelectedDevice: 'desktop' | 'mobile' = 'desktop';  // Default to desktop
 
   // Natural / numeric-aware sort helpers (shared so merging uses same ordering)
   function tokenizeForSort(s: string) {
@@ -121,9 +130,96 @@
       uploadError = '';
       uploadSuccess = '';
       
+      // Detect the selected folder and check for missing metadata
+      if (selectedFiles.length > 0) {
+        const firstPath = selectedFiles[0].webkitRelativePath || selectedFiles[0].name;
+        const pathParts = firstPath.split(/[\\/]/);
+        const topFolder = pathParts[0];
+        
+        // Try to detect chapter from the first file's path
+        detectedChapter = null;
+        for (const part of pathParts) {
+          const chapterMatch = part.match(/^chapter-(\d+)$/i);
+          if (chapterMatch) {
+            detectedChapter = chapterMatch[1];
+            break;
+          }
+        }
+        
+        // Try to detect device from path or folder name
+        detectedDevice = null;
+        const folderLower = topFolder.toLowerCase();
+        if (folderLower === 'desktop') {
+          detectedDevice = 'desktop';
+        } else if (folderLower === 'mobile') {
+          detectedDevice = 'mobile';
+        } else {
+          // Check if device is in the path
+          for (const part of pathParts) {
+            const partLower = part.toLowerCase();
+            if (partLower === 'desktop') {
+              detectedDevice = 'desktop';
+              break;
+            } else if (partLower === 'mobile') {
+              detectedDevice = 'mobile';
+              break;
+            }
+          }
+        }
+        
+        // Check if we're missing critical information
+        missingChapter = !detectedChapter;
+        missingDevice = !detectedDevice;
+        
+        if (missingChapter || missingDevice) {
+          // Set defaults based on what we have
+          if (detectedChapter) userSelectedChapter = detectedChapter;
+          if (detectedDevice) userSelectedDevice = detectedDevice;
+          
+          console.log(`[Upload] Missing metadata - Chapter: ${missingChapter ? 'MISSING' : detectedChapter}, Device: ${missingDevice ? 'MISSING' : detectedDevice}`);
+          
+          // Show modal to get missing information
+          showMissingMetadataModal = true;
+          return; // Don't proceed with validation yet
+        }
+        
+        // Apply detected device to all files
+        console.log(`[Upload] Detected ${detectedDevice} folder and chapter-${detectedChapter}`);
+        selectedFiles.forEach((file: any) => {
+          file._detectedDevice = detectedDevice;
+          file._detectedChapter = detectedChapter;
+        });
+      }
+      
       // Start validation process
       await validateFiles();
     }
+  }
+  
+  // Handle confirmation from missing metadata modal
+  async function handleMetadataConfirm() {
+    showMissingMetadataModal = false;
+    
+    // Apply user selections to all files
+    const chapter = missingChapter ? userSelectedChapter : detectedChapter;
+    const device = missingDevice ? userSelectedDevice : detectedDevice;
+    
+    console.log(`[Upload] User confirmed - Chapter: ${chapter}, Device: ${device}`);
+    
+    selectedFiles.forEach((file: any) => {
+      file._detectedDevice = device;
+      file._detectedChapter = chapter;
+    });
+    
+    // Now proceed with validation
+    await validateFiles();
+  }
+  
+  // Handle cancel from missing metadata modal
+  function handleMetadataCancel() {
+    showMissingMetadataModal = false;
+    selectedFiles = [];
+    uploadError = 'Upload cancelled - please organize files in chapter-X/desktop or chapter-X/mobile folders.';
   }
 
   import { onMount } from 'svelte';
@@ -428,9 +524,42 @@
       })
       // Explicitly copy all relevant properties from File objects and keep a reference to the original File
       .map((file, idx) => {
+        let adjustedPath = file.webkitRelativePath ? file.webkitRelativePath.replace(/\\/g, '/') : file.name;
+        
+        // If we detected device/chapter from folder name, prepend them to the path if missing
+        const detectedDevice = (file as any)._detectedDevice;
+        const detectedChapter = (file as any)._detectedChapter;
+        
+        if (detectedDevice || detectedChapter) {
+          // Check if path already contains device folder
+          const hasDeviceInPath = /\/(desktop|mobile)\//i.test(adjustedPath);
+          const hasChapterInPath = /chapter-\d+/i.test(adjustedPath);
+          
+          if (!hasDeviceInPath || !hasChapterInPath) {
+            // Need to reconstruct path with proper structure
+            if (!hasChapterInPath && !hasDeviceInPath) {
+              // Missing both - add full structure
+              const chapter = detectedChapter || '1';
+              const device = detectedDevice || 'desktop';
+              adjustedPath = `chapter-${chapter}/${device}/${adjustedPath}`;
+              console.log(`[Upload] Added chapter-${chapter}/${device} to path: ${file.name}`);
+            } else if (!hasChapterInPath && hasDeviceInPath) {
+              // Has device but no chapter - prepend chapter
+              const chapter = detectedChapter || '1';
+              adjustedPath = `chapter-${chapter}/${adjustedPath}`;
+              console.log(`[Upload] Added chapter-${chapter} to path: ${file.name}`);
+            } else if (hasChapterInPath && !hasDeviceInPath) {
+              // Has chapter but no device - insert device after chapter
+              const device = detectedDevice || 'desktop';
+              adjustedPath = adjustedPath.replace(/^(chapter-\d+)\//i, `$1/${device}/`);
+              console.log(`[Upload] Added ${device} to path: ${file.name}`);
+            }
+          }
+        }
+        
         const out: any = {
           name: file.name,
-          webkitRelativePath: file.webkitRelativePath ? file.webkitRelativePath.replace(/\\/g, '/') : file.name,
+          webkitRelativePath: adjustedPath,
           size: file.size,
           type: file.type,
           id: (file as any).id || `${file.webkitRelativePath || file.name}-${idx}`,
@@ -441,6 +570,12 @@
           _uploadProgress: 0,
           _status: 'queued'
         };
+        
+        // If we detected device, also set _device property for ChapterTree
+        if (detectedDevice) {
+          out._device = detectedDevice;
+        }
+        
         // Copy preview if present
         if ('preview' in file) out.preview = (file as any).preview;
         // Copy lastModified if present
@@ -1759,6 +1894,21 @@
 <section class="prose upload-section">
   <h1>Upload New Panels</h1>
   
+  <!-- Helpful Instructions -->
+  <div class="help-card bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+      <div class="text-sm text-blue-100">
+        <div class="font-medium mb-1">How to organize files for upload:</div>
+        <div class="text-blue-200/90"><strong>Best:</strong> Select your <code class="bg-blue-950/50 px-1 rounded">chapter-X</code> folder (contains both desktop & mobile subfolders)</div>
+        <div class="text-blue-200/90 mt-1"><strong>Also works:</strong> Select <code class="bg-blue-950/50 px-1 rounded">desktop</code> or <code class="bg-blue-950/50 px-1 rounded">mobile</code> folder directly</div>
+        <div class="text-blue-200/70 text-xs mt-2">Files will automatically be organized into the correct structure</div>
+      </div>
+    </div>
+  </div>
+  
   <!-- File Selection -->
   <form class="upload-form" on:submit|preventDefault={handleUpload}>
     <div class="chooser">
@@ -1787,9 +1937,6 @@
     <div class="actions">
       <button class="btn btn-primary" type="submit" disabled={uploading || !filesToUpload.length || conflicts.errors.length > 0}>
         {uploading ? 'Uploading...' : 'Upload All'}
-      </button>
-      <button type="button" class="btn btn-accent" style="margin-left:0.5rem" on:click={handleFlattenedUpload} disabled={uploading || selectedFiles.length === 0}>
-        {uploading ? 'Uploading...' : 'Upload to Ch1/Mobile'}
       </button>
       <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={regeneratePanels} disabled={regenerating || ensuringYouTube}>
         {regenerating ? 'Processing...' : 'Regenerate panels'}
@@ -1827,6 +1974,61 @@
   {/if}
 
   {#if selectedFiles.length > 0}
+    <!-- Validation Summary Card - Shows immediately after file selection -->
+    {#if conflicts.errors.length > 0 || conflicts.warnings.length > 0 || conflicts.duplicates.length > 0}
+      <div class="validation-summary bg-slate-800 border-2 border-yellow-500 rounded-lg p-4 mt-4 mb-4">
+        <div class="flex items-center gap-2 mb-3">
+          <svg class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+          </svg>
+          <h3 class="text-lg font-semibold text-yellow-400">File Analysis Results</h3>
+        </div>
+        
+        {#if conflicts.errors.length > 0}
+          <div class="mb-3 p-3 bg-red-900/30 border border-red-600 rounded">
+            <div class="font-medium text-red-300 mb-2">⛔ {conflicts.errors.length} Error{conflicts.errors.length === 1 ? '' : 's'} Found</div>
+            <div class="text-sm text-red-200">These must be fixed before upload:</div>
+            <ul class="mt-2 text-sm text-red-100 space-y-1 list-disc list-inside">
+              {#each conflicts.errors.slice(0, 5) as error}
+                <li>{error}</li>
+              {/each}
+              {#if conflicts.errors.length > 5}
+                <li class="text-red-300">...and {conflicts.errors.length - 5} more error{conflicts.errors.length - 5 === 1 ? '' : 's'}</li>
+              {/if}
+            </ul>
+          </div>
+        {/if}
+        
+        {#if conflicts.duplicates.length > 0}
+          <div class="mb-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded">
+            <div class="font-medium text-yellow-300 mb-1">⚠️ {conflicts.duplicates.length} Duplicate{conflicts.duplicates.length === 1 ? '' : 's'} Detected</div>
+            <div class="text-sm text-yellow-200">Files that already exist - you'll be asked how to handle these.</div>
+          </div>
+        {/if}
+        
+        {#if conflicts.warnings.length > 0}
+          <div class="p-3 bg-blue-900/30 border border-blue-600 rounded">
+            <div class="font-medium text-blue-300 mb-1">ℹ️ {conflicts.warnings.length} Warning{conflicts.warnings.length === 1 ? '' : 's'}</div>
+            <div class="text-sm text-blue-200">These won't prevent upload but should be reviewed:</div>
+            <ul class="mt-2 text-sm text-blue-100 space-y-1 list-disc list-inside">
+              {#each conflicts.warnings.slice(0, 3) as warning}
+                <li>{warning}</li>
+              {/each}
+              {#if conflicts.warnings.length > 3}
+                <li class="text-blue-300">...and {conflicts.warnings.length - 3} more warning{conflicts.warnings.length - 3 === 1 ? '' : 's'}</li>
+              {/if}
+            </ul>
+          </div>
+        {/if}
+        
+        {#if conflicts.errors.length === 0}
+          <div class="mt-3 p-2 bg-green-900/30 border border-green-600 rounded text-center">
+            <span class="text-green-300 font-medium">✓ Ready to upload {filesToUpload.length} file{filesToUpload.length === 1 ? '' : 's'}</span>
+          </div>
+        {/if}
+      </div>
+    {/if}
+    
     <UploadSummary 
       files={selectedFiles} 
       {conflicts} 
@@ -1867,6 +2069,33 @@
         <h4 class="text-white font-medium">Ready for Upload</h4>
         <span class="text-sm text-slate-400">{filesToUpload.length} files</span>
       </div>
+      
+      <!-- Upload Progress Counter (shows during upload) -->
+      {#if uploading}
+        {@const completedCount = filesToUpload.filter(f => f._status === 'done').length}
+        {@const currentlyUploading = filesToUpload.find(f => f._status === 'uploading' || f._status?.includes('retrying'))}
+        <div class="upload-progress-header bg-slate-900 border border-blue-500 rounded p-3 mb-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="spinner" aria-hidden="true"></span>
+              <div>
+                <div class="text-blue-300 font-medium">
+                  Uploading file {completedCount + 1} of {filesToUpload.length}
+                </div>
+                {#if currentlyUploading}
+                  <div class="text-xs text-slate-400 mt-1">
+                    Current: {currentlyUploading.name}
+                  </div>
+                {/if}
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-lg font-bold text-blue-300">{overallProgress}%</div>
+              <div class="text-xs text-slate-400">Complete</div>
+            </div>
+          </div>
+        </div>
+      {/if}
       
       {#if filesToUpload.length <= 6 || showAllFiles}
         <ul class="tight-list">
@@ -1925,6 +2154,113 @@
   on:resolve={handleConflictResolution}
   on:cancel={handleConflictCancel}
 />
+
+<!-- Missing Metadata Modal -->
+{#if showMissingMetadataModal}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
+  <div class="modal-overlay" on:click={handleMetadataCancel} role="dialog" aria-modal="true" tabindex="-1">
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+    <div class="modal-content missing-metadata-modal" on:click|stopPropagation role="document">
+      <div class="modal-header">
+        <h2>Specify Chapter and Device</h2>
+        <p class="subtitle">We couldn't automatically detect all the information needed</p>
+      </div>
+      
+      <div class="modal-body">
+        <div class="detection-status bg-slate-900 border border-slate-700 rounded p-4 mb-4">
+          <div class="text-sm text-slate-300 mb-3">
+            <strong>What we found:</strong>
+          </div>
+          <div class="flex gap-4">
+            <div class="flex-1">
+              <div class="text-xs text-slate-400 mb-1">Chapter:</div>
+              {#if missingChapter}
+                <span class="text-yellow-400">❌ Not detected</span>
+              {:else}
+                <span class="text-green-400">✓ Chapter {detectedChapter}</span>
+              {/if}
+            </div>
+            <div class="flex-1">
+              <div class="text-xs text-slate-400 mb-1">Device:</div>
+              {#if missingDevice}
+                <span class="text-yellow-400">❌ Not detected</span>
+              {:else}
+                <span class="text-green-400">✓ {detectedDevice}</span>
+              {/if}
+            </div>
+          </div>
+        </div>
+        
+        <div class="info-message bg-blue-900/30 border border-blue-600 rounded p-3 mb-4 text-sm text-blue-200">
+          ℹ️ Please specify the missing information below. All {selectedFiles.length} files will be organized accordingly.
+        </div>
+        
+        <div class="form-fields">
+          {#if missingChapter}
+            <div class="form-field">
+              <label for="chapter-select" class="block text-sm font-medium text-slate-300 mb-2">
+                Which chapter are these files for?
+              </label>
+              <select 
+                id="chapter-select"
+                bind:value={userSelectedChapter}
+                class="select-input"
+              >
+                <option value="1">Chapter 1</option>
+                <option value="2">Chapter 2</option>
+                <option value="3">Chapter 3</option>
+                <option value="4">Chapter 4</option>
+                <option value="5">Chapter 5</option>
+                <option value="6">Chapter 6</option>
+                <option value="7">Chapter 7</option>
+                <option value="8">Chapter 8</option>
+                <option value="9">Chapter 9</option>
+                <option value="10">Chapter 10</option>
+              </select>
+            </div>
+          {/if}
+          
+          {#if missingDevice}
+            <div class="form-field">
+              <label for="device-select" class="block text-sm font-medium text-slate-300 mb-2">
+                Which device type are these files for?
+              </label>
+              <select 
+                id="device-select"
+                bind:value={userSelectedDevice}
+                class="select-input"
+              >
+                <option value="desktop">Desktop</option>
+                <option value="mobile">Mobile</option>
+              </select>
+            </div>
+          {/if}
+        </div>
+        
+        <div class="preview-info bg-slate-900 border border-slate-700 rounded p-3 mt-4">
+          <div class="text-xs text-slate-400 mb-2">Files will be uploaded to:</div>
+          <div class="text-sm text-slate-200 font-mono">
+            chapter-{missingChapter ? userSelectedChapter : detectedChapter}/{missingDevice ? userSelectedDevice : detectedDevice}/
+          </div>
+          <div class="text-xs text-slate-400 mt-2">
+            Example: chapter-{missingChapter ? userSelectedChapter : detectedChapter}/{missingDevice ? userSelectedDevice : detectedDevice}/{selectedFiles[0]?.name || 'panel-001.jpg'}
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" on:click={handleMetadataCancel}>
+          Cancel Upload
+        </button>
+        <button class="btn btn-primary" on:click={handleMetadataConfirm}>
+          Continue with Chapter {missingChapter ? userSelectedChapter : detectedChapter} / {missingDevice ? userSelectedDevice : detectedDevice}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
 .upload-section { 
@@ -2063,6 +2399,32 @@
   max-height: 18px !important;
 }
 
+/* Exception: allow larger icons in help card and validation summary */
+.help-card svg,
+.validation-summary svg {
+  width: 20px !important;
+  height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+}
+
+/* Validation summary specific styles */
+.validation-summary code {
+  background: rgba(59, 130, 246, 0.15);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: #93c5fd;
+}
+
+/* Upload progress header during upload */
+.upload-progress-header .spinner {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+}
+
 /* Button styles */
 .btn {
   padding: 0.5rem 1rem;
@@ -2138,6 +2500,88 @@
     justify-content: center;
     margin-left: 0;
   }
+}
+
+/* Modal shared styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: #1e293b;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #334155;
+}
+
+.missing-metadata-modal {
+  max-width: 600px;
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #334155;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #f1f5f9;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0.5rem 0 0 0;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #334155;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.form-field {
+  margin-bottom: 1rem;
+}
+
+.select-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.375rem;
+  color: #f1f5f9;
+  font-size: 0.875rem;
+}
+
+.select-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 </style>
 
