@@ -2166,7 +2166,7 @@
         <ul class="tight-list">
           {#each filesToUpload as file, idx}
             <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
-              <div class="flex items-center gap-2 flex-1 min-w-0">
+              <div class="flex items-center gap-2" style="flex: 1 1 auto; min-width: 0;">
                 <input 
                   type="checkbox" 
                   checked={selectedFilesForRemoval.has(idx)}
@@ -2197,7 +2197,7 @@
           {#each filesToUpload.slice(0,3) as file, rawIdx}
             {@const idx = rawIdx}
             <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
-              <div class="flex items-center gap-2 flex-1 min-w-0">
+              <div class="flex items-center gap-2" style="flex: 1 1 auto; min-width: 0;">
                 <input 
                   type="checkbox" 
                   checked={selectedFilesForRemoval.has(idx)}
@@ -2228,7 +2228,7 @@
           {#each filesToUpload.slice(-3) as file, rawIdx}
             {@const idx = filesToUpload.length - 3 + rawIdx}
             <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
-              <div class="flex items-center gap-2 flex-1 min-w-0">
+              <div class="flex items-center gap-2" style="flex: 1 1 auto; min-width: 0;">
                 <input 
                   type="checkbox" 
                   checked={selectedFilesForRemoval.has(idx)}
