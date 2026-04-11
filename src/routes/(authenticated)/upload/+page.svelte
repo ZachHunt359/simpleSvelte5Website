@@ -130,65 +130,92 @@
       uploadError = '';
       uploadSuccess = '';
       
-      // Detect the selected folder and check for missing metadata
+      // Detect chapter and device for each file individually
       if (selectedFiles.length > 0) {
-        const firstPath = selectedFiles[0].webkitRelativePath || selectedFiles[0].name;
-        const pathParts = firstPath.split(/[\\/]/);
-        const topFolder = pathParts[0];
+        let hasChapterlessFiles = false;
+        let hasDevicelessFiles = false;
+        let detectedChapters = new Set<string>();
         
-        // Try to detect chapter from the first file's path
-        detectedChapter = null;
-        for (const part of pathParts) {
-          const chapterMatch = part.match(/^chapter-(\d+)$/i);
-          if (chapterMatch) {
-            detectedChapter = chapterMatch[1];
-            break;
-          }
-        }
-        
-        // Try to detect device from path or folder name
-        detectedDevice = null;
-        const folderLower = topFolder.toLowerCase();
-        if (folderLower === 'desktop') {
-          detectedDevice = 'desktop';
-        } else if (folderLower === 'mobile') {
-          detectedDevice = 'mobile';
-        } else {
-          // Check if device is in the path
+        // Analyze each file's path
+        selectedFiles.forEach((file: any) => {
+          const filePath = file.webkitRelativePath || file.name;
+          const pathParts = filePath.split(/[\\/]/);
+          
+          // Detect chapter from this file's path
+          let fileChapter: string | null = null;
           for (const part of pathParts) {
-            const partLower = part.toLowerCase();
-            if (partLower === 'desktop') {
-              detectedDevice = 'desktop';
-              break;
-            } else if (partLower === 'mobile') {
-              detectedDevice = 'mobile';
+            const chapterMatch = part.match(/^chapter-(\d+)$/i);
+            if (chapterMatch) {
+              fileChapter = chapterMatch[1];
+              if (fileChapter) detectedChapters.add(fileChapter);
               break;
             }
           }
-        }
+          
+          // Detect device from this file's path
+          let fileDevice: 'desktop' | 'mobile' | null = null;
+          for (const part of pathParts) {
+            const partLower = part.toLowerCase();
+            if (partLower === 'desktop') {
+              fileDevice = 'desktop';
+              break;
+            } else if (partLower === 'mobile') {
+              fileDevice = 'mobile';
+              break;
+            }
+          }
+          
+          // Check if this is a special file (like thumbnails) that doesn't need a device
+          const fileName = pathParts[pathParts.length - 1];
+          const isSpecialFile = /\.thumb\./i.test(fileName) || /thumbnail/i.test(fileName);
+          
+          // Store detected metadata on the file
+          file._detectedChapter = fileChapter;
+          file._detectedDevice = fileDevice;
+          file._isSpecialFile = isSpecialFile;
+          
+          // Track if we have files missing metadata (excluding special files)
+          if (!fileChapter && !isSpecialFile) hasChapterlessFiles = true;
+          if (!fileDevice && !isSpecialFile) hasDevicelessFiles = true;
+        });
         
-        // Check if we're missing critical information
-        missingChapter = !detectedChapter;
-        missingDevice = !detectedDevice;
+        // Determine if we need to prompt for missing metadata
+        // Only prompt if we have non-special files missing chapter/device
+        missingChapter = hasChapterlessFiles;
+        missingDevice = hasDevicelessFiles;
         
         if (missingChapter || missingDevice) {
-          // Set defaults based on what we have
-          if (detectedChapter) userSelectedChapter = detectedChapter;
-          if (detectedDevice) userSelectedDevice = detectedDevice;
+          // Set defaults based on what we detected
+          if (detectedChapters.size === 1) {
+            userSelectedChapter = Array.from(detectedChapters)[0];
+            detectedChapter = userSelectedChapter;
+          } else if (detectedChapters.size > 1) {
+            // Multiple chapters detected - use the first one as default
+            userSelectedChapter = Array.from(detectedChapters).sort()[0];
+            detectedChapter = userSelectedChapter;
+          }
           
-          console.log(`[Upload] Missing metadata - Chapter: ${missingChapter ? 'MISSING' : detectedChapter}, Device: ${missingDevice ? 'MISSING' : detectedDevice}`);
+          console.log(`[Upload] Some files missing metadata - Chapter: ${missingChapter ? 'MISSING' : 'detected'}, Device: ${missingDevice ? 'MISSING' : 'detected'}`);
+          console.log(`[Upload] Files breakdown:`, selectedFiles.map((f: any) => ({
+            name: f.name,
+            chapter: f._detectedChapter,
+            device: f._detectedDevice,
+            special: f._isSpecialFile
+          })));
           
           // Show modal to get missing information
           showMissingMetadataModal = true;
           return; // Don't proceed with validation yet
         }
         
-        // Apply detected device to all files
-        console.log(`[Upload] Detected ${detectedDevice} folder and chapter-${detectedChapter}`);
-        selectedFiles.forEach((file: any) => {
-          file._detectedDevice = detectedDevice;
-          file._detectedChapter = detectedChapter;
-        });
+        // All files have proper metadata detected
+        console.log(`[Upload] All files have proper metadata detected`);
+        console.log(`[Upload] Files breakdown:`, selectedFiles.map((f: any) => ({
+          name: f.name,
+          chapter: f._detectedChapter,
+          device: f._detectedDevice,
+          special: f._isSpecialFile
+        })));
       }
       
       // Start validation process
@@ -200,16 +227,26 @@
   async function handleMetadataConfirm() {
     showMissingMetadataModal = false;
     
-    // Apply user selections to all files
+    // Apply user selections only to files that are missing metadata
     const chapter = missingChapter ? userSelectedChapter : detectedChapter;
     const device = missingDevice ? userSelectedDevice : detectedDevice;
     
     console.log(`[Upload] User confirmed - Chapter: ${chapter}, Device: ${device}`);
     
     selectedFiles.forEach((file: any) => {
-      file._detectedDevice = device;
-      file._detectedChapter = chapter;
+      // Only override for non-special files that are missing metadata
+      if (!file._isSpecialFile) {
+        if (!file._detectedChapter) file._detectedChapter = chapter;
+        if (!file._detectedDevice) file._detectedDevice = device;
+      }
     });
+    
+    console.log(`[Upload] After user confirmation:`, selectedFiles.map((f: any) => ({
+      name: f.name,
+      chapter: f._detectedChapter,
+      device: f._detectedDevice,
+      special: f._isSpecialFile
+    })));
     
     // Now proceed with validation
     await validateFiles();
@@ -529,8 +566,10 @@
         // If we detected device/chapter from folder name, prepend them to the path if missing
         const detectedDevice = (file as any)._detectedDevice;
         const detectedChapter = (file as any)._detectedChapter;
+        const isSpecialFile = (file as any)._isSpecialFile;
         
-        if (detectedDevice || detectedChapter) {
+        // Special files (thumbnails) don't need device folders - keep them chapter-relative
+        if (!isSpecialFile && (detectedDevice || detectedChapter)) {
           // Check if path already contains device folder
           const hasDeviceInPath = /\/(desktop|mobile)\//i.test(adjustedPath);
           const hasChapterInPath = /chapter-\d+/i.test(adjustedPath);
@@ -554,6 +593,13 @@
               adjustedPath = adjustedPath.replace(/^(chapter-\d+)\//i, `$1/${device}/`);
               console.log(`[Upload] Added ${device} to path: ${file.name}`);
             }
+          }
+        } else if (isSpecialFile) {
+          // Special files: ensure they have chapter prefix but no device folder
+          const hasChapterInPath = /chapter-\d+/i.test(adjustedPath);
+          if (!hasChapterInPath && detectedChapter) {
+            adjustedPath = `chapter-${detectedChapter}/${adjustedPath}`;
+            console.log(`[Upload] Added chapter-${detectedChapter} to special file: ${file.name}`);
           }
         }
         
