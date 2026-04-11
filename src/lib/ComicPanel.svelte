@@ -202,7 +202,7 @@
 <style>
     .comic-area {
         width: 100%;
-        min-height: 400px;
+        min-height: 100vh; /* Full viewport height for true vertical centering */
         display: grid; /* Use grid for overlap */
         align-items: center;
         justify-items: center;
