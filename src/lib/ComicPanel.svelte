@@ -240,6 +240,17 @@
         -webkit-touch-callout: none;
     }
 
+    /* Wider images on desktop for less wasted space */
+    @media (min-width: 801px) {
+        .comic-area img,
+        .comic-area video {
+            width: 98vw;
+        }
+        .youtube-wrapper {
+            width: 98vw;
+        }
+    }
+
     .youtube-wrapper {
         width: 90vw;
         max-width: 100%;
