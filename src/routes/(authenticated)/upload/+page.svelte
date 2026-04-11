@@ -52,7 +52,10 @@
   const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB
   let inferredChapters: string[] = [];
   // Local debug toggle to control tree/component debug output
-  let treeDebug = true;
+  let treeDebug = false;
+  
+  // File removal state
+  let selectedFilesForRemoval: Set<number> = new Set();
   
   // Missing metadata prompt state
   let showMissingMetadataModal = false;
@@ -1950,7 +1953,7 @@
         <div class="font-medium mb-1">How to organize files for upload:</div>
         <div class="text-blue-200/90"><strong>Best:</strong> Select your <code class="bg-blue-950/50 px-1 rounded">chapter-X</code> folder (contains both desktop & mobile subfolders)</div>
         <div class="text-blue-200/90 mt-1"><strong>Also works:</strong> Select <code class="bg-blue-950/50 px-1 rounded">desktop</code> or <code class="bg-blue-950/50 px-1 rounded">mobile</code> folder directly</div>
-        <div class="text-blue-200/70 text-xs mt-2">Files will automatically be organized into the correct structure</div>
+        <div class="text-blue-200/70 text-xs mt-2">Files will automatically be organized into the correct structure. If metadata isn't clear, you'll be prompted to clarify. You can still drag-and-drop files to reorganize after upload.</div>
       </div>
     </div>
   </div>
@@ -1959,7 +1962,7 @@
   <form class="upload-form" on:submit|preventDefault={handleUpload}>
     <div class="chooser">
       <button type="button" class="btn btn-outline" on:click={openFolderPicker}>
-        {loadingExisting ? 'Analyzing...' : 'Choose Folder'}
+        {loadingExisting ? 'Analyzing...' : 'Choose chapter-x Folder'}
       </button>
       <span class="chooser-info" aria-live="polite">{chooserInfo}</span>
       <input id="panel-folder-input" bind:this={panelInput} type="file" webkitdirectory multiple on:change={handleFileSelect} class="file-input" aria-hidden="true" />
@@ -2113,7 +2116,21 @@
     <div class="file-list-preview bg-slate-800 border border-slate-700 rounded-lg p-4 mt-4">
       <div class="flex items-center justify-between mb-3">
         <h4 class="text-white font-medium">Ready for Upload</h4>
-        <span class="text-sm text-slate-400">{filesToUpload.length} files</span>
+        <div class="flex items-center gap-3">
+          {#if selectedFilesForRemoval.size > 0}
+            <button 
+              type="button"
+              class="btn btn-xs btn-error"
+              on:click={() => {
+                filesToUpload = filesToUpload.filter((_, idx) => !selectedFilesForRemoval.has(idx));
+                selectedFilesForRemoval = new Set();
+              }}
+            >
+              Remove {selectedFilesForRemoval.size} selected
+            </button>
+          {/if}
+          <span class="text-sm text-slate-400">{filesToUpload.length} files</span>
+        </div>
       </div>
       
       <!-- Upload Progress Counter (shows during upload) -->
@@ -2145,9 +2162,25 @@
       
       {#if filesToUpload.length <= 6 || showAllFiles}
         <ul class="tight-list">
-          {#each filesToUpload as file}
+          {#each filesToUpload as file, idx}
             <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
-              <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+              <div class="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  checked={selectedFilesForRemoval.has(idx)}
+                  on:change={(e) => {
+                    if (e.currentTarget.checked) {
+                      selectedFilesForRemoval.add(idx);
+                    } else {
+                      selectedFilesForRemoval.delete(idx);
+                    }
+                    selectedFilesForRemoval = selectedFilesForRemoval;
+                  }}
+                  class="checkbox checkbox-sm"
+                  disabled={uploading}
+                />
+                <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+              </div>
               <div class="file-right">
                             {#if ['uploading','retrying','chunking','attempting chunked upload','chunk-failed'].includes(String(file._status))}
                               <span class="spinner" aria-hidden="true"></span>
@@ -2159,9 +2192,26 @@
         </ul>
       {:else}
         <ul class="space-y-1">
-          {#each filesToUpload.slice(0,3) as file}
+          {#each filesToUpload.slice(0,3) as file, rawIdx}
+            {@const idx = rawIdx}
             <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
-              <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+              <div class="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  checked={selectedFilesForRemoval.has(idx)}
+                  on:change={(e) => {
+                    if (e.currentTarget.checked) {
+                      selectedFilesForRemoval.add(idx);
+                    } else {
+                      selectedFilesForRemoval.delete(idx);
+                    }
+                    selectedFilesForRemoval = selectedFilesForRemoval;
+                  }}
+                  class="checkbox checkbox-sm"
+                  disabled={uploading}
+                />
+                <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+              </div>
               <div class="file-right">
                 {#if file._status !== 'done' && !file._status?.startsWith('failed')}
                   <span class="spinner" aria-hidden="true"></span>
@@ -2173,9 +2223,26 @@
           <li class="text-slate-500 text-sm text-center py-1">
             ... {filesToUpload.length - 6} more files ...
           </li>
-          {#each filesToUpload.slice(-3) as file}
+          {#each filesToUpload.slice(-3) as file, rawIdx}
+            {@const idx = filesToUpload.length - 3 + rawIdx}
             <li class="file-line {file._status === 'done' ? 'file-done' : ''} {file._status && file._status.startsWith('failed') ? 'file-failed' : ''}">
-              <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+              <div class="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  checked={selectedFilesForRemoval.has(idx)}
+                  on:change={(e) => {
+                    if (e.currentTarget.checked) {
+                      selectedFilesForRemoval.add(idx);
+                    } else {
+                      selectedFilesForRemoval.delete(idx);
+                    }
+                    selectedFilesForRemoval = selectedFilesForRemoval;
+                  }}
+                  class="checkbox checkbox-sm"
+                  disabled={uploading}
+                />
+                <div class="file-left truncate">{file.webkitRelativePath || file.name}</div>
+              </div>
               <div class="file-right">
                 {#if file._status !== 'done' && !file._status?.startsWith('failed')}
                   <span class="spinner" aria-hidden="true"></span>
