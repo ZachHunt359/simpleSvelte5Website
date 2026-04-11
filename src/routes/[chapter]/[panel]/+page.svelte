@@ -55,6 +55,22 @@
         window.addEventListener('resize', updateIsDesktop);
         window.addEventListener('orientationchange', updateIsDesktop);
 
+        // Keyboard navigation (desktop only)
+        const handleKeydown = (e: KeyboardEvent) => {
+            // Only on desktop and if not typing in an input
+            if (!isDesktop) return;
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+            
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                next();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prev();
+            }
+        };
+        window.addEventListener('keydown', handleKeydown);
+
         // Fetch panels.json asynchronously
         (async () => {
             const res = await fetch('/panels.json', { cache: 'no-store' });
@@ -81,6 +97,7 @@
         return () => {
             window.removeEventListener('resize', updateIsDesktop);
             window.removeEventListener('orientationchange', updateIsDesktop);
+            window.removeEventListener('keydown', handleKeydown);
             if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility);
         };
     });
