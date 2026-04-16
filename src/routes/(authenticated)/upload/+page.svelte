@@ -1444,7 +1444,9 @@
     }
   }
 
-  function handleTreeDeleteChapter(chapter: string) {
+  async function handleTreeDeleteChapter(chapter: string) {
+    console.log('[handleTreeDeleteChapter] Deleting chapter:', chapter);
+    
     // For files with explicit _chapter (like YouTube), use that; otherwise extract from path
     panelsFiles = panelsFiles.filter(f => {
       const fileChapter = f._chapter || extractChapter(f.webkitRelativePath || f.name);
@@ -1454,6 +1456,29 @@
       const fileChapter = (f as any)._chapter || extractChapter((f as any).webkitRelativePath || f.name);
       return fileChapter !== chapter;
     });
+    
+    // Force ChapterTree to rebuild by updating key
+    panelsFilesKey = panelsFiles.length > 0
+      ? panelsFiles.map(f => f.webkitRelativePath || f.name || '').join('|')
+      : 'empty';
+    
+    // Remove chapter from order map and persist deletion
+    const slug = slugifyChapterKey(chapter);
+    console.log('[handleTreeDeleteChapter] Removing chapter slug from order map:', slug);
+    
+    // Build new order map without this chapter
+    const newOrderMap = { ...panelsOrderMap };
+    delete newOrderMap[slug];
+    panelsOrderMap = newOrderMap;
+    
+    // Save the updated order map to remove the chapter from _order.json
+    try {
+      // Send entire order map with replace=true to ensure chapter is removed
+      await saveFullOrder(newOrderMap, true, false);
+      console.log('[handleTreeDeleteChapter] Successfully removed chapter from _order.json');
+    } catch (err) {
+      console.error('[handleTreeDeleteChapter] Failed to update _order.json:', err);
+    }
   }
 
   async function handleTreeTogglePublishChapter(chapter: string) {
