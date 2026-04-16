@@ -474,9 +474,10 @@
 </script>
 
   <div class="chapter-tree bg-slate-900 border border-slate-700 rounded-lg p-4">
-    <h3 class="text-white font-medium mb-4">Upload Plan</h3>
+    <h3 class="text-white font-medium mb-4">Current Comic File Tree</h3>
     <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;">
       <button class="btn btn-ghost btn-xs text-slate-300" on:click={saveFullOrder}>Save order</button>
+      <span class="text-xs text-slate-400">(Saves file order only - does not upload files)</span>
     </div>
     <!-- Debug output for merged files and chapterMap -->
       {#if debug}

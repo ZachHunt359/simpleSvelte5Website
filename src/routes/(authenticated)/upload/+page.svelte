@@ -259,6 +259,7 @@
   function handleMetadataCancel() {
     showMissingMetadataModal = false;
     selectedFiles = [];
+    filesToUpload = []; // Clear files to upload so they don't appear in tree
     uploadError = 'Upload cancelled - please organize files in chapter-X/desktop or chapter-X/mobile folders.';
   }
 
@@ -1444,8 +1445,15 @@
   }
 
   function handleTreeDeleteChapter(chapter: string) {
-    panelsFiles = panelsFiles.filter(f => extractChapter(f.webkitRelativePath || f.name) !== chapter);
-    filesToUpload = filesToUpload.filter(f => extractChapter((f as any).webkitRelativePath || f.name) !== chapter);
+    // For files with explicit _chapter (like YouTube), use that; otherwise extract from path
+    panelsFiles = panelsFiles.filter(f => {
+      const fileChapter = f._chapter || extractChapter(f.webkitRelativePath || f.name);
+      return fileChapter !== chapter;
+    });
+    filesToUpload = filesToUpload.filter(f => {
+      const fileChapter = (f as any)._chapter || extractChapter((f as any).webkitRelativePath || f.name);
+      return fileChapter !== chapter;
+    });
   }
 
   async function handleTreeTogglePublishChapter(chapter: string) {
@@ -1984,13 +1992,29 @@
       </div>
     {/if}
     <div class="actions">
-      <button class="btn btn-primary" type="submit" disabled={uploading || !filesToUpload.length || conflicts.errors.length > 0}>
-        {uploading ? 'Uploading...' : 'Upload All'}
+      <button class="btn btn-primary text-lg px-6 py-3 font-semibold" type="submit" disabled={uploading || !filesToUpload.length || conflicts.errors.length > 0}>
+        {#if uploading}
+          <svg class="w-5 h-5 mr-2 animate-spin inline-block" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Uploading...
+        {:else}
+          <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          Upload All Files to Server
+        {/if}
       </button>
       <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={regeneratePanels} disabled={regenerating || ensuringYouTube}>
         {regenerating ? 'Processing...' : 'Regenerate panels'}
       </button>
     </div>
+    {#if filesToUpload.length > 0 && !uploading}
+      <div class="text-sm text-yellow-200 bg-yellow-900/30 border border-yellow-500/50 rounded p-3 mt-3">
+        <strong>⚠ Note:</strong> Files appear in the tree below <em>after</em> you click "Upload All Files to Server". The "Save order" button in the tree only saves file ordering, it does not upload files.
+      </div>
+    {/if}
   </form>
   
   <!-- Enhanced Upload Summary -->
