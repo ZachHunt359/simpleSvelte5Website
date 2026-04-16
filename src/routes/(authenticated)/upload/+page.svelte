@@ -1220,6 +1220,43 @@
     if (file._isNew) {
       filesToUpload = filesToUpload.filter(f => ((f as any).id || (f.webkitRelativePath || f.name)) !== (file.id || file.webkitRelativePath || file.name));
     } else {
+      // Delete file from server (skip YouTube entries which aren't actual files)
+      if (file.type !== 'youtube') {
+        let relPath = (file.webkitRelativePath || file.name || '').replace(/\\/g, '/');
+        // Normalize path: remove "panels/" prefix if present
+        relPath = relPath.replace(/^\/+/, '').replace(/^panels\//, '');
+        
+        // Normalize chapter and device folder names to lowercase for consistency
+        const parts = relPath.split('/');
+        if (parts.length >= 2) {
+          parts[0] = parts[0].toLowerCase(); // chapter folder
+          if (parts[1] === 'Desktop' || parts[1] === 'Mobile') {
+            parts[1] = parts[1].toLowerCase(); // device folder
+          }
+        }
+        relPath = parts.join('/');
+        
+        try {
+          console.log('[handleTreeDelete] Deleting file from server:', relPath);
+          const res = await fetch('/api/admin/panels/delete-files', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ paths: [relPath] })
+          });
+          
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            console.error('[handleTreeDelete] Failed to delete file from server:', errorData);
+          } else {
+            const result = await res.json();
+            console.log('[handleTreeDelete] Server deletion result:', result);
+          }
+        } catch (err) {
+          console.error('[handleTreeDelete] Error deleting file from server:', err);
+        }
+      }
+      
       // For YouTube entries, filter by youtubeId; for regular files, filter by path
       if (file.type === 'youtube' && file.youtubeId) {
         panelsFiles = panelsFiles.filter(f => !(f.type === 'youtube' && f.youtubeId === file.youtubeId));
@@ -1446,6 +1483,54 @@
 
   async function handleTreeDeleteChapter(chapter: string) {
     console.log('[handleTreeDeleteChapter] Deleting chapter:', chapter);
+    
+    // Collect files to delete from the server (only from panelsFiles - already uploaded)
+    const filesToDelete = panelsFiles
+      .filter(f => {
+        const fileChapter = f._chapter || extractChapter(f.webkitRelativePath || f.name);
+        return fileChapter === chapter;
+      })
+      .map(f => {
+        // Extract path relative to static/panels/
+        let relPath = f.webkitRelativePath || f.name || '';
+        // Strip "panels/" prefix if present
+        if (relPath.startsWith('panels/')) {
+          relPath = relPath.slice('panels/'.length);
+        }
+        // Normalize chapter and device folder names to lowercase for consistency
+        const parts = relPath.split('/');
+        if (parts.length >= 2) {
+          parts[0] = parts[0].toLowerCase(); // chapter folder
+          if (parts[1] === 'Desktop' || parts[1] === 'Mobile') {
+            parts[1] = parts[1].toLowerCase(); // device folder
+          }
+        }
+        return parts.join('/');
+      })
+      .filter(path => path && !path.includes('youtube:') && !path.includes('_youtube')); // Skip YouTube entries (not files)
+    
+    // Delete files from server if there are any
+    if (filesToDelete.length > 0) {
+      try {
+        console.log('[handleTreeDeleteChapter] Deleting files from server:', filesToDelete);
+        const res = await fetch('/api/admin/panels/delete-files', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ paths: filesToDelete })
+        });
+        
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          console.error('[handleTreeDeleteChapter] Failed to delete files from server:', errorData);
+        } else {
+          const result = await res.json();
+          console.log('[handleTreeDeleteChapter] Server deletion result:', result);
+        }
+      } catch (err) {
+        console.error('[handleTreeDeleteChapter] Error deleting files from server:', err);
+      }
+    }
     
     // For files with explicit _chapter (like YouTube), use that; otherwise extract from path
     panelsFiles = panelsFiles.filter(f => {
