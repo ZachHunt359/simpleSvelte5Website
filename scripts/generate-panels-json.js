@@ -43,8 +43,10 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
 
   // Natural sort helpers (match client and server implementations)
   function tokenizeForSort(s) {
+    // Strip file extension before tokenizing to avoid extension interfering with sort
     const norm = String(s).replace(/\s+/g, '');
-    const parts = norm.split(/(\d+)/).filter(Boolean).map(p => {
+    const withoutExt = norm.replace(/\.(png|jpg|jpeg|gif|webm)$/i, '');
+    const parts = withoutExt.split(/(\d+)/).filter(Boolean).map(p => {
       if (/^\d+$/.test(p)) return Number(p);
       return p.toLowerCase();
     });
