@@ -574,8 +574,15 @@
         
         // Special files (thumbnails) don't need device folders - keep them chapter-relative
         if (!isSpecialFile && (detectedDevice || detectedChapter)) {
-          // Check if path already contains device folder
-          const hasDeviceInPath = /\/(desktop|mobile)\//i.test(adjustedPath);
+          // Strip top-level device folder if present (handles Desktop/file.png → file.png)
+          const topLevelDeviceMatch = adjustedPath.match(/^(desktop|mobile)\//i);
+          if (topLevelDeviceMatch) {
+            adjustedPath = adjustedPath.slice(topLevelDeviceMatch[0].length);
+            console.log(`[Upload] Stripped top-level device folder from path: ${file.name}`);
+          }
+          
+          // Check if path already contains device folder (handles both /desktop/ and Desktop/ at start)
+          const hasDeviceInPath = /(^|\/)(desktop|mobile)\//i.test(adjustedPath);
           const hasChapterInPath = /chapter-\d+/i.test(adjustedPath);
           
           if (!hasDeviceInPath || !hasChapterInPath) {
@@ -915,19 +922,22 @@
     emaBytesPerSec = 0;
     bpsSamples = [];
     overallETA = -1;
-    let topFolder = '';
-    if (filesToUpload.length > 0) {
-      const firstPath = filesToUpload[0].webkitRelativePath || filesToUpload[0].name;
-      const parts = firstPath.split(/\\|\//);
-      if (parts.length > 1) topFolder = parts[0];
-    }
-
+    
+    // Don't strip topFolder - the adjusted paths from validateFiles are already correct
     let anyFailure = false;
     for (let i = 0; i < filesToUpload.length; i++) {
       const file = filesToUpload[i];
       let relPath = file.webkitRelativePath || file.name;
-      if (topFolder && relPath.startsWith(topFolder + '/')) relPath = relPath.slice(topFolder.length + 1);
-      if (topFolder && relPath.startsWith(topFolder + "\\")) relPath = relPath.slice(topFolder.length + 1);
+      
+      // Validation: Ensure path has proper chapter-X/device/ structure
+      if (!relPath.match(/^chapter-\d+\/(desktop|mobile)\//i) && !relPath.match(/^chapter-\d+\/[^/]+\.(jpg|jpeg|png|gif|webm)$/i)) {
+        console.error(`[Upload] Invalid path structure: ${relPath}. Expected chapter-X/device/file format.`);
+        file._status = 'invalid-path';
+        anyFailure = true;
+        uploadError = `Invalid file structure: ${file.name}. Files must be in chapter-X/device/ format.`;
+        continue;
+      }
+      
       file._uploadProgress = 0;
       file._status = 'queued';
       updateOverallProgress();
@@ -941,7 +951,7 @@
     if (!anyFailure) {
       // Treat the uploaded ordering as a tentative save: persist ordering to _order.json
       try {
-        const orders = buildOrdersFromFiles(filesToUpload, topFolder);
+        const orders = buildOrdersFromFiles(filesToUpload, '');
         // Only call save if we actually have something to write
         if (Object.keys(orders).length > 0) {
           // Merge newly uploaded ordering into existing order (do not replace)

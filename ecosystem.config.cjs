@@ -12,7 +12,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
-        DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/.env.production'
+        DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/.env.production',
+        PROJECT_ROOT: '/home/deploy/simpleSvelte5Website'
       },
       env_production: {
         NODE_ENV: 'production',
@@ -37,7 +38,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
-        DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/.env.staging'
+        DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/.env.staging',
+        PROJECT_ROOT: '/home/deploy/simpleSvelte5Website'
       },
       env_staging: {
         NODE_ENV: 'staging',

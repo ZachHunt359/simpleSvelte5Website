@@ -97,7 +97,7 @@ export const POST = async ({ request }) => {
       return new Response(JSON.stringify({ error: 'Invalid orders payload' }), { status: 400 });
     }
 
-    const projectRoot = process.cwd();
+    const projectRoot = process.env.PROJECT_ROOT || process.cwd();
     const panelsDir = path.resolve(projectRoot, 'static', 'panels');
     await fs.mkdir(panelsDir, { recursive: true });
     const orderFile = path.join(panelsDir, '_order.json');
