@@ -45,7 +45,7 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
   function tokenizeForSort(s) {
     // Strip file extension before tokenizing to avoid extension interfering with sort
     const norm = String(s).replace(/\s+/g, '');
-    const withoutExt = norm.replace(/\.(png|jpg|jpeg|gif|webm)$/i, '');
+    const withoutExt = norm.replace(/\.(png|jpg|jpeg|gif|webp|webm)$/i, '');
     const parts = withoutExt.split(/(\d+)/).filter(Boolean).map(p => {
       if (/^\d+$/.test(p)) return Number(p);
       return p.toLowerCase();
@@ -86,7 +86,7 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
       const relPath = path.relative(panelsDir, filePath).replace(/\\/g, '/');
       if (fs.statSync(filePath).isDirectory()) {
         results = results.concat(findFilesRecursive(filePath));
-      } else if (/\.(png|jpg|jpeg|gif|webm)$/i.test(file)) {
+      } else if (/\.(png|jpg|jpeg|gif|webp|webm)$/i.test(file)) {
         // Append a cache-busting version parameter based on mtime so clients fetch changed files immediately
         const st = fs.statSync(filePath);
         const v = Math.floor(st.mtimeMs);

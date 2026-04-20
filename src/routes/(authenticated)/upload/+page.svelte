@@ -70,7 +70,7 @@
   function tokenizeForSort(s: string) {
     // Strip file extension before tokenizing to avoid extension interfering with sort
     const norm = String(s).replace(/\s+/g, '');
-    const withoutExt = norm.replace(/\.(png|jpg|jpeg|gif|webm)$/i, '');
+    const withoutExt = norm.replace(/\.(png|jpg|jpeg|gif|webp|webm)$/i, '');
     const parts = withoutExt.split(/(\d+)/).filter(Boolean).map(p => {
       if (/^\d+$/.test(p)) return Number(p);
       return p.toLowerCase();
@@ -576,6 +576,17 @@
         
         // Special files (thumbnails) don't need device folders - keep them chapter-relative
         if (!isSpecialFile && (detectedDevice || detectedChapter)) {
+          // Strip top-level folder that's not a chapter folder (e.g., "RELEASER PARANOiD GWCW DESKTOP/...")
+          const topLevelFolderMatch = adjustedPath.match(/^([^/]+)\//);
+          if (topLevelFolderMatch && !topLevelFolderMatch[1].match(/^chapter-\d+$/i)) {
+            const topFolder = topLevelFolderMatch[1];
+            // Only strip if it's not a device folder or a Spread folder
+            if (!topFolder.match(/^(desktop|mobile|spread\s+\d+)$/i)) {
+              adjustedPath = adjustedPath.slice(topFolder.length + 1); // +1 for the slash
+              console.log(`[Upload] Stripped top-level folder "${topFolder}" from path: ${file.name}`);
+            }
+          }
+          
           // Strip top-level device folder if present (handles Desktop/file.png → file.png)
           const topLevelDeviceMatch = adjustedPath.match(/^(desktop|mobile)\//i);
           if (topLevelDeviceMatch) {

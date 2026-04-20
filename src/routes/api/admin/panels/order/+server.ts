@@ -12,7 +12,7 @@ function slugifyChapterKey(key: string) {
 function tokenizeForSort(s: string) {
   // Strip file extension before tokenizing to avoid extension interfering with sort
   const norm = String(s).replace(/\s+/g, '');
-  const withoutExt = norm.replace(/\.(png|jpg|jpeg|gif|webm)$/i, '');
+  const withoutExt = norm.replace(/\.(png|jpg|jpeg|gif|webp|webm)$/i, '');
   const parts = withoutExt.split(/(\d+)/).filter(Boolean).map(p => {
     if (/^\d+$/.test(p)) return Number(p);
     return (p || '').toLowerCase();

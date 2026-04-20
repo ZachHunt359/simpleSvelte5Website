@@ -37,7 +37,7 @@
                                     panelSlug = firstPanel.id;
                                     console.log('[Homepage] First panel is YouTube:', panelSlug);
                                 } else if (typeof firstPanel === 'string') {
-                                    const match = firstPanel.match(/\/([^/]+)\.(png|jpg|jpeg|gif|webm)/i);
+                                    const match = firstPanel.match(/\/([^/]+)\.(png|jpg|jpeg|gif|webp|webm)/i);
                                     if (match) {
                                         panelSlug = match[1];
                                         console.log('[Homepage] First panel is image:', panelSlug);

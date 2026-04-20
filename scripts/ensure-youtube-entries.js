@@ -137,7 +137,7 @@ function readFilesystemPanels(chapter, device) {
             if (stats.isDirectory()) {
                 // Recursively scan subdirectory
                 scanDirectory(fullPath, path.join(relativePath, entry));
-            } else if (stats.isFile() && /\.(png|jpg|jpeg|gif|webm)$/i.test(entry)) {
+            } else if (stats.isFile() && /\.(png|jpg|jpeg|gif|webp|webm)$/i.test(entry)) {
                 // Store relative path (chapter/device/subfolder/filename)
                 const relativeFilePath = path.join(relativePath, entry).replace(/\\/g, '/');
                 files.push(relativeFilePath);
