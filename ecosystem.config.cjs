@@ -12,12 +12,14 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
+        BODY_SIZE_LIMIT: '100M',
         DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/.env.production',
         PROJECT_ROOT: '/home/deploy/simpleSvelte5Website'
       },
       env_production: {
         NODE_ENV: 'production',
         PORT: 3000,
+        BODY_SIZE_LIMIT: '100M',
         DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/.env.production'
       },
       env_file: '/home/deploy/simpleSvelte5Website/.env.production',
@@ -37,12 +39,14 @@ module.exports = {
       node_args: '-r dotenv/config',
       env: {
         NODE_ENV: 'production',
+        BODY_SIZE_LIMIT: '100M',
         PORT: 3001,
         DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/.env.staging',
         PROJECT_ROOT: '/home/deploy/simpleSvelte5Website'
       },
       env_staging: {
         NODE_ENV: 'staging',
+        BODY_SIZE_LIMIT: '100M',
         PORT: 3001,
         DOTENV_CONFIG_PATH: '/home/deploy/simpleSvelte5Website/.env.staging'
       },

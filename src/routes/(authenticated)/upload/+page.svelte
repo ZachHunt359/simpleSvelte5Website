@@ -567,64 +567,50 @@
       })
       // Explicitly copy all relevant properties from File objects and keep a reference to the original File
       .map((file, idx) => {
-        let adjustedPath = file.webkitRelativePath ? file.webkitRelativePath.replace(/\\/g, '/') : file.name;
+        const originalPath = file.webkitRelativePath ? file.webkitRelativePath.replace(/\\/g, '/') : file.name;
         
-        // If we detected device/chapter from folder name, prepend them to the path if missing
+        // Get detected metadata
         const detectedDevice = (file as any)._detectedDevice;
         const detectedChapter = (file as any)._detectedChapter;
         const isSpecialFile = (file as any)._isSpecialFile;
         
-        // Special files (thumbnails) don't need device folders - keep them chapter-relative
+        let adjustedPath: string;
+        
+        // COMPLETE PATH RECONSTRUCTION: scan entire path for valid folders, then rebuild from scratch
         if (!isSpecialFile && (detectedDevice || detectedChapter)) {
-          // Strip top-level folder that's not a chapter folder (e.g., "RELEASER PARANOiD GWCW DESKTOP/...")
-          const topLevelFolderMatch = adjustedPath.match(/^([^/]+)\//);
-          if (topLevelFolderMatch && !topLevelFolderMatch[1].match(/^chapter-\d+$/i)) {
-            const topFolder = topLevelFolderMatch[1];
-            // Only strip if it's not a device folder or a Spread folder
-            if (!topFolder.match(/^(desktop|mobile|spread\s+\d+)$/i)) {
-              adjustedPath = adjustedPath.slice(topFolder.length + 1); // +1 for the slash
-              console.log(`[Upload] Stripped top-level folder "${topFolder}" from path: ${file.name}`);
+          // Split path into parts
+          const pathParts = originalPath.split('/');
+          const fileName = pathParts[pathParts.length - 1];
+          
+          // Scan for valid intermediate folders (like "Spread X") that should be preserved
+          const validFolders: string[] = [];
+          for (const part of pathParts.slice(0, -1)) { // Exclude filename
+            // Keep only Spread folders - everything else gets discarded
+            if (part.match(/^spread\s+\d+$/i)) {
+              validFolders.push(part);
             }
           }
           
-          // Strip top-level device folder if present (handles Desktop/file.png → file.png)
-          const topLevelDeviceMatch = adjustedPath.match(/^(desktop|mobile)\//i);
-          if (topLevelDeviceMatch) {
-            adjustedPath = adjustedPath.slice(topLevelDeviceMatch[0].length);
-            console.log(`[Upload] Stripped top-level device folder from path: ${file.name}`);
-          }
+          // Rebuild path from scratch using detected metadata
+          const chapter = detectedChapter || '1';
+          const device = detectedDevice || 'desktop';
           
-          // Check if path already contains device folder (handles both /desktop/ and Desktop/ at start)
-          const hasDeviceInPath = /(^|\/)(desktop|mobile)\//i.test(adjustedPath);
-          const hasChapterInPath = /chapter-\d+/i.test(adjustedPath);
+          // Structure: chapter-X/device/[Spread X/]filename
+          const intermediatePath = validFolders.length > 0 ? validFolders.join('/') + '/' : '';
+          adjustedPath = `chapter-${chapter}/${device}/${intermediatePath}${fileName}`;
           
-          if (!hasDeviceInPath || !hasChapterInPath) {
-            // Need to reconstruct path with proper structure
-            if (!hasChapterInPath && !hasDeviceInPath) {
-              // Missing both - add full structure
-              const chapter = detectedChapter || '1';
-              const device = detectedDevice || 'desktop';
-              adjustedPath = `chapter-${chapter}/${device}/${adjustedPath}`;
-              console.log(`[Upload] Added chapter-${chapter}/${device} to path: ${file.name}`);
-            } else if (!hasChapterInPath && hasDeviceInPath) {
-              // Has device but no chapter - prepend chapter
-              const chapter = detectedChapter || '1';
-              adjustedPath = `chapter-${chapter}/${adjustedPath}`;
-              console.log(`[Upload] Added chapter-${chapter} to path: ${file.name}`);
-            } else if (hasChapterInPath && !hasDeviceInPath) {
-              // Has chapter but no device - insert device after chapter
-              const device = detectedDevice || 'desktop';
-              adjustedPath = adjustedPath.replace(/^(chapter-\d+)\//i, `$1/${device}/`);
-              console.log(`[Upload] Added ${device} to path: ${file.name}`);
-            }
-          }
+          console.log(`[Upload] Rebuilt path for "${fileName}": "${originalPath}" → "${adjustedPath}"`);
         } else if (isSpecialFile) {
-          // Special files: ensure they have chapter prefix but no device folder
-          const hasChapterInPath = /chapter-\d+/i.test(adjustedPath);
-          if (!hasChapterInPath && detectedChapter) {
-            adjustedPath = `chapter-${detectedChapter}/${adjustedPath}`;
-            console.log(`[Upload] Added chapter-${detectedChapter} to special file: ${file.name}`);
-          }
+          // Special files: chapter/filename (no device folder)
+          const pathParts = originalPath.split('/');
+          const fileName = pathParts[pathParts.length - 1];
+          const chapter = detectedChapter || '1';
+          
+          adjustedPath = `chapter-${chapter}/${fileName}`;
+          console.log(`[Upload] Rebuilt special file path: "${originalPath}" → "${adjustedPath}"`);
+        } else {
+          // No metadata detected - use original path as-is
+          adjustedPath = originalPath;
         }
         
         const out: any = {
