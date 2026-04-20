@@ -38,13 +38,13 @@ const YOUTUBE_ENTRIES = [
     {
         chapter: 'chapter-1',
         device: 'mobile',
-        beforePanel: 'Spread19.1.png', // Insert before this panel
+        beforePanel: 'Spread19.1.1.png', // Insert before this panel
         entry: {
             type: 'youtube',
             id: '9t9IHg2DQ3I',
             title: 'The Wolf Who Cried'
         },
-        description: 'Video after Spread18.3.png, before Spread19.1.png'
+        description: 'Video after Spread18.2.png, before Spread19.1.1.png'
     },
     // Desktop entries
     {
@@ -57,21 +57,18 @@ const YOUTUBE_ENTRIES = [
             title: 'Little Town of Nowhere'
         },
         description: 'Opening video before Spread01.1 (desktop)'
+    },
+    {
+        chapter: 'chapter-1',
+        device: 'desktop',
+        beforePanel: 'Spread19.1.1.png',
+        entry: {
+            type: 'youtube',
+            id: '9t9IHg2DQ3I',
+            title: 'The Wolf Who Cried'
+        },
+        description: 'Video after Spread18.2.png, before Spread19.1.1.png (desktop)'
     }
-    // NOTE: Second video (The Wolf Who Cried) is only in mobile array until desktop panels reach Spread 18/19.
-    // Desktop viewers will see it via mobile fallback at the correct position without duplication.
-    // Uncomment the entry below when desktop panels include Spreads through 18:
-    // {
-    //     chapter: 'chapter-1',
-    //     device: 'desktop',
-    //     beforePanel: 'Spread19.1.png',
-    //     entry: {
-    //         type: 'youtube',
-    //         id: '9t9IHg2DQ3I',
-    //         title: 'The Wolf Who Cried'
-    //     },
-    //     description: 'Video after Spread18.3, before Spread19.1 (desktop)'
-    // }
 ];
 
 /**
