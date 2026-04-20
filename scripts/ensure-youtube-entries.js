@@ -38,13 +38,13 @@ const YOUTUBE_ENTRIES = [
     {
         chapter: 'chapter-1',
         device: 'mobile',
-        beforePanel: 'Spread19.1.1.png', // Insert before this panel
+        beforePanel: 'Spread22.1.1.png', // Insert before this panel
         entry: {
             type: 'youtube',
             id: '9t9IHg2DQ3I',
             title: 'The Wolf Who Cried'
         },
-        description: 'Video after Spread18.2.png, before Spread19.1.1.png'
+        description: 'Video immediately before Spread 22'
     },
     // Desktop entries
     {
@@ -61,13 +61,13 @@ const YOUTUBE_ENTRIES = [
     {
         chapter: 'chapter-1',
         device: 'desktop',
-        beforePanel: 'Spread19.1.1.png',
+        beforePanel: 'Spread22.1.1.png',
         entry: {
             type: 'youtube',
             id: '9t9IHg2DQ3I',
             title: 'The Wolf Who Cried'
         },
-        description: 'Video after Spread18.2.png, before Spread19.1.1.png (desktop)'
+        description: 'Video immediately before Spread 22 (desktop)'
     }
 ];
 
