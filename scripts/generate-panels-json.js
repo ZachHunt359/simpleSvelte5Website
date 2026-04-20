@@ -7,10 +7,8 @@ import { execSync } from 'child_process';
 
 export function generatePanelsJson({ regenThumbnails = false, log = false } = {}) {
   console.log('Script running');
-  // Use the project root (process.cwd()) so runtime imports from the built server
-  // still resolve to the real project's static/panels directory instead of
-  // the compiled .svelte-kit output path.
-  const projectRoot = process.cwd();
+  // Use PROJECT_ROOT env var in production, fallback to process.cwd() for local development
+  const projectRoot = process.env.PROJECT_ROOT || process.cwd();
   const panelsDir = path.resolve(projectRoot, 'static', 'panels');
 
   // Check if ffmpeg is installed

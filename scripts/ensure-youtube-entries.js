@@ -16,8 +16,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const ORDER_FILE = path.join(__dirname, '..', 'static', 'panels', '_order.json');
-const PANELS_DIR = path.join(__dirname, '..', 'static', 'panels');
+// Use PROJECT_ROOT env var in production, fallback to __dirname for local development
+const PROJECT_ROOT = process.env.PROJECT_ROOT || path.join(__dirname, '..');
+const ORDER_FILE = path.join(PROJECT_ROOT, 'static', 'panels', '_order.json');
+const PANELS_DIR = path.join(PROJECT_ROOT, 'static', 'panels');
 
 // Define the YouTube entries to ensure
 const YOUTUBE_ENTRIES = [
