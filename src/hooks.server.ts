@@ -100,7 +100,7 @@ function spawnPanelsGenerator() {
 	// } catch (e) {
 	// 	// non-fatal; generation will be attempted later on upload or manual run
 	// 	try { logError('startup: panels regen check failed', { error: e && e.message ? e.message : String(e) }); } catch (_) { console.error('startup: panels regen check failed', e); }
-	}
+	// }
 
 // If DATABASE_URL is set, perform quick sanity checks: ensure a database name is present and test connectivity.
 try {
