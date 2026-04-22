@@ -89,15 +89,17 @@ function spawnPanelsGenerator() {
 		process.exit(1);
 	}
 
+	// DISABLED: Auto-regeneration now handled manually via build-panels.cjs
+	// We use a manually curated panels.json with natural sorting and proper subdirectory paths
 	// If panels.json is missing or stale, regenerate it asynchronously
-	try {
-		if (needPanelsRegen()) {
-			logInfo('panels.json is missing or stale; regenerating at startup');
-			spawnPanelsGenerator();
-		}
-	} catch (e) {
-		// non-fatal; generation will be attempted later on upload or manual run
-		try { logError('startup: panels regen check failed', { error: e && e.message ? e.message : String(e) }); } catch (_) { console.error('startup: panels regen check failed', e); }
+	// try {
+	// 	if (needPanelsRegen()) {
+	// 		logInfo('panels.json is missing or stale; regenerating at startup');
+	// 		spawnPanelsGenerator();
+	// 	}
+	// } catch (e) {
+	// 	// non-fatal; generation will be attempted later on upload or manual run
+	// 	try { logError('startup: panels regen check failed', { error: e && e.message ? e.message : String(e) }); } catch (_) { console.error('startup: panels regen check failed', e); }
 	}
 
 // If DATABASE_URL is set, perform quick sanity checks: ensure a database name is present and test connectivity.
