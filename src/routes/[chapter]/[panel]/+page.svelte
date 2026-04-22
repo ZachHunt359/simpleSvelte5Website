@@ -137,13 +137,21 @@
     //$: console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
 
     //Clamp currentPanel to valid range, in case Mobile or Desktop is shorter than the other
+    // BUT: Don't clamp if we're at the end of the last chapter - this prevents navigation loops
     $: {
         if (panels.length === 0) {
             currentPanel = 0;
         } else if (currentPanel < 0) {
             currentPanel = 0;
         } else if (currentPanel >= panels.length) {
-            currentPanel = panels.length - 1;
+            // Only clamp if not at the end of the last chapter
+            const isLastChapter = currentChapter === chapters.length - 1;
+            if (!isLastChapter) {
+                currentPanel = panels.length - 1;
+            } else {
+                // At last chapter: stay at the last valid panel to prevent loop
+                currentPanel = Math.min(currentPanel, panels.length - 1);
+            }
         }
     }
 

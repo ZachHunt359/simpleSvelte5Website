@@ -41,12 +41,12 @@
                 // For images, preload before swapping
                 const img = new window.Image();
                 
-                // Timeout fallback: if image doesn't load within 10 seconds, show it anyway
+                // Timeout fallback: if image doesn't load within 3 seconds, show it anyway
                 const timeoutId = setTimeout(() => {
                     console.warn(`[ComicPanel] Image load timeout for: ${url}`);
                     displayedPanelIndex = currentPanel;
                     preloading = false;
-                }, 10000);
+                }, 3000);
                 
                 img.onload = () => {
                     clearTimeout(timeoutId);
@@ -316,12 +316,7 @@
         margin: 0;
     }
 
-    /* Hide hint on desktop or when navs are visible */
-    @media (min-width: 801px) {
-        .youtube-hint {
-            display: none;
-        }
-    }
+    /* YouTube hint is now visible on both desktop and mobile */
 
     :global(.active) {
         opacity: 1;
