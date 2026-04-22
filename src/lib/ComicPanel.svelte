@@ -40,10 +40,28 @@
             } else {
                 // For images, preload before swapping
                 const img = new window.Image();
+                
+                // Timeout fallback: if image doesn't load within 10 seconds, show it anyway
+                const timeoutId = setTimeout(() => {
+                    console.warn(`[ComicPanel] Image load timeout for: ${url}`);
+                    displayedPanelIndex = currentPanel;
+                    preloading = false;
+                }, 10000);
+                
                 img.onload = () => {
+                    clearTimeout(timeoutId);
                     displayedPanelIndex = currentPanel;
                     preloading = false;
                 };
+                
+                img.onerror = (e) => {
+                    clearTimeout(timeoutId);
+                    console.error(`[ComicPanel] Failed to load image: ${url}`, e);
+                    // Show the panel anyway so navigation isn't blocked
+                    displayedPanelIndex = currentPanel;
+                    preloading = false;
+                };
+                
                 img.src = url;
             }
         }
@@ -192,6 +210,9 @@
             alt="Comic Panel"
             draggable="false"
             on:load={handleMediaLoad}
+            on:error={(e) => {
+                console.error(`[ComicPanel] Failed to render image: ${panels[displayedPanelIndex]}`, e);
+            }}
             />
         {/if}
     {/if}
