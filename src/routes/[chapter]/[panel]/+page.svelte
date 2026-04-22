@@ -16,6 +16,7 @@
     let isDesktop: boolean = false; // For image layout
     let isPointerDesktop: boolean = false; // For nav behavior
     let isSaved: boolean = false;
+    let isLastPanelOfLastChapter: boolean = false;
 
     let lastScroll = 0;
 
