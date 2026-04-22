@@ -186,6 +186,11 @@
             blurActiveElement();
             return true;
         }
+        // If we're at the last panel of the last chapter, show inquiry modal
+        if (isLastPanelOfLastChapter && !showInquiryModal) {
+            showInquiryModal = true;
+            hasAutoOpenedInquiry = true;
+        }
         return false;
     }
     function prev() {
@@ -407,17 +412,15 @@
     let lastInquiryId: string | null = null;
     let hasAutoOpenedInquiry = false; // Track if we've already auto-opened on this session
 
-    // Auto-open inquiry modal on final panel
-    $: if (browser && !hasAutoOpenedInquiry && chapters.length > 0 && panels.length > 0) {
-        const isLastPanel = currentPanel >= panels.length - 1;
-        const isLastChapter = currentChapter >= chapters.length - 1;
-        if (isLastPanel && isLastChapter) {
-            // Small delay to let the panel render first
-            setTimeout(() => {
+    // Auto-open inquiry modal after a few seconds on final panel
+    $: if (browser && !hasAutoOpenedInquiry && isLastPanelOfLastChapter) {
+        // Give them 3 seconds to look at the final panel before showing the modal
+        setTimeout(() => {
+            if (isLastPanelOfLastChapter && !showInquiryModal) {
                 showInquiryModal = true;
                 hasAutoOpenedInquiry = true;
-            }, 500);
-        }
+            }
+        }, 3000);
     }
 
     async function submitInquiry() {
