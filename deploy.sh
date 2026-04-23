@@ -217,9 +217,10 @@ npm ci
 log "Ensuring YouTube entries in _order.json"
 npm run ensure-youtube
 
-# Generate panels.json (includes YouTube entries from _order.json)
-log "Generating panels.json"
-npm run generate:panels
+# DISABLED: Manual panels.json management only
+# The automated generation creates per-file timestamps and doesn't respect manual ordering
+# log "Generating panels.json"
+# npm run generate:panels
 
 # Build the app
 log "Building the app"
