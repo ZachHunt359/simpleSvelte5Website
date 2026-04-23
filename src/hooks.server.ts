@@ -168,8 +168,9 @@ try {
 	process.exit(1);
 }
 
-// Scheduled regeneration: run periodically to catch scheduled publish dates.
-// Skip regeneration while any admin is actively viewing the upload/ChapterTree UI
+// Scheduled regeneration: DISABLED - manual panels.json management only
+// The automatic regeneration was overwriting the manually curated panels.json
+/*
 try {
 	const intervalMs = Number(process.env.PANELS_REGEN_INTERVAL_MS ?? 300_000); // default 300s (5 minutes)
 
@@ -194,6 +195,7 @@ try {
 } catch (e) {
 	try { logError('failed to initialize scheduled panels regen', { error: e && e.message ? e.message : String(e) }); } catch (_) { console.error('failed to initialize scheduled panels regen', e); }
 }
+*/
 
 export const handle: Handle = async ({ event, resolve }) => {
 	try {

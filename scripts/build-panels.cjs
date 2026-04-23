@@ -125,18 +125,20 @@ const mobilePanels = sortedMobile.map(item => {
 const ytOpening = { type: 'youtube', id: 'Q-1wOb8LOAA', title: 'Little Town of Nowhere' };
 const ytWolf = { type: 'youtube', id: '9t9IHg2DQ3I', title: 'The Wolf Who Cried' };
 
-// Find Spread22 position
-const mobileWolfIdx = sortedMobile.findIndex(item => item.filename.match(/Spread\s*22/i));
-const desktopWolfIdx = sortedDesktop.findIndex(item => item.filename.match(/Spread\s*22/i));
+// Find positions for Wolf video
+// Mobile: after Spread18 (find last Spread18 panel)
+// Desktop: before Spread22 (find first Spread22 panel)
+const mobileWolfIdx = sortedMobile.findIndex(item => item.filename.match(/Spread\s*19/i)); // Insert before Spread19 = after Spread18
+const desktopWolfIdx = sortedDesktop.findIndex(item => item.filename.match(/Spread\s*22/i)); // Insert before Spread22
 
-console.log('Mobile Wolf index:', mobileWolfIdx);
-console.log('Desktop Wolf index:', desktopWolfIdx);
+console.log('Mobile Wolf index (before Spread19):', mobileWolfIdx);
+console.log('Desktop Wolf index (before Spread22):', desktopWolfIdx);
 
 // Insert opening at start
 mobilePanels.unshift(ytOpening);
 desktopPanels.unshift(ytOpening);
 
-// Insert Wolf before Spread22 (+1 for the opening we just added)
+// Insert Wolf at correct positions (+1 for the opening we just added)
 if (mobileWolfIdx >= 0) {
   mobilePanels.splice(mobileWolfIdx + 1, 0, ytWolf);
 }
