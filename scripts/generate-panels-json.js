@@ -125,9 +125,13 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
 
     // Helper to build file list honoring saved order when possible
     function buildOrderedList(devicePath, deviceKey) {
+      // Escape special regex chars in assetBase and create dynamic pattern
+      const assetBaseEscaped = assetBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const assetBasePrefixPattern = new RegExp(`^${assetBaseEscaped}\\/`);
+      
       const all = findFilesRecursive(devicePath)
         .filter(f => !/\.thumb\.(jpg|jpeg|png)$/i.test(f))
-        .map(f => f.replace(/^\/panels\//, '')) // store path relative to panelsDir
+        .map(f => f.replace(assetBasePrefixPattern, '')) // store path relative to panelsDir (dynamic prefix)
         .map(p => p.replace(/\?v=.*$/, ''));
       // orderMap keys are expected to be chapter directory names (e.g., 'chapter-1')
   const chapterMeta = (orderMap && orderMap[chapter]) || {};
