@@ -10,6 +10,7 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
   // Use PROJECT_ROOT env var in production, fallback to process.cwd() for local development
   const projectRoot = process.env.PROJECT_ROOT || process.cwd();
   const panelsDir = path.resolve(projectRoot, process.env.PANELS_DIR || 'static/panels');
+  const panelsJson = process.env.PANELS_JSON || 'static/panels.json';
   const assetBase = process.env.STATIC_ASSET_BASE || '/panels';
 
   // Check if ffmpeg is installed
