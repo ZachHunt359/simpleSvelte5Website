@@ -4,8 +4,9 @@ import path from 'path';
 import { existsSync, mkdirSync, readdirSync, unlinkSync, rmdirSync } from 'fs';
 import { isAdmin } from '$lib/auth/helpers';
 import { logError, logInfo } from '$lib/logger';
+import { PANELS_CONFIG } from '$lib/config/panels.server';
 
-const PANELS_DIR = path.resolve('static/panels');
+const PANELS_DIR = path.resolve(PANELS_CONFIG.panelsDir);
 
 /**
  * Normalize upload path: lowercase chapter and device folder names for consistency

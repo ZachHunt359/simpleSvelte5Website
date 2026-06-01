@@ -9,7 +9,8 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
   console.log('Script running');
   // Use PROJECT_ROOT env var in production, fallback to process.cwd() for local development
   const projectRoot = process.env.PROJECT_ROOT || process.cwd();
-  const panelsDir = path.resolve(projectRoot, 'static', 'panels');
+  const panelsDir = path.resolve(projectRoot, process.env.PANELS_DIR || 'static/panels');
+  const assetBase = process.env.STATIC_ASSET_BASE || '/panels';
 
   // Check if ffmpeg is installed
   const hasFFmpeg = checkFFmpeg(log);
@@ -90,7 +91,7 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
         // Append a cache-busting version parameter based on mtime so clients fetch changed files immediately
         const st = fs.statSync(filePath);
         const v = Math.floor(st.mtimeMs);
-        results.push(`/panels/${relPath}?v=${v}`);
+        results.push(`${assetBase}/${relPath}?v=${v}`);
       }
     }
     return results;
@@ -231,7 +232,7 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
         return true; // default to published
       });
 
-      // Convert to /panels/<rel>?v=<mtime> OR leave structured objects (e.g. youtube)
+      // Convert to assetBase/<rel>?v=<mtime> OR leave structured objects (e.g. youtube)
       return ordered.map(item => {
         if (item && typeof item === 'object' && item.type === 'youtube') {
           return item;
@@ -242,7 +243,7 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
         if (!fs.existsSync(abs)) return null;
         const st = fs.statSync(abs);
         const v = Math.floor(st.mtimeMs);
-        return `/panels/${rel}?v=${v}`;
+        return `${assetBase}/${rel}?v=${v}`;
       }).filter(Boolean);
     }
 
@@ -262,10 +263,10 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
       : (mobilePanelFiles.length ? mobilePanelFiles[mobilePanelFiles.length - 1] : null);
 
     if (lastPanel) {
-      const lastPanelAbs = path.join(panelsDir, lastPanel.replace(/^\/panels\//, ''));
+      const lastPanelAbs = path.join(panelsDir, lastPanel.replace(new RegExp(`^${assetBase.replace(/\//g, '\\/')}\\/`), ''));
       const thumbName = `${chapter}.thumb.jpg`;
       const thumbAbs = path.join(chapterPath, thumbName);
-      const thumbRel = `/panels/${chapter}/${thumbName}`;
+      const thumbRel = `${assetBase}/${chapter}/${thumbName}`;
 
       if ((regenThumbnails || !fs.existsSync(thumbAbs)) && hasFFmpeg) {
         try {

@@ -38,8 +38,8 @@ function checkWritePaths() {
 
 function needPanelsRegen() {
 	try {
-		const panelsJson = path.resolve(process.cwd(), 'static', 'panels.json');
-		const panelsDir = path.resolve(process.cwd(), 'static', 'panels');
+		const panelsJson = path.resolve(process.cwd(), PANELS_CONFIG.panelsJson);
+		const panelsDir = path.resolve(process.cwd(), PANELS_CONFIG.panelsDir);
 		if (!fs.existsSync(panelsDir)) return true;
 		if (!fs.existsSync(panelsJson)) return true;
 

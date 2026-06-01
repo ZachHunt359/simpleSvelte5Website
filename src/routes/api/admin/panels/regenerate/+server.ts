@@ -2,6 +2,7 @@ import { generatePanelsJson } from '../../../../../../scripts/generate-panels-js
 import { ensureYouTubeEntries } from '../../../../../../scripts/ensure-youtube-entries.js';
 import { isAdmin, getUserFromCookies } from '$lib/auth/helpers';
 import { logInfo } from '$lib/logger';
+import { PANELS_CONFIG } from '$lib/config/panels.server';
 
 export const POST = async ({ cookies }) => {
   try {

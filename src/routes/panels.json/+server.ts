@@ -1,9 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { PANELS_CONFIG } from '$lib/config/panels.server';
 
 export const GET = async () => {
   try {
-    const file = path.join(process.cwd(), 'static', 'panels.json');
+    const file = path.join(process.cwd(), PANELS_CONFIG.panelsJson);
     const data = await fs.readFile(file, 'utf8');
     // Disable caching so clients always see the latest generated panels.json without a full rebuild
     return new Response(data, {

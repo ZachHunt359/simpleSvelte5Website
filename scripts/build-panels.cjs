@@ -1,5 +1,9 @@
 ﻿const fs = require('fs');
 
+// Environment-aware configuration
+const assetBase = process.env.STATIC_ASSET_BASE || '/panels';
+const panelsJsonPath = process.env.PANELS_JSON || 'static/panels.json';
+
 // Read and parse
 const content = fs.readFileSync('.github/instructions/paranoid-files-log.txt', 'utf8');
 const lines = content.split(/\r?\n/);
@@ -109,15 +113,15 @@ const timestamp = Date.now();
 // Convert to URLs with subdirectory paths
 const desktopPanels = sortedDesktop.map(item => {
   const path = item.subdir 
-    ? `/panels/chapter-1/desktop/${item.subdir}/${item.filename}`
-    : `/panels/chapter-1/desktop/${item.filename}`;
+    ? `${assetBase}/chapter-1/desktop/${item.subdir}/${item.filename}`
+    : `${assetBase}/chapter-1/desktop/${item.filename}`;
   return path + '?v=' + timestamp;
 });
 
 const mobilePanels = sortedMobile.map(item => {
   const path = item.subdir 
-    ? `/panels/chapter-1/mobile/${item.subdir}/${item.filename}`
-    : `/panels/chapter-1/mobile/${item.filename}`;
+    ? `${assetBase}/chapter-1/mobile/${item.subdir}/${item.filename}`
+    : `${assetBase}/chapter-1/mobile/${item.filename}`;
   return path + '?v=' + timestamp;
 });
 
@@ -156,8 +160,10 @@ const panelsData = [{
 }];
 
 // Write
-fs.writeFileSync('static/panels.json', JSON.stringify(panelsData, null, 2));
+fs.writeFileSync(panelsJsonPath, JSON.stringify(panelsData, null, 2));
 
 console.log('\nGenerated panels.json successfully!');
+console.log('Output path:', panelsJsonPath);
+console.log('Asset base:', assetBase);
 console.log('Desktop panels (with YouTube):', desktopPanels.length);
 console.log('Mobile panels (with YouTube):', mobilePanels.length);
