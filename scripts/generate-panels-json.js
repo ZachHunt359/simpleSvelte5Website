@@ -297,21 +297,25 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
     };
   });
 
-  const outFile = path.resolve(projectRoot, 'static', 'panels.json');
+  const outFile = path.resolve(projectRoot, panelsJson);
   const tmpFile = outFile + '.tmp';
   const json = JSON.stringify(data, null, 2);
   fs.writeFileSync(tmpFile, json, 'utf8');
   fs.renameSync(tmpFile, outFile);
-  console.log('Atomically wrote panels.json with data:', json);
+  console.log(`Atomically wrote ${panelsJson} with data:`, json);
 
   // Also write to build directory if it exists (for production updates without full rebuild)
-  const buildFile = path.resolve(projectRoot, 'build', 'client', 'panels.json');
-  const buildDir = path.dirname(buildFile);
-  if (fs.existsSync(buildDir)) {
-    const buildTmpFile = buildFile + '.tmp';
-    fs.writeFileSync(buildTmpFile, json, 'utf8');
-    fs.renameSync(buildTmpFile, buildFile);
-    console.log('✓ Also updated build/client/panels.json (production hot-update)');
+  // Only do this for production panels.json, not staging
+  const isProduction = panelsJson === 'static/panels.json';
+  if (isProduction) {
+    const buildFile = path.resolve(projectRoot, 'build', 'client', 'panels.json');
+    const buildDir = path.dirname(buildFile);
+    if (fs.existsSync(buildDir)) {
+      const buildTmpFile = buildFile + '.tmp';
+      fs.writeFileSync(buildTmpFile, json, 'utf8');
+      fs.renameSync(buildTmpFile, buildFile);
+      console.log('✓ Also updated build/client/panels.json (production hot-update)');
+    }
   }
 
 }
