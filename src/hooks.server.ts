@@ -2,7 +2,7 @@
 import { config } from 'dotenv';
 const dotenvPath = process.env.DOTENV_CONFIG_PATH;
 if (dotenvPath) {
-  config({ path: dotenvPath });
+  config({ path: dotenvPath, override: true });
   console.log(`[hooks.server] Loaded env from: ${dotenvPath}`);
 }
 
