@@ -1,3 +1,11 @@
+// Load environment variables early - must be first!
+import { config } from 'dotenv';
+const dotenvPath = process.env.DOTENV_CONFIG_PATH;
+if (dotenvPath) {
+  config({ path: dotenvPath });
+  console.log(`[hooks.server] Loaded env from: ${dotenvPath}`);
+}
+
 import type { Handle } from "@sveltejs/kit";
 import { getUserFromCookies } from "$lib/auth/helpers";
 import { logError, logInfo } from "$lib/logger";

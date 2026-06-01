@@ -8,7 +8,6 @@ module.exports = {
       exec_mode: 'fork',
       watch: false,
       max_memory_restart: '1G',
-      node_args: '-r dotenv/config',
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
@@ -36,7 +35,6 @@ module.exports = {
       exec_mode: 'fork',
       watch: false,
       max_memory_restart: '1G',
-      node_args: '-r dotenv/config',
       env: {
         NODE_ENV: 'production',
         BODY_SIZE_LIMIT: '100M',
