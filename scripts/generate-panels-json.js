@@ -10,7 +10,7 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
   // Use PROJECT_ROOT env var in production, fallback to process.cwd() for local development
   const projectRoot = process.env.PROJECT_ROOT || process.cwd();
   const panelsDir = path.resolve(projectRoot, process.env.PANELS_DIR || 'static/panels');
-  const panelsJson = process.env.PANELS_JSON || 'static/panels.json';
+  const panelsJson = process.env.PANELS_JSON || 'data/panels.json';
   const assetBase = process.env.STATIC_ASSET_BASE || '/panels';
 
   // Check if ffmpeg is installed
@@ -305,19 +305,9 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
   fs.renameSync(tmpFile, outFile);
   console.log(`Atomically wrote ${panelsJson} with data:`, json);
 
-  // Also write to build directory if it exists (for production updates without full rebuild)
-  // Only do this for production panels.json, not staging
-  const isProduction = panelsJson === 'static/panels.json';
-  if (isProduction) {
-    const buildFile = path.resolve(projectRoot, 'build', 'client', 'panels.json');
-    const buildDir = path.dirname(buildFile);
-    if (fs.existsSync(buildDir)) {
-      const buildTmpFile = buildFile + '.tmp';
-      fs.writeFileSync(buildTmpFile, json, 'utf8');
-      fs.renameSync(buildTmpFile, buildFile);
-      console.log('✓ Also updated build/client/panels.json (production hot-update)');
-    }
-  }
+  // Note: panels.json is now in data/ directory, not static/,
+  // so it won't be copied to build/client/ during build.
+  // This ensures the dynamic /panels.json endpoint is always used.
 
 }
 

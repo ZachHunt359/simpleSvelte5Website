@@ -12,7 +12,7 @@ const isStaging = process.env.DOTENV_CONFIG_PATH?.includes('.env.staging') ||
 export const PANELS_CONFIG = {
   // Filesystem paths (server-side)
   panelsDir: process.env.PANELS_DIR || 'static/panels',
-  panelsJson: process.env.PANELS_JSON || 'static/panels.json',
+  panelsJson: process.env.PANELS_JSON || 'data/panels.json',
   
   // URL paths (client-side asset requests)
   assetBase: process.env.STATIC_ASSET_BASE || '/panels',
