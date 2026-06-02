@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { PANELS_CONFIG } from '$lib/config/panels.server';
 
 function slugifyChapterKey(key: string) {
   // If key looks like "Chapter 2" return "chapter-2"
@@ -100,7 +101,7 @@ export const POST = async ({ request }) => {
     }
 
     const projectRoot = process.env.PROJECT_ROOT || process.cwd();
-    const panelsDir = path.resolve(projectRoot, 'static', 'panels');
+    const panelsDir = path.resolve(projectRoot, PANELS_CONFIG.panelsDir);
     await fs.mkdir(panelsDir, { recursive: true });
     const orderFile = path.join(panelsDir, '_order.json');
 
