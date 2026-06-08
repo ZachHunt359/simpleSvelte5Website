@@ -144,16 +144,8 @@
         } else if (currentPanel < 0) {
             currentPanel = 0;
         } else if (currentPanel >= panels.length) {
-            // Clamp to ACTUAL array length, not fallback-merged length
-            const chap = chapters[currentChapter] ?? { desktop: [], mobile: [] };
-            const actualArray = isDesktop ? (chap.desktop ?? []) : (chap.mobile ?? []);
-            const actualLength = actualArray.length;
-            
-            if (actualLength > 0) {
-                currentPanel = Math.min(currentPanel, actualLength - 1);
-            } else {
-                currentPanel = Math.min(currentPanel, panels.length - 1);
-            }
+            // Use fallback-merged panels array length
+            currentPanel = panels.length - 1;
         }
     }
 
@@ -168,12 +160,8 @@
 
     
     function next() {
-        // Check against ACTUAL array length, not fallback-merged array
-        const chap = chapters[currentChapter] ?? { desktop: [], mobile: [] };
-        const actualArray = isDesktop ? (chap.desktop ?? []) : (chap.mobile ?? []);
-        const actualLength = actualArray.length;
-        
-        if (currentPanel < actualLength - 1) {
+        // Use the fallback-merged panels array length
+        if (currentPanel < panels.length - 1) {
             lastScroll = window.scrollY;
             currentPanel += 1;
             blurActiveElement();
@@ -202,10 +190,9 @@
         }
             if (currentChapter > 0) {
             currentChapter -= 1;
-            // Use ACTUAL array length, not fallback-merged array
-            const chap = chapters[currentChapter] ?? { desktop: [], mobile: [] };
-            const actualArray = isDesktop ? (chap.desktop ?? []) : (chap.mobile ?? []);
-            currentPanel = actualArray.length - 1;
+            // Use fallback-merged panels array - it will be rebuilt when currentChapter changes
+            const prevChapterPanels = buildPanelsForChapter(currentChapter, isDesktop);
+            currentPanel = prevChapterPanels.length - 1;
             lastScroll = 0; // Scroll to top at beginning of new chapter. TODO: beginning of new PAGE, separate from chapter
             blurActiveElement();
             return true;
@@ -279,13 +266,11 @@
       showChapterModal = false;
     }
 
-    // Check if we're at the last panel of the ACTUAL desktop/mobile array (not the fallback-merged one)
+    // Check if we're at the last panel using the fallback-merged panels array
     $: {
-        const chap = chapters[currentChapter] ?? { desktop: [], mobile: [] };
-        const actualArray = isDesktop ? (chap.desktop ?? []) : (chap.mobile ?? []);
         isLastPanelOfLastChapter = 
             currentChapter === chapters.length - 1 &&
-            currentPanel === actualArray.length - 1;
+            currentPanel === panels.length - 1;
     }
 
     $: canGoForward = !isLastPanelOfLastChapter;

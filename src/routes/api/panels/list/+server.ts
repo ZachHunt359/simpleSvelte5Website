@@ -3,8 +3,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { isAdmin } from '$lib/auth/helpers';
 import { logError } from '$lib/logger';
+import { PANELS_CONFIG } from '$lib/config/panels.server';
 
-const PANELS_DIR = path.resolve('static/panels');
+const PANELS_DIR = path.resolve(PANELS_CONFIG.panelsDir);
 // import { logInfo } from '$lib/logger';
 
 async function listFiles(dir: string, base = ''): Promise<string[]> {

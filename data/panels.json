@@ -4,20 +4,14 @@
     "slug": "chapter-1",
     "desktop": [],
     "mobile": [
-      {
-        "type": "youtube",
-        "id": "Q-1wOb8LOAA",
-        "title": "Little Town of Nowhere"
-      },
-      "/panels/chapter-1/mobile/Spread1.1.a.png?v=1762135177803",
-      "/panels/chapter-1/mobile/Spread1.2.a.png?v=1762135177898",
-      "/panels/chapter-1/mobile/Spread1.2.b.png?v=1762135178017",
-      "/panels/chapter-1/mobile/Spread1.2.c.png?v=1762135178113",
-      "/panels/chapter-1/mobile/Spread1.3.a.png?v=1762135178183",
       "/panels/chapter-1/mobile/Spread1.3.b.png?v=1762135178255",
+      "/panels/chapter-1/mobile/Spread1.3.a.png?v=1762135178183",
       "/panels/chapter-1/mobile/Spread1.4.a.png?v=1762135178334",
       "/panels/chapter-1/mobile/Spread1.4.b.png?v=1762135178443",
       "/panels/chapter-1/mobile/Spread1.4.c.png?v=1762135178541",
+      "/panels/chapter-1/mobile/Spread1.2.a.png?v=1762135177898",
+      "/panels/chapter-1/mobile/Spread1.2.b.png?v=1762135178017",
+      "/panels/chapter-1/mobile/Spread1.2.c.png?v=1762135178113",
       "/panels/chapter-1/mobile/Spread2.1.png?v=1762135171203",
       "/panels/chapter-1/mobile/Spread2.2a.png?v=1762135171284",
       "/panels/chapter-1/mobile/Spread2.2b.png?v=1762135171359",
@@ -173,11 +167,6 @@
       "/panels/chapter-1/mobile/Spread18.2.b.png?v=1762135172403",
       "/panels/chapter-1/mobile/Spread18.2.c.png?v=1762135172454",
       "/panels/chapter-1/mobile/Spread18.3.png?v=1762135172511",
-      {
-        "type": "youtube",
-        "id": "9t9IHg2DQ3I",
-        "title": "The Wolf Who Cried"
-      },
       "/panels/chapter-1/mobile/Spread19.1.png?v=1762135171476",
       "/panels/chapter-1/mobile/Spread19.2.png?v=1762135171531",
       "/panels/chapter-1/mobile/Spread19.3.a.png?v=1762135171601",
@@ -277,7 +266,8 @@
       "/panels/chapter-1/mobile/Spread22.10.png?v=1762135169095",
       "/panels/chapter-1/mobile/Spread25.1.a.png?v=1762135167238",
       "/panels/chapter-1/mobile/Spread25.2.a.png?v=1762135167306",
-      "/panels/chapter-1/mobile/Spread25.5.a.png?v=1762135167589"
+      "/panels/chapter-1/mobile/Spread25.5.a.png?v=1762135167589",
+      "/panels/chapter-1/mobile/Spread1.1.a.png?v=1762135177803"
     ],
     "thumbnail": ""
   }

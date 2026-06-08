@@ -4,17 +4,137 @@
   // flatpickr styles (importing CSS so Vite bundles it)
   import 'flatpickr/dist/flatpickr.min.css';
   type DeviceType = 'desktop' | 'mobile' | 'other';
-  // Accept separate arrays for existing and new files
-  export let existingFiles: Array<{ name: string; webkitRelativePath: string; size?: number; type?: string }> = [];
-  export let newFiles: Array<{ name: string; webkitRelativePath: string; size?: number; type?: string; id?: string }> = [];
-  export let conflicts: { duplicates: string[], missing: string[], errors: string[] } = { duplicates: [], missing: [], errors: [] };
-  export let orderMap: Record<string, any> = {};
-  export const key: string = '';
-  // When true show debug UI and console logs
-  export let debug: boolean = false;
+  
+  // Props using Svelte 5 $props() rune
+  let {
+    existingFiles = [],
+    newFiles = [],
+    conflicts = { duplicates: [], missing: [], errors: [] },
+    orderMap = {},
+    debug = false
+  }: {
+    existingFiles?: Array<{ name: string; webkitRelativePath: string; size?: number; type?: string }>;
+    newFiles?: Array<{ name: string; webkitRelativePath: string; size?: number; type?: string; id?: string }>;
+    conflicts?: { duplicates: string[], missing: string[], errors: string[] };
+    orderMap?: Record<string, any>;
+    debug?: boolean;
+  } = $props();
+
+  // Multi-select state (Phase 1.5)
+  let selectedItems = $state(new Set<string>()); // Stores file IDs
+  let lastSelectedIndex = $state<{ chapter: string; device: DeviceType; index: number } | null>(null);
+  
+  // Helper to generate unique key for selection tracking
+  function getFileKey(file: any, chapter: string, device: DeviceType): string {
+    // Strip any suffix that svelte-dnd-action might have added (e.g., '-1')
+    const baseId = file.id.replace(/-\d+$/, '');
+    return `${chapter}::${device}::${baseId}`;
+  }
+
+  // Get all files as a flat array for range selection
+  function getDeviceFiles(chapter: string, device: DeviceType): any[] {
+    return chapterMap[chapter]?.[device] || [];
+  }
+
+  // Handle row click with modifier key support
+  function handleRowClick(file: any, chapter: string, device: DeviceType, index: number, event: MouseEvent) {
+    // Prevent text selection during shift/ctrl clicks
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+    }
+    
+    const fileKey = getFileKey(file, chapter, device);
+    const files = getDeviceFiles(chapter, device);
+    
+    if (event.shiftKey && lastSelectedIndex && lastSelectedIndex.chapter === chapter && lastSelectedIndex.device === device) {
+      // Range selection within same chapter/device
+      const start = Math.min(lastSelectedIndex.index, index);
+      const end = Math.max(lastSelectedIndex.index, index);
+      const newSelection = new Set(selectedItems);
+      for (let i = start; i <= end; i++) {
+        if (files[i]) {
+          newSelection.add(getFileKey(files[i], chapter, device));
+        }
+      }
+      selectedItems = newSelection;
+    } else if (event.ctrlKey || event.metaKey) {
+      // Toggle single item
+      const newSelection = new Set(selectedItems);
+      if (newSelection.has(fileKey)) {
+        newSelection.delete(fileKey);
+      } else {
+        newSelection.add(fileKey);
+      }
+      selectedItems = newSelection;
+    } else {
+      // Normal click - select only this one
+      selectedItems = new Set([fileKey]);
+    }
+    
+    lastSelectedIndex = { chapter, device, index };
+  }
+
+  // Toggle checkbox (for direct checkbox clicks)
+  function handleCheckboxToggle(file: any, chapter: string, device: DeviceType, index: number) {
+    const fileKey = getFileKey(file, chapter, device);
+    const newSelection = new Set(selectedItems);
+    if (newSelection.has(fileKey)) {
+      newSelection.delete(fileKey);
+    } else {
+      newSelection.add(fileKey);
+    }
+    selectedItems = newSelection;
+    lastSelectedIndex = { chapter, device, index };
+  }
+
+  // Select all in chapter/device
+  function selectAllInDevice(chapter: string, device: DeviceType) {
+    const files = getDeviceFiles(chapter, device);
+    const newSelection = new Set(selectedItems);
+    files.forEach(file => {
+      newSelection.add(getFileKey(file, chapter, device));
+    });
+    selectedItems = newSelection;
+  }
+
+  // Clear all selections
+  function clearSelection() {
+    selectedItems = new Set();
+    lastSelectedIndex = null;
+  }
+
+  // Get selected files for batch operations
+  function getSelectedFiles(): Array<{ file: any; chapter: string; device: DeviceType }> {
+    const result: Array<{ file: any; chapter: string; device: DeviceType }> = [];
+    for (const key of selectedItems) {
+      const [chapter, device, fileId] = key.split('::');
+      const files = getDeviceFiles(chapter, device as DeviceType);
+      const file = files.find(f => f.id === fileId);
+      if (file) {
+        result.push({ file, chapter, device: device as DeviceType });
+      }
+    }
+    return result;
+  }
+
+  // Batch delete selected panels
+  async function handleBatchDelete() {
+    if (selectedItems.size === 0) return;
+    
+    const count = selectedItems.size;
+    if (!confirm(`Delete ${count} selected panel${count !== 1 ? 's' : ''}?`)) return;
+    
+    const selected = getSelectedFiles();
+    for (const { file } of selected) {
+      await handleDelete(file);
+    }
+    clearSelection();
+  }
 
   // Debug: reactively log the full structure of newFiles whenever it changes (only when debug=true)
-  $: if (debug) console.log('[ChapterTree] newFiles prop (reactive):', newFiles);
+  $effect(() => {
+    if (debug) console.log('[ChapterTree] newFiles prop (reactive):', newFiles);
+  });
 
   // Shared chapter extraction function
   function extractChapter(path: string): string {
@@ -26,8 +146,8 @@
 
   // Merge files by chapter/device, marking new files
   // Ensure newFiles have unique id for dndzone
-  $: newFilesWithId = newFiles.map((f, i) => ({ ...f, id: f.id || `${f.webkitRelativePath || f.name}-${i}` }));
-  $: chapterMap = (() => {
+  let newFilesWithId = $derived(newFiles.map((f, i) => ({ ...f, id: f.id || `${f.webkitRelativePath || f.name}-${i}` })));
+  let chapterMap = $derived.by(() => {
     console.log('🔄 [TREE] chapterMap recalculating...', {
       existingFilesCount: existingFiles.length,
       newFilesCount: newFiles.length
@@ -90,13 +210,13 @@
       return newChapterMap;
     }
     return {};
-  })();
+  });
 
   // Maintain an ordered list of chapters for dnd operations
-  $: chapterList = Object.keys(chapterMap || {});
+  let chapterList = $derived(Object.keys(chapterMap || {}));
 
   // Build items array for the top-level chapter list (items must have `id`)
-  $: chapterItems = chapterList.map(c => ({ id: slugifyChapterKey(c), title: c, [SHADOW_ITEM_MARKER_PROPERTY_NAME]: false }));
+  let chapterItems = $derived(chapterList.map(c => ({ id: slugifyChapterKey(c), title: c, [SHADOW_ITEM_MARKER_PROPERTY_NAME]: false })));
 
   // HTML5-based chapter drag state (fallback to avoid s-d-a keepOriginalElementInDom bug)
   let draggedChapterIndex: number | null = null;
@@ -173,7 +293,124 @@
   const dispatch = createEventDispatcher();
 
   // Prevent nested zones from handling while a chapter is being dragged
-  let isChapterDragging = false;
+  let isChapterDragging = $state(false);
+
+  // Multi-select drag state (Phase 1.5)
+  let draggedFileId = $state<string | null>(null);
+  let dragContext = $state<{ chapter: string; device: DeviceType } | null>(null);
+  let selectedItemsOriginalOrder = $state<string[] | null>(null); // Capture original order of IDs
+  let selectedItemsSnapshot = $state<any[] | null>(null); // Capture actual item objects
+
+  // Handler for consider/finalize events with multi-select support
+  // STRATEGY (Option 5): Separate logic for during-drag vs on-drop
+  // - During drag (onconsider): Return items unchanged, let svelte-dnd-action handle single item
+  // - On drop (onfinalize): Reconstruct array with ALL selected items at drop position
+  function handleConsiderWithSelection(
+    chapter: string, 
+    device: DeviceType, 
+    items: any[],
+    eventInfo?: any
+  ): any[] {
+    // Detect which item is being dragged
+    const draggedId = eventInfo?.id || eventInfo?.info?.id;
+    
+    if (!draggedId) {
+      return items; // No drag info, return unchanged
+    }
+    
+    // Check if dragged item is part of a multi-selection
+    const baseDraggedId = draggedId.replace(/-\d+$/, '');
+    const fileKey = `${chapter}::${device}::${baseDraggedId}`;
+    
+    const selectedInThisDevice = Array.from(selectedItems).filter(key => 
+      key.startsWith(`${chapter}::${device}::`)
+    );
+    
+    if (selectedInThisDevice.length <= 1 || !selectedItems.has(fileKey)) {
+      // Not a multi-select drag - reset tracking and return unchanged
+      draggedFileId = null;
+      dragContext = null;
+      selectedItemsOriginalOrder = null;
+      selectedItemsSnapshot = null;
+      return items;
+    }
+    
+    // Multi-select drag detected!
+    const selectedIds = new Set(selectedInThisDevice.map(key => key.split('::')[2]));
+    
+    // On first drag event, capture the original selected items
+    const isNewDrag = draggedFileId !== draggedId;
+    if (isNewDrag) {
+      draggedFileId = draggedId;
+      dragContext = { chapter, device };
+      
+      // Capture ALL selected items from chapterMap (before any modifications)
+      const originalFiles = chapterMap[chapter]?.[device] || [];
+      selectedItemsSnapshot = originalFiles.filter(it => {
+        const baseId = it.id.replace(/-\d+$/, '');
+        return selectedIds.has(it.id) || selectedIds.has(baseId);
+      });
+      
+      selectedItemsOriginalOrder = selectedItemsSnapshot.map(it => it.id.replace(/-\d+$/, ''));
+    }
+    
+    // Check if we're on FINALIZE (no shadow item means drag ended)
+    const shadowIndex = items.findIndex(it => it[SHADOW_ITEM_MARKER_PROPERTY_NAME]);
+    
+    if (shadowIndex === -1) {
+      // FINALIZE: Dragged item is back in the array, reconstruct with all selected items together
+      // Find where the dragged item ended up
+      const draggedItemIndex = items.findIndex(it => {
+        const baseId = it.id.replace(/-\d+$/, '');
+        return baseId === baseDraggedId || it.id === draggedId;
+      });
+      
+      if (draggedItemIndex === -1 || !selectedItemsSnapshot) {
+        console.warn('🎯 [MULTI-SELECT] Could not find dragged item on finalize');
+        return items;
+      }
+      
+      // Get the dragged item
+      const draggedItem = items[draggedItemIndex];
+      
+      // Remove ALL selected items from the array (including dragged item)
+      const unselectedItems = items.filter(it => {
+        const baseId = it.id.replace(/-\d+$/, '');
+        return !selectedIds.has(it.id) && !selectedIds.has(baseId);
+      });
+      
+      // Calculate where to insert: count unselected items before where dragged item was
+      let insertPosition = 0;
+      for (let i = 0; i < draggedItemIndex; i++) {
+        const baseId = items[i].id.replace(/-\d+$/, '');
+        if (!selectedIds.has(items[i].id) && !selectedIds.has(baseId)) {
+          insertPosition++;
+        }
+      }
+      
+      // Rebuild array with ALL selected items at the drop position, in original order
+      const finalArray = [
+        ...unselectedItems.slice(0, insertPosition),
+        ...selectedItemsSnapshot, // All selected items in their original relative order
+        ...unselectedItems.slice(insertPosition)
+      ];
+      
+      return finalArray;
+    }
+    
+    // DURING DRAG: Just return items unchanged
+    // Let svelte-dnd-action handle the single-item drag visually
+    // We'll consolidate everything on finalize
+    return items;
+  }
+
+  // Reset drag tracking when drag ends
+  function endDrag() {
+    draggedFileId = null;
+    dragContext = null;
+    selectedItemsOriginalOrder = null;
+    selectedItemsSnapshot = null;
+  }
 
   onMount(() => {
     // Disable svelte-dnd-action debug to reduce console noise
@@ -185,7 +422,7 @@
   });
 
   // Date/time picker state
-  let openPickerId: string | null = null;
+  let openPickerId = $state<string | null>(null);
   const pickerInputs: Map<string, HTMLInputElement | null> = new Map();
   const fpInstances: Map<string, any> = new Map();
 
@@ -297,9 +534,9 @@
     Object.keys(chapterMap).forEach(ch => {
       const slug = slugifyChapterKey(ch);
       orders[slug] = {
-        desktop: (chapterMap[ch].desktop || []).map(mapOrderEntry),
-        mobile: (chapterMap[ch].mobile || []).map(mapOrderEntry),
-        other: (chapterMap[ch].other || []).map(mapOrderEntry)
+        desktop: (chapterMap[ch].desktop || []).map(f => mapOrderEntry(f)),
+        mobile: (chapterMap[ch].mobile || []).map(f => mapOrderEntry(f)),
+        other: (chapterMap[ch].other || []).map(f => mapOrderEntry(f))
       };
     });
     dispatch('saveOrder', { orders });
@@ -384,10 +621,12 @@
 
   // Collapsible state
   // Collapsible state: chapters with new files start expanded, others collapsed
-  let openChapters: Record<string, boolean> = {};
-  $: Object.keys(chapterMap).forEach(ch => {
-    const hasNew = (['desktop', 'mobile', 'other'] as Array<DeviceType>).some(dev => ((chapterMap[ch][dev] as any[]) || []).some((f: any) => f._isNew));
-    if (openChapters[ch] === undefined) openChapters[ch] = hasNew;
+  let openChapters = $state<Record<string, boolean>>({});
+  $effect(() => {
+    Object.keys(chapterMap).forEach(ch => {
+      const hasNew = (['desktop', 'mobile', 'other'] as Array<DeviceType>).some(dev => ((chapterMap[ch][dev] as any[]) || []).some((f: any) => f._isNew));
+      if (openChapters[ch] === undefined) openChapters[ch] = hasNew;
+    });
   });
 
   function toggleChapter(chapter: string) {
@@ -476,7 +715,7 @@
   <div class="chapter-tree bg-slate-900 border border-slate-700 rounded-lg p-4">
     <h3 class="text-white font-medium mb-4">Current Comic File Tree</h3>
     <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;">
-      <button class="btn btn-ghost btn-xs text-slate-300" on:click={saveFullOrder}>Save order</button>
+      <button class="btn btn-ghost btn-xs text-slate-300" onclick={saveFullOrder}>Save order</button>
       <span class="text-xs text-slate-400">(Saves file order only - does not upload files)</span>
     </div>
     <!-- Debug output for merged files and chapterMap -->
@@ -493,13 +732,13 @@
     {#if Object.keys(chapterMap).length === 0}
       <div class="text-slate-400 text-sm">No comic files found in /panels.</div>
     {:else}
-  <div class="chapter-list" role="list" on:dragover|preventDefault on:drop={handleChapterDropOnContainer}>
+  <div class="chapter-list" role="list" ondragover={(e) => e.preventDefault()} ondrop={handleChapterDropOnContainer}>
   {#each chapterItems as item, idx (item.id)}
         {#if chapterMap[item.title]}
-          <div class="mb-3" role="listitem" data-item-id={item.id} data-is-dnd-shadow-item-hint={item[SHADOW_ITEM_MARKER_PROPERTY_NAME]} on:dragover|preventDefault={(e) => chapterDragOver(e, idx)} on:drop={(e) => chapterDrop(e, idx)}>
+          <div class="mb-3" role="listitem" data-item-id={item.id} data-is-dnd-shadow-item-hint={item[SHADOW_ITEM_MARKER_PROPERTY_NAME]} ondragover={(e) => { e.preventDefault(); chapterDragOver(e, idx); }} ondrop={(e) => chapterDrop(e, idx)}>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
-              <span class="chapter-drag-handle" draggable="true" on:dragstart={(e) => chapterDragStart(e, idx)} on:dragend={chapterDragEnd} style="cursor:grab;padding:0.25rem 0.5rem;user-select:none" aria-label="drag chapter" role="button" tabindex="0">☰</span>
-              <button class="chapter-toggle text-left py-2 px-3 rounded bg-slate-800 hover:bg-slate-700 flex items-center" on:click={() => toggleChapter(item.title)}>
+              <span class="chapter-drag-handle" draggable="true" ondragstart={(e) => chapterDragStart(e, idx)} ondragend={chapterDragEnd} style="cursor:grab;padding:0.25rem 0.5rem;user-select:none" aria-label="drag chapter" role="button" tabindex="0">☰</span>
+              <button class="chapter-toggle text-left py-2 px-3 rounded bg-slate-800 hover:bg-slate-700 flex items-center" onclick={() => toggleChapter(item.title)}>
                 <div style="display:flex;flex-direction:column;align-items:flex-start;">
                   <div style="display:flex;align-items:center;gap:0.5rem;">
                     <span class="font-semibold text-lg text-slate-100">{item.title}</span>
@@ -517,10 +756,10 @@
                 <span class="ml-2">{openChapters[item.title] ? '▼' : '▶'}</span>
               </button>
               <div style="display:flex;gap:0.5rem;align-items:center;">
-                <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublishChapter(item.title)}>{getChapterMeta(item.title).published ? 'Unpublish Chapter' : 'Publish Chapter'}</button>
-                <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => openSchedulePickerChapter(item.title)}>Schedule Chapter</button>
-                <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => dispatch('insertYouTube', { chapter: item.title })}>Insert YouTube</button>
-                <button class="btn btn-ghost btn-xs text-red-500" on:click={() => handleDeleteChapter(item.title)}>Delete Chapter</button>
+                <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublishChapter(item.title)}>{getChapterMeta(item.title).published ? 'Unpublish Chapter' : 'Publish Chapter'}</button>
+                <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => openSchedulePickerChapter(item.title)}>Schedule Chapter</button>
+                <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => dispatch('insertYouTube', { chapter: item.title })}>Insert YouTube</button>
+                <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDeleteChapter(item.title)}>Delete Chapter</button>
               </div>
               {#if openPickerId === `chapter-schedule-${slugifyChapterKey(item.title)}`}
                 <input data-picker-id={`chapter-schedule-${slugifyChapterKey(item.title)}`} class="picker-input" placeholder="YYYY-MM-DD HH:mm" style="margin-left:0.5rem;padding:0.15rem 0.4rem;border-radius:4px;background:#111;color:#fff;border:1px solid #333;" />
@@ -528,6 +767,17 @@
             </div>
             {#if openChapters[item.title]}
               <div class="panel-list mt-2 ml-4">
+                <!-- Multi-select controls (Phase 1.5) - Always visible -->
+                <div class="selection-controls" style="display:flex;align-items:center;gap:1rem;padding:0.75rem;background:#1e293b;border-radius:0.5rem;margin-bottom:1rem;">
+                  <span class="text-blue-300 font-semibold">
+                    {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
+                  </span>
+                  {#if selectedItems.size > 0}
+                    <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => clearSelection()}>Clear Selection</button>
+                    <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleBatchDelete()}>Delete Selected</button>
+                  {/if}
+                </div>
+                
                 {#if debug}
                 <!-- DEBUG: Show device array lengths and samples -->
                 <div class="debug-output bg-slate-800 text-xs text-yellow-300 p-2 mb-2 rounded">
@@ -538,24 +788,51 @@
                 {/if}
                 <!-- Always show all device groups, even if empty -->
                 <!-- Other Files section first for quick access -->
-                <div class="text-slate-400 text-xs mb-1">Other Files:</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+                  <div class="text-slate-400 text-xs">Other Files:</div>
+                  <button 
+                    class="btn btn-ghost btn-xs text-blue-400" 
+                    onclick={() => selectAllInDevice(item.title, 'other')}
+                    disabled={(chapterMap[item.title].other ?? []).length === 0}
+                  >
+                    Select All Other
+                  </button>
+                </div>
                 <ul style="padding:0;list-style:none;margin:0;">
                   <li style="padding:0;margin:0;list-style:none;">
                     <div
                       use:dragHandleZone={{ items: (chapterMap[item.title].other ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
-                      on:consider={e => { chapterMap[item.title].other = e.detail.items; chapterMap = { ...chapterMap }; }}
-                      on:finalize={e => { 
-                        console.log('🎯 [TREE] OTHER finalize START:', item.title);
-                        chapterMap[item.title].other = e.detail.items; 
+                      onconsider={e => { 
+                        const adjustedItems = handleConsiderWithSelection(item.title, 'other', e.detail.items, e.detail.info);
+                        chapterMap[item.title].other = adjustedItems; 
                         chapterMap = { ...chapterMap }; 
-                        const order = e.detail.items.map(mapOrderEntry);
+                      }}
+                      onfinalize={e => { 
+                        console.log('🎯 [TREE] OTHER finalize START:', item.title);
+                        const adjustedItems = handleConsiderWithSelection(item.title, 'other', e.detail.items, e.detail.info);
+                        chapterMap[item.title].other = adjustedItems; 
+                        chapterMap = { ...chapterMap }; 
+                        const order = adjustedItems.map(f => mapOrderEntry(f));
                         console.log('📤 [TREE] Dispatching orderChange:', { chapter: item.title, device: 'other', orderLength: order.length });
                         dispatch('orderChange', { chapter: item.title, device: 'other', order }); 
+                        endDrag();
                       }}
-                      style="padding:0;margin:0;">
-                      {#each (chapterMap[item.title].other ?? []) as file (file.id)}
-                        <div class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''}" style={getPanelStatus(file) === 'new' ? 'font-weight:bold;color:#22c55e;display:flex;align-items:center;justify-content:space-between;' : 'display:flex;align-items:center;justify-content:space-between;'}>
+                      style="padding:0;margin:0;"
+                    >
+                      {#each (chapterMap[item.title].other ?? []) as file, fileIndex (file.id)}
+                        <div 
+                          class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'other')) ? 'selected' : ''}" 
+                          style="{getPanelStatus(file) === 'new' ? 'font-weight:bold;color:#22c55e;' : ''}display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'other')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}"
+                          onclick={(e) => handleRowClick(file, item.title, 'other', fileIndex, e)}
+                        >
                           <div style="display:flex;align-items:center;">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedItems.has(getFileKey(file, item.title, 'other'))}
+                              onclick={(e) => { e.stopPropagation(); handleCheckboxToggle(file, item.title, 'other', fileIndex) }}
+                              style="margin-right:0.5rem;cursor:pointer;width:16px;height:16px;"
+                              aria-label="Select panel"
+                            />
                             <span class="drag-handle" use:dragHandle style="cursor:grab;margin-right:0.5rem;opacity:0.9" aria-label="drag panel">☰</span>
                             {#if file.type === 'youtube' && file.youtubeId}
                               <span class="youtube-icon" style="display:inline-block;width:48px;height:48px;background:#ff0000;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#fff;">▶</span>
@@ -569,34 +846,61 @@
                           </div>
                           <div style="display:flex;gap:0.5rem;align-items:center;">
                             {#if file.type === 'youtube' && file.youtubeId}
-                              <button class="btn btn-ghost btn-xs text-blue-400" on:click={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
+                              <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
                             {/if}
-                            <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
-                            <button class="btn btn-ghost btn-xs text-red-500" on:click={() => handleDelete(file)}>Delete</button>
+                            <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
+                            <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDelete(file)}>Delete</button>
                           </div>
                         </div>
                       {/each}
                     </div>
                   </li>
                 </ul>
-                <div class="text-slate-400 text-xs mb-1 mt-2">Desktop Panels:</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;margin-bottom:0.5rem;">
+                  <div class="text-slate-400 text-xs">Desktop Panels:</div>
+                  <button 
+                    class="btn btn-ghost btn-xs text-blue-400" 
+                    onclick={() => selectAllInDevice(item.title, 'desktop')}
+                    disabled={(chapterMap[item.title].desktop ?? []).length === 0}
+                  >
+                    Select All Desktop
+                  </button>
+                </div>
                 <ul style="padding:0;list-style:none;margin:0;">
                   <li style="padding:0;margin:0;list-style:none;">
                     <div
                       use:dragHandleZone={{ items: (chapterMap[item.title].desktop ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
-                      on:consider={e => { chapterMap[item.title].desktop = e.detail.items; chapterMap = { ...chapterMap }; }}
-                      on:finalize={e => { 
-                        console.log('🎯 [TREE] DESKTOP finalize START:', item.title);
-                        chapterMap[item.title].desktop = e.detail.items; 
+                      onconsider={e => { 
+                        const adjustedItems = handleConsiderWithSelection(item.title, 'desktop', e.detail.items, e.detail.info);
+                        chapterMap[item.title].desktop = adjustedItems; 
                         chapterMap = { ...chapterMap }; 
-                        const order = e.detail.items.map(mapOrderEntry);
+                      }}
+                      onfinalize={e => { 
+                        console.log('🎯 [TREE] DESKTOP finalize START:', item.title);
+                        const adjustedItems = handleConsiderWithSelection(item.title, 'desktop', e.detail.items, e.detail.info);
+                        chapterMap[item.title].desktop = adjustedItems; 
+                        chapterMap = { ...chapterMap }; 
+                        const order = adjustedItems.map(f => mapOrderEntry(f));
                         console.log('📤 [TREE] Dispatching orderChange:', { chapter: item.title, device: 'desktop', orderLength: order.length });
                         dispatch('orderChange', { chapter: item.title, device: 'desktop', order }); 
+                        endDrag();
                       }}
-                      style="padding:0;margin:0;">
-                      {#each (chapterMap[item.title].desktop ?? []) as file (file.id)}
-                        <div class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''}" style="display:flex;align-items:center;justify-content:space-between;">
+                      style="padding:0;margin:0;"
+                    >
+                      {#each (chapterMap[item.title].desktop ?? []) as file, fileIndex (file.id)}
+                        <div 
+                          class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'desktop')) ? 'selected' : ''}"
+                          style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'desktop')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}"
+                          onclick={(e) => handleRowClick(file, item.title, 'desktop', fileIndex, e)}
+                        >
                           <div style="display:flex;align-items:center;">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedItems.has(getFileKey(file, item.title, 'desktop'))}
+                              onclick={(e) => { e.stopPropagation(); handleCheckboxToggle(file, item.title, 'desktop', fileIndex) }}
+                              style="margin-right:0.5rem;cursor:pointer;width:16px;height:16px;"
+                              aria-label="Select panel"
+                            />
                             <span class="drag-handle" use:dragHandle style="cursor:grab;margin-right:0.5rem;opacity:0.9" aria-label="drag panel">☰</span>
                             {#if file.type === 'youtube' && file.youtubeId}
                               <span class="youtube-icon" style="display:inline-block;width:48px;height:48px;background:#ff0000;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#fff;">▶</span>
@@ -620,38 +924,65 @@
                           </div>
                                     <div style="display:flex;gap:0.5rem;align-items:center;">
                                       {#if file.type === 'youtube' && file.youtubeId}
-                                        <button class="btn btn-ghost btn-xs text-blue-400" on:click={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
+                                        <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
                                       {/if}
-                                      <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
-                                      <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => openSchedulePicker(file, item.title)}>Schedule</button>
+                                      <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
+                                      <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => openSchedulePicker(file, item.title)}>Schedule</button>
                                         {#if openPickerId === file.id}
                                           <input data-picker-id={file.id} class="picker-input" placeholder="YYYY-MM-DD HH:mm" style="margin-left:0.5rem;padding:0.15rem 0.4rem;border-radius:4px;background:#111;color:#fff;border:1px solid #333;" />
                                         {/if}
-                                      <button class="btn btn-ghost btn-xs text-red-500" on:click={() => handleDelete(file)}>Delete</button>
+                                      <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDelete(file)}>Delete</button>
                                     </div>
                         </div>
                       {/each}
                     </div>
                   </li>
                 </ul>
-                <div class="text-slate-400 text-xs mb-1 mt-2">Mobile Panels:</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;margin-bottom:0.5rem;">
+                  <div class="text-slate-400 text-xs">Mobile Panels:</div>
+                  <button 
+                    class="btn btn-ghost btn-xs text-blue-400" 
+                    onclick={() => selectAllInDevice(item.title, 'mobile')}
+                    disabled={(chapterMap[item.title].mobile ?? []).length === 0}
+                  >
+                    Select All Mobile
+                  </button>
+                </div>
                 <ul style="padding:0;list-style:none;margin:0;">
                   <li style="padding:0;margin:0;list-style:none;">
                     <div
                       use:dragHandleZone={{ items: (chapterMap[item.title].mobile ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
-                      on:consider={e => { chapterMap[item.title].mobile = e.detail.items; chapterMap = { ...chapterMap }; }}
-                      on:finalize={e => { 
-                        console.log('🎯 [TREE] MOBILE finalize START:', item.title);
-                        chapterMap[item.title].mobile = e.detail.items; 
+                      onconsider={e => { 
+                        const adjustedItems = handleConsiderWithSelection(item.title, 'mobile', e.detail.items, e.detail.info);
+                        chapterMap[item.title].mobile = adjustedItems; 
                         chapterMap = { ...chapterMap }; 
-                        const order = e.detail.items.map(mapOrderEntry);
+                      }}
+                      onfinalize={e => { 
+                        console.log('🎯 [TREE] MOBILE finalize START:', item.title);
+                        const adjustedItems = handleConsiderWithSelection(item.title, 'mobile', e.detail.items, e.detail.info);
+                        chapterMap[item.title].mobile = adjustedItems; 
+                        chapterMap = { ...chapterMap }; 
+                        const order = adjustedItems.map(f => mapOrderEntry(f));
                         console.log('📤 [TREE] Dispatching orderChange:', { chapter: item.title, device: 'mobile', orderLength: order.length });
                         dispatch('orderChange', { chapter: item.title, device: 'mobile', order }); 
+                        endDrag();
                       }}
-                      style="padding:0;margin:0;">
-                      {#each (chapterMap[item.title].mobile ?? []) as file (file.id)}
-                        <div class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''}" style="display:flex;align-items:center;justify-content:space-between;">
+                      style="padding:0;margin:0;"
+                    >
+                      {#each (chapterMap[item.title].mobile ?? []) as file, fileIndex (file.id)}
+                        <div 
+                          class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'mobile')) ? 'selected' : ''}"
+                          style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'mobile')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}"
+                          onclick={(e) => handleRowClick(file, item.title, 'mobile', fileIndex, e)}
+                        >
                           <div style="display:flex;align-items:center;">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedItems.has(getFileKey(file, item.title, 'mobile'))}
+                              onclick={(e) => { e.stopPropagation(); handleCheckboxToggle(file, item.title, 'mobile', fileIndex) }}
+                              style="margin-right:0.5rem;cursor:pointer;width:16px;height:16px;"
+                              aria-label="Select panel"
+                            />
                             <span class="drag-handle" use:dragHandle style="cursor:grab;margin-right:0.5rem;opacity:0.9" aria-label="drag panel">☰</span>
                             {#if file.type === 'youtube' && file.youtubeId}
                               <span class="youtube-icon" style="display:inline-block;width:48px;height:48px;background:#ff0000;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#fff;">▶</span>
@@ -667,10 +998,10 @@
                           </div>
                           <div style="display:flex;gap:0.5rem;align-items:center;">
                             {#if file.type === 'youtube' && file.youtubeId}
-                              <button class="btn btn-ghost btn-xs text-blue-400" on:click={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
+                              <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
                             {/if}
-                            <button class="btn btn-ghost btn-xs text-slate-300" on:click={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
-                            <button class="btn btn-ghost btn-xs text-red-500" on:click={() => handleDelete(file)}>Delete</button>
+                            <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
+                            <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDelete(file)}>Delete</button>
                           </div>
                         </div>
                       {/each}
@@ -746,3 +1077,4 @@
   color: #fff;
 }
 </style>
+

@@ -2085,15 +2085,33 @@
     </div>
   </div>
   
+  <!-- File Selection Button -->
+  <div class="file-selection-section">
+    <label for="panel-folder-input" class="file-select-button">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+      </svg>
+      Choose Chapter Folder
+    </label>
+    <input 
+      id="panel-folder-input" 
+      bind:this={panelInput} 
+      type="file" 
+      webkitdirectory 
+      multiple 
+      on:change={handleFileSelect} 
+      class="file-input-hidden"
+      accept=".jpg,.jpeg,.png,.gif,.webp,.webm,.mp4,.mov"
+    />
+    {#if selectedFiles.length > 0}
+      <div class="files-selected-indicator">
+        {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
+      </div>
+    {/if}
+  </div>
+  
   <!-- File Selection -->
   <form class="upload-form" on:submit|preventDefault={handleUpload}>
-    <div class="chooser">
-      <button type="button" class="btn btn-outline" on:click={openFolderPicker}>
-        {loadingExisting ? 'Analyzing...' : 'Choose chapter-x Folder'}
-      </button>
-      <span class="chooser-info" aria-live="polite">{chooserInfo}</span>
-      <input id="panel-folder-input" bind:this={panelInput} type="file" webkitdirectory multiple on:change={handleFileSelect} class="file-input" aria-hidden="true" />
-    </div>
 
     <!-- Overall progress bar -->
     {#if overallProgress > 0}
@@ -2525,6 +2543,59 @@
   max-width: 800px; 
   margin: auto;
   padding: 1rem;
+}
+
+/* Hide the native file input */
+.file-input-hidden {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* File selection section */
+.file-selection-section {
+  margin: 2rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+/* Styled file selection button */
+.file-select-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+.file-select-button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.4), 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.file-select-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+/* Files selected indicator */
+.files-selected-indicator {
+  color: #3b82f6;
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 /* visually hide the file input but keep it operable via the label */
