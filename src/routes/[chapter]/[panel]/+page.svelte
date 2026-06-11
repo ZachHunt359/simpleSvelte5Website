@@ -76,7 +76,12 @@
         (async () => {
             const res = await fetch('/panels.json', { cache: 'no-store' });
             chapters = await res.json();
-            //console.log('Fetched chapters:', chapters);
+            console.log('Fetched chapters:', chapters);
+            if (chapters && chapters[0] && chapters[0].desktop) {
+                console.log('Desktop panels count:', chapters[0].desktop.length);
+                console.log('First 5 desktop panels:', chapters[0].desktop.slice(0, 5));
+                console.log('Panels around index 149:', chapters[0].desktop.slice(147, 152));
+            }
         })();
 
         // Also refresh panels.json when the tab becomes visible again (helps admins see updates without full reload)
