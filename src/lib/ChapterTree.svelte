@@ -24,6 +24,41 @@
   let selectedItems = $state(new Set<string>()); // Stores file IDs
   let lastSelectedIndex = $state<{ chapter: string; device: DeviceType; index: number } | null>(null);
   
+  // Expand/collapse state for device sections
+  let expandedSections = $state(new Map<string, boolean>()); // key: "chapter::device"
+  
+  // Image preview modal state
+  let previewImageSrc = $state<string | null>(null);
+  let previewImageAlt = $state<string>('');
+  
+  function showImagePreview(src: string, alt: string) {
+    previewImageSrc = src;
+    previewImageAlt = alt;
+  }
+  
+  function hideImagePreview() {
+    previewImageSrc = null;
+    previewImageAlt = '';
+  }
+  
+  function getSectionKey(chapter: string, device: DeviceType): string {
+    return `${chapter}::${device}`;
+  }
+  
+  function isSectionExpanded(chapter: string, device: DeviceType): boolean {
+    const key = getSectionKey(chapter, device);
+    // Default to expanded if not set
+    return expandedSections.get(key) ?? true;
+  }
+  
+  function toggleSection(chapter: string, device: DeviceType) {
+    const key = getSectionKey(chapter, device);
+    const currentState = expandedSections.get(key) ?? true;
+    expandedSections.set(key, !currentState);
+    // Force reactivity
+    expandedSections = new Map(expandedSections);
+  }
+  
   // Helper to generate unique key for selection tracking
   function getFileKey(file: any, chapter: string, device: DeviceType): string {
     // Strip any suffix that svelte-dnd-action might have added (e.g., '-1')
@@ -109,7 +144,11 @@
     for (const key of selectedItems) {
       const [chapter, device, fileId] = key.split('::');
       const files = getDeviceFiles(chapter, device as DeviceType);
-      const file = files.find(f => f.id === fileId);
+      // Match by stripping the suffix from file.id (since getFileKey strips it when creating the selection key)
+      const file = files.find(f => {
+        const baseId = f.id.replace(/-\d+$/, '');
+        return baseId === fileId;
+      });
       if (file) {
         result.push({ file, chapter, device: device as DeviceType });
       }
@@ -125,10 +164,18 @@
     if (!confirm(`Delete ${count} selected panel${count !== 1 ? 's' : ''}?`)) return;
     
     const selected = getSelectedFiles();
-    for (const { file } of selected) {
-      await handleDelete(file);
-    }
+    // Dispatch batch delete event with all files at once to avoid race conditions
+    dispatch('batchDelete', { files: selected.map(s => s.file) });
     clearSelection();
+  }
+
+  // Keyboard accessibility handler for panel rows
+  function handleRowKeyDown(file: any, chapter: string, device: DeviceType, index: number, event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      // Convert to MouseEvent-like object with modifier keys
+      handleRowClick(file, chapter, device, index, event as any);
+    }
   }
 
   // Debug: reactively log the full structure of newFiles whenever it changes (only when debug=true)
@@ -506,8 +553,8 @@
   // cleanPath: if true, remove /panels/ prefix and ?v= query params
   function mapOrderEntry(f: any, cleanPath = false) {
     // Handle YouTube entries specially
-    if (f.type === 'youtube' && f.youtubeId) {
-      return { type: 'youtube', id: f.youtubeId, title: f.title, published: f.published || false };
+    if (f.type === 'youtube' && (f.youtubeId || f.id)) {
+      return { type: 'youtube', id: f.youtubeId || f.id, title: f.title, published: f.published || false };
     }
     
     let path = (f.webkitRelativePath || f.name || '').toString();
@@ -789,7 +836,16 @@
                 <!-- Always show all device groups, even if empty -->
                 <!-- Other Files section first for quick access -->
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
-                  <div class="text-slate-400 text-xs">Other Files:</div>
+                  <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <button 
+                      class="btn btn-ghost btn-xs" 
+                      onclick={() => toggleSection(item.title, 'other')}
+                      aria-label={isSectionExpanded(item.title, 'other') ? 'Collapse other files' : 'Expand other files'}
+                    >
+                      {isSectionExpanded(item.title, 'other') ? '▼' : '▶'}
+                    </button>
+                    <div class="text-slate-400 text-xs">Other Files: ({(chapterMap[item.title].other ?? []).length})</div>
+                  </div>
                   <button 
                     class="btn btn-ghost btn-xs text-blue-400" 
                     onclick={() => selectAllInDevice(item.title, 'other')}
@@ -798,6 +854,7 @@
                     Select All Other
                   </button>
                 </div>
+                {#if isSectionExpanded(item.title, 'other')}
                 <ul style="padding:0;list-style:none;margin:0;">
                   <li style="padding:0;margin:0;list-style:none;">
                     <div
@@ -821,9 +878,12 @@
                     >
                       {#each (chapterMap[item.title].other ?? []) as file, fileIndex (file.id)}
                         <div 
+                          role="button"
+                          tabindex="0"
                           class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'other')) ? 'selected' : ''}" 
                           style="{getPanelStatus(file) === 'new' ? 'font-weight:bold;color:#22c55e;' : ''}display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'other')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}"
                           onclick={(e) => handleRowClick(file, item.title, 'other', fileIndex, e)}
+                          onkeydown={(e) => handleRowKeyDown(file, item.title, 'other', fileIndex, e)}
                         >
                           <div style="display:flex;align-items:center;">
                             <input 
@@ -834,19 +894,41 @@
                               aria-label="Select panel"
                             />
                             <span class="drag-handle" use:dragHandle style="cursor:grab;margin-right:0.5rem;opacity:0.9" aria-label="drag panel">☰</span>
-                            {#if file.type === 'youtube' && file.youtubeId}
+                            {#if file.type === 'youtube' && (file.youtubeId || file.id)}
                               <span class="youtube-icon" style="display:inline-block;width:48px;height:48px;background:#ff0000;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#fff;">▶</span>
                               <div style="flex:1;">
-                                <div style="color:#ef4444;font-weight:500;">{file.title || `YouTube: ${file.youtubeId}`}</div>
-                                <div style="font-size:0.8em;color:#94a3b8;">https://youtube.com/watch?v={file.youtubeId}</div>
+                                <div style="color:#ef4444;font-weight:500;">{file.title || `YouTube: ${file.youtubeId || file.id}`}</div>
+                                <div style="font-size:0.8em;color:#94a3b8;">https://youtube.com/watch?v={file.youtubeId || file.id}</div>
                               </div>
+                            {:else if /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name)}
+                              {#if file._isNew && file.preview}
+                                <img 
+                                  src={file.preview} 
+                                  alt={file.name} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;cursor:zoom-in;" 
+                                  onmouseenter={() => showImagePreview(file.preview, file.name)}
+                                  onmouseleave={() => hideImagePreview()}
+                                />
+                              {:else}
+                                <img 
+                                  src={"/panels/" + file.webkitRelativePath} 
+                                  alt={file.name} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;cursor:zoom-in;" 
+                                  onmouseenter={() => showImagePreview("/panels/" + file.webkitRelativePath, file.name)}
+                                  onmouseleave={() => hideImagePreview()}
+                                />
+                              {/if}
+                              <div>{file.name || file.webkitRelativePath || '[Unknown]'}</div>
                             {:else}
+                              <span class="file-icon" style="display:inline-block;width:48px;height:48px;background:#222;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#888;">📄</span>
                               <div>{file.name || file.webkitRelativePath || '[Unknown]'}</div>
                             {/if}
                           </div>
                           <div style="display:flex;gap:0.5rem;align-items:center;">
-                            {#if file.type === 'youtube' && file.youtubeId}
-                              <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
+                            {#if file.type === 'youtube' && (file.youtubeId || file.id)}
+                              <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId || file.id}`, '_blank')}>Preview</button>
                             {/if}
                             <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
                             <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDelete(file)}>Delete</button>
@@ -856,8 +938,18 @@
                     </div>
                   </li>
                 </ul>
+                {/if}
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;margin-bottom:0.5rem;">
-                  <div class="text-slate-400 text-xs">Desktop Panels:</div>
+                  <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <button 
+                      class="btn btn-ghost btn-xs" 
+                      onclick={() => toggleSection(item.title, 'desktop')}
+                      aria-label={isSectionExpanded(item.title, 'desktop') ? 'Collapse desktop panels' : 'Expand desktop panels'}
+                    >
+                      {isSectionExpanded(item.title, 'desktop') ? '▼' : '▶'}
+                    </button>
+                    <div class="text-slate-400 text-xs">Desktop Panels: ({(chapterMap[item.title].desktop ?? []).length})</div>
+                  </div>
                   <button 
                     class="btn btn-ghost btn-xs text-blue-400" 
                     onclick={() => selectAllInDevice(item.title, 'desktop')}
@@ -866,6 +958,7 @@
                     Select All Desktop
                   </button>
                 </div>
+                {#if isSectionExpanded(item.title, 'desktop')}
                 <ul style="padding:0;list-style:none;margin:0;">
                   <li style="padding:0;margin:0;list-style:none;">
                     <div
@@ -889,9 +982,12 @@
                     >
                       {#each (chapterMap[item.title].desktop ?? []) as file, fileIndex (file.id)}
                         <div 
+                          role="button"
+                          tabindex="0"
                           class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'desktop')) ? 'selected' : ''}"
                           style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'desktop')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}"
                           onclick={(e) => handleRowClick(file, item.title, 'desktop', fileIndex, e)}
+                          onkeydown={(e) => handleRowKeyDown(file, item.title, 'desktop', fileIndex, e)}
                         >
                           <div style="display:flex;align-items:center;">
                             <input 
@@ -902,17 +998,31 @@
                               aria-label="Select panel"
                             />
                             <span class="drag-handle" use:dragHandle style="cursor:grab;margin-right:0.5rem;opacity:0.9" aria-label="drag panel">☰</span>
-                            {#if file.type === 'youtube' && file.youtubeId}
+                            {#if file.type === 'youtube' && (file.youtubeId || file.id)}
                               <span class="youtube-icon" style="display:inline-block;width:48px;height:48px;background:#ff0000;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#fff;">▶</span>
                               <div style="flex:1;">
-                                <div style="color:#ef4444;font-weight:500;">{file.title || `YouTube: ${file.youtubeId}`}</div>
-                                <div style="font-size:0.8em;color:#94a3b8;">https://youtube.com/watch?v={file.youtubeId}</div>
+                                <div style="color:#ef4444;font-weight:500;">{file.title || `YouTube: ${file.youtubeId || file.id}`}</div>
+                                <div style="font-size:0.8em;color:#94a3b8;">https://youtube.com/watch?v={file.youtubeId || file.id}</div>
                               </div>
                             {:else if /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name)}
                               {#if file._isNew && file.preview}
-                                <img src={file.preview} alt={file.name} class="panel-thumb" style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" />
+                                <img 
+                                  src={file.preview} 
+                                  alt={file.name} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;cursor:zoom-in;" 
+                                  onmouseenter={() => showImagePreview(file.preview, file.name)}
+                                  onmouseleave={() => hideImagePreview()}
+                                />
                               {:else}
-                                <img src={"/panels/" + file.webkitRelativePath} alt={file.name} class="panel-thumb" style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" />
+                                <img 
+                                  src={"/panels/" + file.webkitRelativePath} 
+                                  alt={file.name} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;cursor:zoom-in;" 
+                                  onmouseenter={() => showImagePreview("/panels/" + file.webkitRelativePath, file.name)}
+                                  onmouseleave={() => hideImagePreview()}
+                                />
                               {/if}
                               <span>{file.name}</span>
                             {:else}
@@ -923,8 +1033,8 @@
                             {#if getPanelStatus(file) === 'error'}<span class="badge badge-error ml-2">Error</span>{/if}
                           </div>
                                     <div style="display:flex;gap:0.5rem;align-items:center;">
-                                      {#if file.type === 'youtube' && file.youtubeId}
-                                        <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
+                                      {#if file.type === 'youtube' && (file.youtubeId || file.id)}
+                                        <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId || file.id}`, '_blank')}>Preview</button>
                                       {/if}
                                       <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
                                       <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => openSchedulePicker(file, item.title)}>Schedule</button>
@@ -938,8 +1048,18 @@
                     </div>
                   </li>
                 </ul>
+                {/if}
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;margin-bottom:0.5rem;">
-                  <div class="text-slate-400 text-xs">Mobile Panels:</div>
+                  <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <button 
+                      class="btn btn-ghost btn-xs" 
+                      onclick={() => toggleSection(item.title, 'mobile')}
+                      aria-label={isSectionExpanded(item.title, 'mobile') ? 'Collapse mobile panels' : 'Expand mobile panels'}
+                    >
+                      {isSectionExpanded(item.title, 'mobile') ? '▼' : '▶'}
+                    </button>
+                    <div class="text-slate-400 text-xs">Mobile Panels: ({(chapterMap[item.title].mobile ?? []).length})</div>
+                  </div>
                   <button 
                     class="btn btn-ghost btn-xs text-blue-400" 
                     onclick={() => selectAllInDevice(item.title, 'mobile')}
@@ -948,6 +1068,7 @@
                     Select All Mobile
                   </button>
                 </div>
+                {#if isSectionExpanded(item.title, 'mobile')}
                 <ul style="padding:0;list-style:none;margin:0;">
                   <li style="padding:0;margin:0;list-style:none;">
                     <div
@@ -971,9 +1092,12 @@
                     >
                       {#each (chapterMap[item.title].mobile ?? []) as file, fileIndex (file.id)}
                         <div 
+                          role="button"
+                          tabindex="0"
                           class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'mobile')) ? 'selected' : ''}"
                           style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'mobile')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}"
                           onclick={(e) => handleRowClick(file, item.title, 'mobile', fileIndex, e)}
+                          onkeydown={(e) => handleRowKeyDown(file, item.title, 'mobile', fileIndex, e)}
                         >
                           <div style="display:flex;align-items:center;">
                             <input 
@@ -984,21 +1108,43 @@
                               aria-label="Select panel"
                             />
                             <span class="drag-handle" use:dragHandle style="cursor:grab;margin-right:0.5rem;opacity:0.9" aria-label="drag panel">☰</span>
-                            {#if file.type === 'youtube' && file.youtubeId}
+                            {#if file.type === 'youtube' && (file.youtubeId || file.id)}
                               <span class="youtube-icon" style="display:inline-block;width:48px;height:48px;background:#ff0000;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#fff;">▶</span>
                               <div style="flex:1;">
-                                <div style="color:#ef4444;font-weight:500;">{file.title || `YouTube: ${file.youtubeId}`}</div>
-                                <div style="font-size:0.8em;color:#94a3b8;">https://youtube.com/watch?v={file.youtubeId}</div>
+                                <div style="color:#ef4444;font-weight:500;">{file.title || `YouTube: ${file.youtubeId || file.id}`}</div>
+                                <div style="font-size:0.8em;color:#94a3b8;">https://youtube.com/watch?v={file.youtubeId || file.id}</div>
                               </div>
+                            {:else if /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name)}
+                              {#if file._isNew && file.preview}
+                                <img 
+                                  src={file.preview} 
+                                  alt={file.name} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;cursor:zoom-in;" 
+                                  onmouseenter={() => showImagePreview(file.preview, file.name)}
+                                  onmouseleave={() => hideImagePreview()}
+                                />
+                              {:else}
+                                <img 
+                                  src={"/panels/" + file.webkitRelativePath} 
+                                  alt={file.name} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;cursor:zoom-in;" 
+                                  onmouseenter={() => showImagePreview("/panels/" + file.webkitRelativePath, file.name)}
+                                  onmouseleave={() => hideImagePreview()}
+                                />
+                              {/if}
+                              <span>{file.name}</span>
                             {:else}
+                              <span class="file-icon" style="display:inline-block;width:48px;height:48px;background:#222;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#888;">📄</span>
                               <span>{file.name}</span>
                             {/if}
                             {#if getPanelStatus(file) === 'duplicate'}<span class="badge badge-warning ml-2">Duplicate</span>{/if}
                             {#if getPanelStatus(file) === 'error'}<span class="badge badge-error ml-2">Error</span>{/if}
                           </div>
                           <div style="display:flex;gap:0.5rem;align-items:center;">
-                            {#if file.type === 'youtube' && file.youtubeId}
-                              <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId}`, '_blank')}>Preview</button>
+                            {#if file.type === 'youtube' && (file.youtubeId || file.id)}
+                              <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId || file.id}`, '_blank')}>Preview</button>
                             {/if}
                             <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
                             <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDelete(file)}>Delete</button>
@@ -1008,6 +1154,7 @@
                     </div>
                   </li>
                 </ul>
+                {/if}
               </div>
             {/if}
           </div>
@@ -1016,6 +1163,20 @@
       </div>
     {/if}
   </div>
+  
+  <!-- Image Preview Modal -->
+  {#if previewImageSrc}
+    <div 
+      class="image-preview-modal"
+      style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;pointer-events:none;"
+    >
+      <img 
+        src={previewImageSrc} 
+        alt={previewImageAlt} 
+        style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 0 30px rgba(0,0,0,0.5);"
+      />
+    </div>
+  {/if}
   
 
 <style>

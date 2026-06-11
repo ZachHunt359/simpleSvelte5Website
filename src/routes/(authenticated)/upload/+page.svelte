@@ -1332,6 +1332,146 @@
     }
   }
 
+  async function handleTreeBatchDelete(files: any[]) {
+    if (!files || files.length === 0) return;
+    
+    // Separate new files from existing files
+    const newFilesToDelete = files.filter(f => f._isNew);
+    const existingFilesToDelete = files.filter(f => !f._isNew);
+    
+    // Remove new files from upload queue
+    if (newFilesToDelete.length > 0) {
+      const newFileIds = new Set(newFilesToDelete.map(f => f.id || f.webkitRelativePath || f.name));
+      filesToUpload = filesToUpload.filter(f => !newFileIds.has((f as any).id || f.webkitRelativePath || f.name));
+    }
+    
+    // Delete existing files from server and update state
+    if (existingFilesToDelete.length > 0) {
+      // Build list of paths to delete (skip YouTube entries)
+      const pathsToDelete: string[] = [];
+      for (const file of existingFilesToDelete) {
+        if (file.type !== 'youtube') {
+          let relPath = (file.webkitRelativePath || file.name || '').replace(/\\/g, '/');
+          relPath = relPath.replace(/^\/+/, '').replace(/^panels\//, '');
+          
+          // Normalize chapter and device folder names
+          const parts = relPath.split('/');
+          if (parts.length >= 2) {
+            parts[0] = parts[0].toLowerCase();
+            if (parts[1] === 'Desktop' || parts[1] === 'Mobile') {
+              parts[1] = parts[1].toLowerCase();
+            }
+          }
+          relPath = parts.join('/');
+          pathsToDelete.push(relPath);
+        }
+      }
+      
+      // Delete files from server in batch
+      if (pathsToDelete.length > 0) {
+        try {
+          const res = await fetch('/api/admin/panels/delete-files', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ paths: pathsToDelete })
+          });
+          
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            console.error('[handleTreeBatchDelete] Failed to delete files from server:', errorData);
+          }
+        } catch (err) {
+          console.error('[handleTreeBatchDelete] Error deleting files from server:', err);
+        }
+      }
+      
+      // Remove from panelsFiles state
+      const pathsToRemove = new Set(existingFilesToDelete.map(f => f.webkitRelativePath || f.name));
+      const youtubeIdsToRemove = new Set(existingFilesToDelete.filter(f => f.type === 'youtube').map(f => f.youtubeId || f.id));
+      
+      panelsFiles = panelsFiles.filter(f => {
+        if (f.type === 'youtube' && (f.youtubeId || f.id)) {
+          return !youtubeIdsToRemove.has(f.youtubeId || f.id);
+        }
+        return !pathsToRemove.has(f.webkitRelativePath || f.name);
+      });
+      
+      // Update _order.json - group files by chapter and device
+      const filesByChapterDevice = new Map<string, { chapter: string; slug: string; device: string; files: any[] }>();
+      
+      for (const file of existingFilesToDelete) {
+        const chapter = file._chapter || extractChapter(file.webkitRelativePath || file.name);
+        const slug = slugifyChapterKey(chapter || 'uncategorized');
+        let relPath = (file.webkitRelativePath || file.name || '').replace(/\\/g, '/');
+        relPath = relPath.replace(/^\/+/, '').replace(/^panels\//, '');
+        
+        let device: 'desktop' | 'mobile' | 'other' = file._device || 'other';
+        if (!file._device) {
+          if (/\/desktop\//i.test(relPath)) device = 'desktop';
+          else if (/\/mobile\//i.test(relPath)) device = 'mobile';
+        }
+        
+        const key = `${slug}::${device}`;
+        if (!filesByChapterDevice.has(key)) {
+          filesByChapterDevice.set(key, { chapter, slug, device, files: [] });
+        }
+        filesByChapterDevice.get(key)!.files.push(file);
+      }
+      
+      // Update _order.json for each chapter/device combo
+      for (const { slug, device, files: filesToRemoveFromDevice } of filesByChapterDevice.values()) {
+        const existingChapter = (panelsOrderMap && panelsOrderMap[slug]) || {};
+        const updatedChapterOrders: any = { ...existingChapter };
+        
+        for (const dev of ['desktop', 'mobile', 'other']) {
+          const arr = Array.isArray(existingChapter[dev]) ? existingChapter[dev] : [];
+          if (dev === device) {
+            // Build set of files to remove from this device
+            const pathsToRemoveSet = new Set();
+            const youtubeIdsToRemoveSet = new Set();
+            
+            for (const file of filesToRemoveFromDevice) {
+              if (file.type === 'youtube' && (file.youtubeId || file.id)) {
+                youtubeIdsToRemoveSet.add(file.youtubeId || file.id);
+              } else {
+                let relPath = (file.webkitRelativePath || file.name || '').replace(/\\/g, '/');
+                relPath = relPath.replace(/^\/+/, '').replace(/^panels\//, '');
+                pathsToRemoveSet.add(relPath);
+              }
+            }
+            
+            // Filter out files to remove
+            updatedChapterOrders[dev] = arr.filter((entry: any) => {
+              // Check YouTube entries
+              if (typeof entry === 'object' && entry.type === 'youtube' && entry.id) {
+                return !youtubeIdsToRemoveSet.has(entry.id);
+              }
+              // Check regular files
+              const entryPath = typeof entry === 'string' ? entry : (entry.path || '');
+              const normalizedEntry = entryPath.replace(/^\/+/, '').replace(/^panels\//, '');
+              return !pathsToRemoveSet.has(normalizedEntry);
+            });
+          } else {
+            updatedChapterOrders[dev] = arr.slice();
+          }
+        }
+        
+        // Save updated orders for this chapter
+        try {
+          await saveFullOrder({ [slug]: updatedChapterOrders }, false, false);
+        } catch (err) {
+          console.error('[handleTreeBatchDelete] Failed to update _order.json for chapter:', slug, err);
+        }
+      }
+    }
+    
+    // Force UI refresh by updating the key
+    panelsFilesKey = panelsFiles.length > 0
+      ? `panels-${panelsFiles.length}-${Date.now()}`
+      : 'no-panels';
+  }
+
   async function handleTreeTogglePublish(file: any) {
     console.log('[handleTreeTogglePublish] File:', {
       name: file.name,
@@ -2170,8 +2310,8 @@
       orderMap={panelsOrderMap}
       conflicts={conflicts}
       debug={treeDebug}
-      key={panelsFilesKey + '|' + filesToUpload.length}
       on:delete={e => handleTreeDelete(e.detail.file)}
+      on:batchDelete={e => handleTreeBatchDelete(e.detail.files)}
       on:togglePublish={e => handleTreeTogglePublish(e.detail.file)}
       on:deleteChapter={e => handleTreeDeleteChapter(e.detail.chapter)}
       on:togglePublishChapter={e => handleTreeTogglePublishChapter(e.detail.chapter)}

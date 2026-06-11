@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * ensure-youtube-entries.js
  * 
@@ -88,8 +87,10 @@ function entriesEqual(a, b) {
  * Natural sort helpers (matching generate-panels-json.js)
  */
 function tokenizeForSort(s) {
+    // Strip file extension before tokenizing to avoid extension interfering with sort
     const norm = String(s).replace(/\s+/g, '');
-    const parts = norm.split(/(\d+)/).filter(Boolean).map(p => {
+    const withoutExt = norm.replace(/\.(png|jpg|jpeg|gif|webp|webm)$/i, '');
+    const parts = withoutExt.split(/(\d+)/).filter(Boolean).map(p => {
         if (/^\d+$/.test(p)) return Number(p);
         return p.toLowerCase();
     });

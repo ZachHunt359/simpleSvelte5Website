@@ -103,20 +103,17 @@
         };
     });
 
-    // Build panels for the current chapter with graceful fallback: if mobile[i] is missing use desktop[i], and vice-versa.
+    // Build panels for the current chapter. Only fallback to the other device's image set if the current device's set is completely empty.
     function buildPanelsForChapter(chapterIdx: number, desktopMode: boolean) {
         const chap = chapters[chapterIdx] ?? { desktop: [], mobile: [] };
         const desktopArr = chap.desktop ?? [];
         const mobileArr = chap.mobile ?? [];
-        const maxLen = Math.max(desktopArr.length, mobileArr.length);
-        const out: any[] = [];
-        for (let i = 0; i < maxLen; i++) {
-            const d = desktopArr[i] ?? null;
-            const m = mobileArr[i] ?? null;
-            const chosen = desktopMode ? (d ?? m) : (m ?? d);
-            if (chosen) out.push(chosen);
-        }
-        return out;
+        
+        // Use preferred device's array if it has any items, otherwise fallback to the other device
+        const preferredArr = desktopMode ? desktopArr : mobileArr;
+        const fallbackArr = desktopMode ? mobileArr : desktopArr;
+        
+        return preferredArr.length > 0 ? preferredArr : fallbackArr;
     }
 
     function basenameNoExt(item: any): string | undefined {
