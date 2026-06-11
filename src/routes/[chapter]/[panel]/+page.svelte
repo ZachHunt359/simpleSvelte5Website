@@ -122,12 +122,16 @@
             const noQuery = item.split('?')[0];
             const base = noQuery.split('/').pop();
             if (!base) return undefined;
-            return base.replace(/\.[^/.]+$/, '');
+            const result = base.replace(/\.[^/.]+$/, '');
+            console.log('[basenameNoExt] String item:', item, '→ result:', result);
+            return result;
         }
         // If object (YouTube video), return just the video ID for URL compatibility
         if (typeof item === 'object' && item.type === 'youtube' && item.id) {
+            console.log('[basenameNoExt] YouTube item:', item, '→ result:', item.id);
             return item.id;
         }
+        console.log('[basenameNoExt] Unknown item type:', typeof item, item);
         return undefined;
     }
 
@@ -304,7 +308,9 @@
     const chapterSlug = chapters[currentChapter]?.slug;
     const panelFile = basenameNoExt(panels[currentPanel]);
         const url = `/${chapterSlug}/${panelFile}`;
+        console.log('[URL Update] currentPanel:', currentPanel, 'panel:', panels[currentPanel], 'panelFile:', panelFile, 'url:', url);
         if (typeof window !== 'undefined' && window.location?.pathname !== url) {
+            console.log('[URL Update] Navigating to:', url);
             goto(url, { replaceState: true, keepFocus: true, noScroll: true });
         }
     }
