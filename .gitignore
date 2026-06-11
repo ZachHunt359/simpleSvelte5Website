@@ -49,6 +49,9 @@ build/logs/server.log
 static/panels.json
 static/inquiry-images/
 
+# Environment-specific data files
+data/panels.json
+
 # Build & generated artifacts
 .svelte-kit/
 build/
