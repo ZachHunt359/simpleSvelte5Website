@@ -7,6 +7,19 @@
   let status: string | null = null;
   let linesCount = 200;
 
+  // Config file viewing
+  type ConfigFile = {
+    name: string;
+    label: string;
+  };
+  const configFiles: ConfigFile[] = [
+    { name: 'panels.json', label: 'Panels JSON' },
+    { name: '_order.json', label: 'Order JSON' }
+  ];
+  let expandedFile: string | null = null;
+  let fileContent: Record<string, any> = {};
+  let fileStatus: string | null = null;
+
   async function fetchLogs() {
     try {
       const res = await fetch(`/api/admin/logs?lines=${linesCount}`, { credentials: 'same-origin' });
@@ -194,7 +207,77 @@
     }
     setTimeout(() => status = null, 4000);
   }
+
+  async function fetchConfigFile(filename: string) {
+    if (expandedFile === filename) {
+      expandedFile = null;
+      return;
+    }
+
+    fileStatus = `Loading ${filename}...`;
+    try {
+      const res = await fetch(`/api/admin/config-files/${filename}`, { credentials: 'same-origin' });
+      if (!res.ok) {
+        fileStatus = `Failed to load ${filename}`;
+        setTimeout(() => fileStatus = null, 3000);
+        return;
+      }
+      const data = await res.json();
+      fileContent[filename] = JSON.stringify(data.content, null, 2);
+      expandedFile = filename;
+      fileStatus = null;
+    } catch (e: any) {
+      fileStatus = `Error: ${String(e?.message ?? e)}`;
+      setTimeout(() => fileStatus = null, 3000);
+    }
+  }
 </script>
+
+<section>
+  <h2>Config Files</h2>
+  <div class="config-files-section">
+    <p>View generated configuration files for this environment:</p>
+    <div class="config-buttons">
+      {#each configFiles as file}
+        <button 
+          class="config-button" 
+          class:active={expandedFile === file.name}
+          on:click={() => fetchConfigFile(file.name)}
+        >
+          {file.label}
+        </button>
+      {/each}
+    </div>
+    {#if fileStatus}
+      <div class="file-status">{fileStatus}</div>
+    {/if}
+    {#if expandedFile && fileContent[expandedFile]}
+      <div class="file-viewer">
+        <div class="file-viewer-header">
+          <div class="file-viewer-title">
+            <strong>{expandedFile}</strong>
+            <button 
+              class="copy-btn" 
+              on:click={() => copyToClipboard(fileContent[expandedFile])}
+              title="Copy to clipboard"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5.5 2C5.5 1.72386 5.72386 1.5 6 1.5H11.5C11.7761 1.5 12 1.72386 12 2V4H13.5C13.7761 4 14 4.22386 14 4.5V13.5C14 13.7761 13.7761 14 13.5 14H7.5C7.22386 14 7 13.7761 7 13.5V12H5.5C5.22386 12 5 11.7761 5 11.5V2ZM6 11.5V10.5H7.5C7.77614 10.5 8 10.7239 8 11V13H13V5H8V7.5C8 7.77614 7.77614 8 7.5 8H6V11.5ZM7 7V5H11V11H8V8H7ZM6.5 3V7H7V3H6.5Z" fill="currentColor"/>
+              </svg>
+            </button>
+          </div>
+          <button on:click={() => expandedFile = null}>Close</button>
+        </div>
+        <textarea 
+          readonly 
+          rows="20" 
+          class="config-textarea"
+          value={fileContent[expandedFile]}
+        ></textarea>
+      </div>
+    {/if}
+  </div>
+</section>
 
 <section>
   <h2>Server logs</h2>
@@ -253,6 +336,124 @@
 <!-- merged helper functions into the main script -->
 
 <style>
+  .config-files-section {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+  }
+  
+  .config-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  }
+  
+  .config-button {
+    padding: 0.5rem 1rem;
+    background: #1e88e5;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+  
+  .config-button:hover {
+    background: #1565c0;
+  }
+  
+  .config-button.active {
+    background: #ff8f00;
+  }
+  
+  .file-status {
+    color: #90caf9;
+    margin: 0.5rem 0;
+    font-style: italic;
+  }
+  
+  .file-viewer {
+    margin-top: 1rem;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: #0f0f10;
+  }
+  
+  .file-viewer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid #555;
+  }
+  
+  .file-viewer-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .file-viewer-header strong {
+    color: #90caf9;
+  }
+  
+  .copy-btn {
+    padding: 0.25rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #90caf9;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  
+  .copy-btn:hover {
+    border-color: rgba(144, 202, 249, 0.5);
+    background: rgba(144, 202, 249, 0.1);
+  }
+  
+  .copy-btn svg {
+    display: block;
+  }
+  
+  .file-viewer-header button {
+    padding: 0.25rem 0.75rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #cfd8dc;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  
+  .file-viewer-header button:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.05);
+  }
+  
+  .config-textarea {
+    width: 100%;
+    background: #0f0f10;
+    color: #bcd;
+    border: none;
+    padding: 1rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    resize: vertical;
+  }
+  
+  .config-textarea:focus {
+    outline: 2px solid rgba(144, 202, 249, 0.3);
+    outline-offset: -2px;
+  }
+
   .log-list-outer { max-height:60vh; overflow:auto; }
   .log-list{overflow:auto;border:1px solid #ccc;padding:0.5rem;background:#0f0f10;color:#e6e6e6}
   .log-list .log-line{white-space:pre-wrap;margin:0;padding:0.1rem 0;color:#cfd8dc !important}
