@@ -554,7 +554,10 @@
   function mapOrderEntry(f: any, cleanPath = false) {
     // Handle YouTube entries specially
     if (f.type === 'youtube' && (f.youtubeId || f.id)) {
-      return { type: 'youtube', id: f.youtubeId || f.id, title: f.title, published: f.published || false };
+      const entry: any = { type: 'youtube', id: f.youtubeId || f.id, title: f.title };
+      // Only include published if explicitly set - otherwise inherit from chapter level
+      if ('published' in f) entry.published = f.published;
+      return entry;
     }
     
     let path = (f.webkitRelativePath || f.name || '').toString();
