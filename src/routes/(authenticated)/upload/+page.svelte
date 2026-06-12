@@ -1172,6 +1172,10 @@
   // that match the chapter — only use cleanup=true when the admin clicks "Save Order".
   async function saveFullOrder(orders: Record<string, any>, replace = false, cleanup = false) {
     console.log('[saveFullOrder] Called with:', { orders, replace, cleanup });
+    
+    // Show feedback to user
+    uploadStatus = 'Saving panel order...';
+    
     try {
       const payload: any = { orders };
       if (replace) payload.replace = true;
@@ -1180,9 +1184,19 @@
       const res = await fetch('/api/admin/panels/order', { method: 'POST', body: JSON.stringify(payload), headers: { 'content-type': 'application/json' }, credentials: 'same-origin' });
       if (!res.ok) {
         console.warn('Failed to save full panels order:', res.status);
+        uploadStatus = `Failed to save order: ${res.status} ${res.statusText}`;
+        setTimeout(() => uploadStatus = '', 4000);
+      } else {
+        uploadStatus = '✅ Panel order saved successfully';
+        setTimeout(() => uploadStatus = '', 3000);
+        
+        // Update local state to match what was saved
+        panelsOrderMap = { ...orders };
       }
     } catch (err) {
       console.warn('Error saving full panels order', err);
+      uploadStatus = `Error saving order: ${err}`;
+      setTimeout(() => uploadStatus = '', 4000);
     }
   }
 
@@ -2316,6 +2330,7 @@
       on:deleteChapter={e => handleTreeDeleteChapter(e.detail.chapter)}
       on:togglePublishChapter={e => handleTreeTogglePublishChapter(e.detail.chapter)}
       on:orderChange={e => savePanelsOrder(e.detail)}
+      on:saveOrder={e => saveFullOrder(e.detail.orders, true, true)}
       on:insertYouTube={e => handleInsertYouTube(e.detail.chapter)}
       on:setPublishDate={e => handleTreeSetPublishDate(e.detail)}
     />
