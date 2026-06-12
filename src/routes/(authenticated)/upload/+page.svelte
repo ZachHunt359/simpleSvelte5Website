@@ -1174,7 +1174,8 @@
     console.log('[saveFullOrder] Called with:', { orders, replace, cleanup });
     
     // Show feedback to user
-    uploadStatus = 'Saving panel order...';
+    uploadSuccess = '';
+    uploadError = 'Saving panel order...';
     
     try {
       const payload: any = { orders };
@@ -1184,19 +1185,20 @@
       const res = await fetch('/api/admin/panels/order', { method: 'POST', body: JSON.stringify(payload), headers: { 'content-type': 'application/json' }, credentials: 'same-origin' });
       if (!res.ok) {
         console.warn('Failed to save full panels order:', res.status);
-        uploadStatus = `Failed to save order: ${res.status} ${res.statusText}`;
-        setTimeout(() => uploadStatus = '', 4000);
+        uploadError = `Failed to save order: ${res.status} ${res.statusText}`;
+        setTimeout(() => uploadError = '', 4000);
       } else {
-        uploadStatus = '✅ Panel order saved successfully';
-        setTimeout(() => uploadStatus = '', 3000);
+        uploadError = '';
+        uploadSuccess = '✅ Panel order saved successfully';
+        setTimeout(() => uploadSuccess = '', 3000);
         
         // Update local state to match what was saved
         panelsOrderMap = { ...orders };
       }
     } catch (err) {
       console.warn('Error saving full panels order', err);
-      uploadStatus = `Error saving order: ${err}`;
-      setTimeout(() => uploadStatus = '', 4000);
+      uploadError = `Error saving order: ${err}`;
+      setTimeout(() => uploadError = '', 4000);
     }
   }
 
