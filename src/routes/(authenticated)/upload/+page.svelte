@@ -1194,6 +1194,10 @@
         
         // Update local state to match what was saved
         panelsOrderMap = { ...orders };
+        
+        // Refresh the panels tree to ensure lock state is reflected in UI
+        // This is important for lock/unlock operations
+        await fetchPanelsFiles();
       }
     } catch (err) {
       console.warn('Error saving full panels order', err);

@@ -508,6 +508,24 @@
     return meta.locked === true;
   }
   
+  function getEffectiveChapterPublished(chapter: string): boolean {
+    const meta = getChapterMeta(chapter);
+    
+    // Explicit published flag takes precedence
+    if ('published' in meta) return meta.published === true;
+    
+    // Chapter-level publishDate check
+    if (meta.publishDate) {
+      const pd = Date.parse(String(meta.publishDate));
+      if (!isNaN(pd) && pd <= Date.now()) return true;
+      if (!isNaN(pd) && pd > Date.now()) return false; // Future publish date
+    }
+    
+    // DEFAULT: Existing chapters are published by default
+    // (This matches the behavior where content defaults to visible unless explicitly hidden)
+    return true;
+  }
+  
   function handleToggleLock(chapter: string) {
     const currentlyLocked = isChapterLocked(chapter);
     
@@ -564,21 +582,35 @@
 
   // Compute the effective published state for a panel: explicit per-panel override wins,
   // then per-file publishDate if in the past, then chapter-level published/publishDate
+  // DEFAULT: Existing files (not _isNew) default to published, new files default to unpublished
   function getEffectivePublished(file: any, chapter: string) {
     if (!file) return false;
+    
+    // Explicit per-panel published flag takes precedence
     if ('published' in file) return !!file.published;
+    
+    // Per-panel publishDate check
     if (file.publishDate) {
       const pd = Date.parse(String(file.publishDate));
       if (!isNaN(pd) && pd <= Date.now()) return true;
       return false;
     }
+    
+    // Chapter-level published flag
     const meta = getChapterMeta(chapter) || {};
-    if (meta && ('published' in meta) && meta.published === true) return true;
+    if (meta && ('published' in meta)) return meta.published === true;
+    
+    // Chapter-level publishDate check
     if (meta && meta.publishDate) {
       const cp = Date.parse(String(meta.publishDate));
       if (!isNaN(cp) && cp <= Date.now()) return true;
+      if (!isNaN(cp) && cp > Date.now()) return false; // Future publish date means unpublished
     }
-    return false;
+    
+    // DEFAULT: Existing files (not marked as new) are published by default
+    // This matches the generation script behavior where items default to published
+    // unless explicitly marked otherwise
+    return !file._isNew;
   }
 
   function preventDragUnlessHandle(e: DragEvent) {
@@ -868,7 +900,7 @@
                 <span class="ml-2">{openChapters[item.title] ? '▼' : '▶'}</span>
               </button>
               <div style="display:flex;gap:0.5rem;align-items:center;">
-                <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublishChapter(item.title)}>{getChapterMeta(item.title).published ? 'Unpublish Chapter' : 'Publish Chapter'}</button>
+                <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublishChapter(item.title)}>{getEffectiveChapterPublished(item.title) ? 'Unpublish Chapter' : 'Publish Chapter'}</button>
                 <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => openSchedulePickerChapter(item.title)}>Schedule Chapter</button>
                 <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => dispatch('insertYouTube', { chapter: item.title })}>Insert YouTube</button>
                 <button 
