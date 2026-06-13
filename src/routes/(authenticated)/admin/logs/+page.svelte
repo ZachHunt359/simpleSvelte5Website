@@ -257,11 +257,12 @@
           <div class="file-viewer-title">
             <strong>{expandedFile}</strong>
             <button 
-              class="copy-btn" 
-              on:click={() => copyToClipboard(fileContent[expandedFile])}
+              class="copy-btn"
+              aria-label="Copy to clipboard"
+              on:click={() => copyToClipboard(fileContent[expandedFile!])}
               title="Copy to clipboard"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M5.5 2C5.5 1.72386 5.72386 1.5 6 1.5H11.5C11.7761 1.5 12 1.72386 12 2V4H13.5C13.7761 4 14 4.22386 14 4.5V13.5C14 13.7761 13.7761 14 13.5 14H7.5C7.22386 14 7 13.7761 7 13.5V12H5.5C5.22386 12 5 11.7761 5 11.5V2ZM6 11.5V10.5H7.5C7.77614 10.5 8 10.7239 8 11V13H13V5H8V7.5C8 7.77614 7.77614 8 7.5 8H6V11.5ZM7 7V5H11V11H8V8H7ZM6.5 3V7H7V3H6.5Z" fill="currentColor"/>
               </svg>
             </button>
