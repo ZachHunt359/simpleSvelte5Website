@@ -124,6 +124,49 @@ export const POST = async ({ request }) => {
       normalizedExisting[slugifyChapterKey(k)] = existing[k];
     }
 
+    // Validate lock state: reject modifications to locked chapters
+    // Exception: allow lock/unlock operations themselves
+    for (const k of Object.keys(incoming)) {
+      const slug = slugifyChapterKey(k);
+      const existingChapter = normalizedExisting[slug];
+      const incomingChapter = incoming[k];
+      
+      if (existingChapter && existingChapter.locked === true) {
+        // Chapter is currently locked
+        const isUnlocking = incomingChapter && incomingChapter.locked === false;
+        const isJustLocking = incomingChapter && incomingChapter.locked === true && Object.keys(incomingChapter).length === 1;
+        
+        // Check if incoming data contains changes beyond just lock state
+        const hasContentChanges = incomingChapter && (
+          incomingChapter.desktop || 
+          incomingChapter.mobile || 
+          incomingChapter.other ||
+          ('published' in incomingChapter && incomingChapter.locked !== false) ||
+          ('publishDate' in incomingChapter && incomingChapter.locked !== false)
+        );
+        
+        if (hasContentChanges && !isUnlocking) {
+          console.log(`[API /panels/order] ⛔ Rejected: Attempt to modify locked chapter ${slug}`);
+          return new Response(
+            JSON.stringify({ 
+              error: `Chapter "${slug}" is locked and cannot be modified. Unlock it first.`,
+              lockedChapter: slug 
+            }), 
+            { status: 403 }
+          );
+        }
+        
+        if (isUnlocking) {
+          console.log(`[API /panels/order] 🔓 Unlocking chapter ${slug}`);
+        }
+      }
+      
+      // Check if trying to lock a chapter
+      if (incomingChapter && incomingChapter.locked === true) {
+        console.log(`[API /panels/order] 🔒 Locking chapter ${slug}`);
+      }
+    }
+
     // Normalize incoming keys and merge into existing (or populate when replace=true)
     for (const k of Object.keys(incoming)) {
       const slug = slugifyChapterKey(k);

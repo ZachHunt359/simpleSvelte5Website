@@ -31,6 +31,9 @@
   let previewImageSrc = $state<string | null>(null);
   let previewImageAlt = $state<string>('');
   
+  // Lock confirmation dialog state
+  let unlockConfirmChapter = $state<string | null>(null);
+  
   function showImagePreview(src: string, alt: string) {
     previewImageSrc = src;
     previewImageAlt = alt;
@@ -270,6 +273,13 @@
   let dragOverChapterIndex: number | null = null;
 
   function chapterDragStart(e: DragEvent, idx: number) {
+    // Prevent dragging locked chapters
+    const chapter = chapterItems[idx]?.title;
+    if (chapter && isChapterLocked(chapter)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     draggedChapterIndex = idx;
     isChapterDragging = true;
     try { e.dataTransfer?.setData('text/plain', String(idx)); e.dataTransfer!.effectAllowed = 'move'; } catch (_) {}
@@ -492,6 +502,40 @@
     const slug = slugifyChapterKey(chapter);
     return (orderMap && orderMap[slug]) || {};
   }
+  
+  function isChapterLocked(chapter: string): boolean {
+    const meta = getChapterMeta(chapter);
+    return meta.locked === true;
+  }
+  
+  function handleToggleLock(chapter: string) {
+    const currentlyLocked = isChapterLocked(chapter);
+    
+    if (currentlyLocked) {
+      // Unlocking requires confirmation
+      unlockConfirmChapter = chapter;
+    } else {
+      // Locking is immediate
+      confirmLockChange(chapter, true);
+    }
+  }
+  
+  function confirmLockChange(chapter: string, locked: boolean) {
+    const slug = slugifyChapterKey(chapter);
+    const orders: Record<string, any> = {};
+    orders[slug] = {
+      locked,
+      desktop: (chapterMap[chapter].desktop || []).map(f => mapOrderEntry(f)),
+      mobile: (chapterMap[chapter].mobile || []).map(f => mapOrderEntry(f)),
+      other: (chapterMap[chapter].other || []).map(f => mapOrderEntry(f))
+    };
+    dispatch('saveOrder', { orders });
+    unlockConfirmChapter = null;
+  }
+  
+  function cancelUnlock() {
+    unlockConfirmChapter = null;
+  }
 
   function formatChapterSchedule(chapter: string) {
     const meta = getChapterMeta(chapter);
@@ -583,11 +627,16 @@
     const orders: Record<string, any> = {};
     Object.keys(chapterMap).forEach(ch => {
       const slug = slugifyChapterKey(ch);
+      const meta = getChapterMeta(ch);
       orders[slug] = {
         desktop: (chapterMap[ch].desktop || []).map(f => mapOrderEntry(f)),
         mobile: (chapterMap[ch].mobile || []).map(f => mapOrderEntry(f)),
         other: (chapterMap[ch].other || []).map(f => mapOrderEntry(f))
       };
+      // Preserve lock state
+      if (meta.locked) {
+        orders[slug].locked = true;
+      }
     });
     dispatch('saveOrder', { orders });
   }
@@ -787,10 +836,23 @@
         {#if chapterMap[item.title]}
           <div class="mb-3" role="listitem" data-item-id={item.id} data-is-dnd-shadow-item-hint={item[SHADOW_ITEM_MARKER_PROPERTY_NAME]} ondragover={(e) => { e.preventDefault(); chapterDragOver(e, idx); }} ondrop={(e) => chapterDrop(e, idx)}>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
-              <span class="chapter-drag-handle" draggable="true" ondragstart={(e) => chapterDragStart(e, idx)} ondragend={chapterDragEnd} style="cursor:grab;padding:0.25rem 0.5rem;user-select:none" aria-label="drag chapter" role="button" tabindex="0">☰</span>
+              <span 
+                class="chapter-drag-handle" 
+                draggable={!isChapterLocked(item.title)} 
+                ondragstart={(e) => chapterDragStart(e, idx)} 
+                ondragend={chapterDragEnd} 
+                style="cursor:{isChapterLocked(item.title) ? 'not-allowed' : 'grab'};padding:0.25rem 0.5rem;user-select:none;opacity:{isChapterLocked(item.title) ? '0.3' : '1'}" 
+                aria-label="drag chapter" 
+                role="button" 
+                tabindex="0"
+                title={isChapterLocked(item.title) ? 'Chapter is locked' : 'Drag to reorder chapter'}
+              >☰</span>
               <button class="chapter-toggle text-left py-2 px-3 rounded bg-slate-800 hover:bg-slate-700 flex items-center" onclick={() => toggleChapter(item.title)}>
                 <div style="display:flex;flex-direction:column;align-items:flex-start;">
                   <div style="display:flex;align-items:center;gap:0.5rem;">
+                    {#if isChapterLocked(item.title)}
+                      <span class="text-yellow-500" title="Chapter is locked">🔒</span>
+                    {/if}
                     <span class="font-semibold text-lg text-slate-100">{item.title}</span>
                     {#if getChapterMeta(item.title).publishDate}
                       <span class="text-yellow-300 text-sm">Scheduled: {formatChapterSchedule(item.title)}</span>
@@ -809,7 +871,14 @@
                 <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublishChapter(item.title)}>{getChapterMeta(item.title).published ? 'Unpublish Chapter' : 'Publish Chapter'}</button>
                 <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => openSchedulePickerChapter(item.title)}>Schedule Chapter</button>
                 <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => dispatch('insertYouTube', { chapter: item.title })}>Insert YouTube</button>
-                <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDeleteChapter(item.title)}>Delete Chapter</button>
+                <button 
+                  class="btn btn-ghost btn-xs {isChapterLocked(item.title) ? 'text-yellow-500' : 'text-slate-300'}" 
+                  onclick={() => handleToggleLock(item.title)}
+                  title={isChapterLocked(item.title) ? 'Unlock chapter (allows editing)' : 'Lock chapter (prevents accidental changes)'}
+                >
+                  {isChapterLocked(item.title) ? '🔒 Unlock' : '🔓 Lock'}
+                </button>
+                <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDeleteChapter(item.title)} disabled={isChapterLocked(item.title)}>Delete Chapter</button>
               </div>
               {#if openPickerId === `chapter-schedule-${slugifyChapterKey(item.title)}`}
                 <input data-picker-id={`chapter-schedule-${slugifyChapterKey(item.title)}`} class="picker-input" placeholder="YYYY-MM-DD HH:mm" style="margin-left:0.5rem;padding:0.15rem 0.4rem;border-radius:4px;background:#111;color:#fff;border:1px solid #333;" />
@@ -861,7 +930,7 @@
                 <ul style="padding:0;list-style:none;margin:0;">
                   <li style="padding:0;margin:0;list-style:none;">
                     <div
-                      use:dragHandleZone={{ items: (chapterMap[item.title].other ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
+                      use:dragHandleZone={{ items: (chapterMap[item.title].other ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging || isChapterLocked(item.title), dropFromOthersDisabled: isChapterDragging || isChapterLocked(item.title) }}
                       onconsider={e => { 
                         const adjustedItems = handleConsiderWithSelection(item.title, 'other', e.detail.items, e.detail.info);
                         chapterMap[item.title].other = adjustedItems; 
@@ -965,7 +1034,7 @@
                 <ul style="padding:0;list-style:none;margin:0;">
                   <li style="padding:0;margin:0;list-style:none;">
                     <div
-                      use:dragHandleZone={{ items: (chapterMap[item.title].desktop ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
+                      use:dragHandleZone={{ items: (chapterMap[item.title].desktop ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging || isChapterLocked(item.title), dropFromOthersDisabled: isChapterDragging || isChapterLocked(item.title) }}
                       onconsider={e => { 
                         const adjustedItems = handleConsiderWithSelection(item.title, 'desktop', e.detail.items, e.detail.info);
                         chapterMap[item.title].desktop = adjustedItems; 
@@ -1075,7 +1144,7 @@
                 <ul style="padding:0;list-style:none;margin:0;">
                   <li style="padding:0;margin:0;list-style:none;">
                     <div
-                      use:dragHandleZone={{ items: (chapterMap[item.title].mobile ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging, dropFromOthersDisabled: isChapterDragging }}
+                      use:dragHandleZone={{ items: (chapterMap[item.title].mobile ?? []), flipDurationMs: 150, morphDisabled: true, dragDisabled: isChapterDragging || isChapterLocked(item.title), dropFromOthersDisabled: isChapterDragging || isChapterLocked(item.title) }}
                       onconsider={e => { 
                         const adjustedItems = handleConsiderWithSelection(item.title, 'mobile', e.detail.items, e.detail.info);
                         chapterMap[item.title].mobile = adjustedItems; 
@@ -1178,6 +1247,35 @@
         alt={previewImageAlt} 
         style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 0 30px rgba(0,0,0,0.5);"
       />
+    </div>
+  {/if}
+
+  <!-- Unlock Confirmation Dialog -->
+  {#if unlockConfirmChapter}
+    <div 
+      class="unlock-confirm-modal"
+      style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;"
+      onclick={cancelUnlock}
+    >
+      <div 
+        class="modal-content bg-slate-800 rounded-lg p-6 max-w-md border border-slate-600"
+        style="box-shadow:0 0 30px rgba(0,0,0,0.5);"
+        onclick={(e) => e.stopPropagation()}
+      >
+        <h3 class="text-xl font-semibold text-white mb-4">⚠️ Unlock Chapter?</h3>
+        <p class="text-slate-300 mb-6">
+          Are you sure you want to unlock <strong class="text-blue-400">{unlockConfirmChapter}</strong>?
+        </p>
+        <p class="text-slate-400 text-sm mb-6">
+          Unlocking will allow this chapter's content to be moved, reordered, or deleted. This could affect published content.
+        </p>
+        <div style="display:flex;gap:1rem;justify-content:flex-end;">
+          <button class="btn btn-ghost text-slate-300" onclick={cancelUnlock}>Cancel</button>
+          <button class="btn bg-yellow-600 hover:bg-yellow-700 text-white" onclick={() => confirmLockChange(unlockConfirmChapter!, false)}>
+            🔓 Yes, Unlock
+          </button>
+        </div>
+      </div>
     </div>
   {/if}
   

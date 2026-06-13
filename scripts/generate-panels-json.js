@@ -106,23 +106,56 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
   // Sort chapters numerically
   chapterDirs.sort(numericSort);
 
+  // Load existing panels.json to preserve locked chapters
+  let existingPanels = {};
+  const panelsJsonPath = path.resolve(projectRoot, panelsJson);
+  try {
+    if (fs.existsSync(panelsJsonPath)) {
+      const raw = fs.readFileSync(panelsJsonPath, 'utf8');
+      const existing = JSON.parse(raw || '[]');
+      // Convert array to map for easy lookup by slug
+      existing.forEach(ch => {
+        if (ch && ch.slug) existingPanels[ch.slug] = ch;
+      });
+      if (log) console.log(`Loaded existing panels.json with ${Object.keys(existingPanels).length} chapters`);
+    }
+  } catch (e) {
+    if (log) console.warn('Could not load existing panels.json:', e.message);
+  }
+
+  // Load orderMap early to check lock states
+  let orderMap = {};
+  try {
+    const orderFile = path.join(panelsDir, '_order.json');
+    if (fs.existsSync(orderFile)) {
+      const raw = fs.readFileSync(orderFile, 'utf8');
+      orderMap = JSON.parse(raw || '{}');
+      if (log) console.log(`Loaded _order.json with ${Object.keys(orderMap).length} chapters`);
+    }
+  } catch (e) {
+    if (log) console.warn('Could not load _order.json:', e.message);
+  }
+
   const data = chapterDirs.map(chapter => {
+    // Check if this chapter is locked
+    const chapterMeta = orderMap[chapter] || {};
+    const isLocked = chapterMeta.locked === true;
+    
+    if (isLocked && existingPanels[chapter]) {
+      // Preserve locked chapter from existing panels.json
+      if (log) console.log(`🔒 Preserving locked chapter: ${chapter}`);
+      return existingPanels[chapter];
+    }
+    
+    // Regenerate unlocked chapter from filesystem
+    if (log && isLocked) console.log(`⚠️  Chapter ${chapter} is locked but not found in existing panels.json - regenerating anyway`);
+    if (log && !isLocked) console.log(`🔓 Regenerating unlocked chapter: ${chapter}`);
+    
     const chapterPath = path.join(panelsDir, chapter);
     const desktopPath = path.join(chapterPath, 'desktop');
     const mobilePath = path.join(chapterPath, 'mobile');
 
-    // Read ordering file if present (static/panels/_order.json)
-    let orderMap = {};
-    try {
-      const orderFile = path.join(panelsDir, '_order.json');
-      if (fs.existsSync(orderFile)) {
-        const raw = fs.readFileSync(orderFile, 'utf8');
-        orderMap = JSON.parse(raw || '{}');
-      }
-    } catch (e) {
-      if (log) console.warn('Failed to read _order.json, continuing with filesystem order', e && e.message ? e.message : e);
-      orderMap = {};
-    }
+    // orderMap already loaded above - no need to reload here
 
     // Helper to build file list honoring saved order when possible
     function buildOrderedList(devicePath, deviceKey) {
@@ -298,11 +331,10 @@ export function generatePanelsJson({ regenThumbnails = false, log = false } = {}
     };
   });
 
-  const outFile = path.resolve(projectRoot, panelsJson);
-  const tmpFile = outFile + '.tmp';
+  const tmpFile = panelsJsonPath + '.tmp';
   const json = JSON.stringify(data, null, 2);
   fs.writeFileSync(tmpFile, json, 'utf8');
-  fs.renameSync(tmpFile, outFile);
+  fs.renameSync(tmpFile, panelsJsonPath);
   console.log(`Atomically wrote ${panelsJson} with data:`, json);
 
   // Note: panels.json is now in data/ directory, not static/,
