@@ -1192,12 +1192,13 @@
         uploadSuccess = '✅ Panel order saved successfully';
         setTimeout(() => uploadSuccess = '', 3000);
         
-        // Update local state to match what was saved
-        panelsOrderMap = { ...orders };
-        
-        // Refresh the panels tree to ensure lock state is reflected in UI
-        // This is important for lock/unlock operations
-        await fetchPanelsFiles();
+        // Merge saved orders into existing orderMap at chapter level
+        // This preserves other chapters and metadata we didn't send
+        const updated = { ...panelsOrderMap };
+        for (const chapterSlug of Object.keys(orders)) {
+          updated[chapterSlug] = { ...(updated[chapterSlug] || {}), ...orders[chapterSlug] };
+        }
+        panelsOrderMap = updated;
       }
     } catch (err) {
       console.warn('Error saving full panels order', err);

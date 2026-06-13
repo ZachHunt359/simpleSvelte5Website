@@ -540,9 +540,14 @@
   
   function confirmLockChange(chapter: string, locked: boolean) {
     const slug = slugifyChapterKey(chapter);
+    
+    // Preserve existing metadata when updating lock state
+    const existing = orderMap[slug] || {};
+    
     const orders: Record<string, any> = {};
     orders[slug] = {
-      locked,
+      ...existing,  // Preserve published, publishDate, and other metadata
+      locked,       // Update lock state
       desktop: (chapterMap[chapter].desktop || []).map(f => mapOrderEntry(f)),
       mobile: (chapterMap[chapter].mobile || []).map(f => mapOrderEntry(f)),
       other: (chapterMap[chapter].other || []).map(f => mapOrderEntry(f))
