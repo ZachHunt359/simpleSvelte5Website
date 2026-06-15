@@ -24,6 +24,9 @@
   let selectedItems = $state(new Set<string>()); // Stores file IDs
   let lastSelectedIndex = $state<{ chapter: string; device: DeviceType; index: number } | null>(null);
   
+  // Mark for deletion state - files staged for removal on next Save
+  let markedForDeletion = $state(new Set<string>()); // Stores file IDs
+  
   // Expand/collapse state for device sections
   let expandedSections = $state(new Map<string, boolean>()); // key: "chapter::device"
   
@@ -164,11 +167,14 @@
     if (selectedItems.size === 0) return;
     
     const count = selectedItems.size;
-    if (!confirm(`Delete ${count} selected panel${count !== 1 ? 's' : ''}?`)) return;
+    if (!confirm(`Mark ${count} selected panel${count !== 1 ? 's' : ''} for deletion?`)) return;
     
-    const selected = getSelectedFiles();
-    // Dispatch batch delete event with all files at once to avoid race conditions
-    dispatch('batchDelete', { files: selected.map(s => s.file) });
+    // Mark selected items for deletion
+    for (const id of selectedItems) {
+      markedForDeletion.add(id);
+    }
+    // Trigger reactivity
+    markedForDeletion = markedForDeletion;
     clearSelection();
   }
 
@@ -661,6 +667,20 @@
 
   // Save full order: dispatch 'saveOrder' with normalized mapping
   function saveFullOrder() {
+    // First, process any marked deletions with lock validation
+    const filesToDelete = processMarkedDeletions();
+    
+    // If validation failed (locked chapter), abort save
+    if (markedForDeletion.size > 0 && filesToDelete.length === 0) {
+      return;
+    }
+    
+    // Dispatch delete events for validated files
+    if (filesToDelete.length > 0) {
+      dispatch('batchDelete', { files: filesToDelete });
+    }
+    
+    // Save the order
     const orders: Record<string, any> = {};
     Object.keys(chapterMap).forEach(ch => {
       const slug = slugifyChapterKey(ch);
@@ -676,10 +696,64 @@
       }
     });
     dispatch('saveOrder', { orders });
+    
+    // Clear deletion marks after successful save
+    clearDeletionMarks();
   }
 
   function handleDelete(file: any) {
-    dispatch('delete', { file });
+    // Mark for deletion instead of immediate delete
+    if (markedForDeletion.has(file.id)) {
+      // Unmark if already marked
+      markedForDeletion.delete(file.id);
+    } else {
+      // Mark for deletion
+      markedForDeletion.add(file.id);
+    }
+    // Trigger reactivity
+    markedForDeletion = markedForDeletion;
+  }
+  
+  // Process marked deletions with lock validation
+  function processMarkedDeletions() {
+    if (markedForDeletion.size === 0) return [];
+    
+    const filesToDelete: any[] = [];
+    const lockedChapterFiles: string[] = [];
+    
+    // Find all marked files and check if they're in locked chapters
+    for (const chapter of Object.keys(chapterMap)) {
+      const isLocked = isChapterLocked(chapter);
+      
+      for (const device of ['desktop', 'mobile', 'other'] as DeviceType[]) {
+        const files = chapterMap[chapter][device] || [];
+        for (const file of files) {
+          if (markedForDeletion.has(file.id)) {
+            if (isLocked) {
+              lockedChapterFiles.push(`${file.name} (${chapter})`);
+            } else {
+              filesToDelete.push(file);
+            }
+          }
+        }
+      }
+    }
+    
+    // If any marked files are in locked chapters, show error and abort
+    if (lockedChapterFiles.length > 0) {
+      const fileList = lockedChapterFiles.slice(0, 5).join('\n  • ');
+      const more = lockedChapterFiles.length > 5 ? `\n  ... and ${lockedChapterFiles.length - 5} more` : '';
+      alert(`Cannot delete files from locked chapters:\n  • ${fileList}${more}\n\nUnlock the chapter first, or unmark these files.`);
+      return [];
+    }
+    
+    return filesToDelete;
+  }
+  
+  // Clear all deletion marks
+  function clearDeletionMarks() {
+    markedForDeletion.clear();
+    markedForDeletion = markedForDeletion;
   }
 
   function handleTogglePublish(file: any) {
@@ -851,8 +925,13 @@
   <div class="chapter-tree bg-slate-900 border border-slate-700 rounded-lg p-4">
     <h3 class="text-white font-medium mb-4">Current Comic File Tree</h3>
     <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;">
-      <button class="btn btn-ghost btn-xs text-slate-300" onclick={saveFullOrder}>Save order</button>
-      <span class="text-xs text-slate-400">(Saves file order only - does not upload files)</span>
+      <button class="btn btn-ghost btn-xs text-slate-300" onclick={saveFullOrder}>
+        {markedForDeletion.size > 0 ? `Save changes (${markedForDeletion.size} deletion${markedForDeletion.size !== 1 ? 's' : ''})` : 'Save order'}
+      </button>
+      <span class="text-xs text-slate-400">(Saves file order{markedForDeletion.size > 0 ? ' and deletes marked files' : ' only - does not upload files'})</span>
+      {#if markedForDeletion.size > 0}
+        <button class="btn btn-ghost btn-xs text-yellow-500" onclick={clearDeletionMarks}>Clear all marks</button>
+      {/if}
     </div>
     <!-- Debug output for merged files and chapterMap -->
       {#if debug}
@@ -989,8 +1068,8 @@
                         <div 
                           role="button"
                           tabindex="0"
-                          class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'other')) ? 'selected' : ''}" 
-                          style="{getPanelStatus(file) === 'new' ? 'font-weight:bold;color:#22c55e;' : ''}display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'other')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}"
+                          class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'other')) ? 'selected' : ''} {markedForDeletion.has(file.id) ? 'marked-for-deletion' : ''}" 
+                          style="{getPanelStatus(file) === 'new' ? 'font-weight:bold;color:#22c55e;' : ''}display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'other')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}{markedForDeletion.has(file.id) ? 'opacity:0.5;text-decoration:line-through;background-color:rgba(239, 68, 68, 0.1);' : ''}"
                           onclick={(e) => handleRowClick(file, item.title, 'other', fileIndex, e)}
                           onkeydown={(e) => handleRowKeyDown(file, item.title, 'other', fileIndex, e)}
                         >
@@ -1093,8 +1172,8 @@
                         <div 
                           role="button"
                           tabindex="0"
-                          class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'desktop')) ? 'selected' : ''}"
-                          style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'desktop')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}"
+                          class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'desktop')) ? 'selected' : ''} {markedForDeletion.has(file.id) ? 'marked-for-deletion' : ''}"
+                          style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'desktop')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}{markedForDeletion.has(file.id) ? 'opacity:0.5;text-decoration:line-through;background-color:rgba(239, 68, 68, 0.1);' : ''}"
                           onclick={(e) => handleRowClick(file, item.title, 'desktop', fileIndex, e)}
                           onkeydown={(e) => handleRowKeyDown(file, item.title, 'desktop', fileIndex, e)}
                         >
@@ -1150,7 +1229,7 @@
                                         {#if openPickerId === file.id}
                                           <input data-picker-id={file.id} class="picker-input" placeholder="YYYY-MM-DD HH:mm" style="margin-left:0.5rem;padding:0.15rem 0.4rem;border-radius:4px;background:#111;color:#fff;border:1px solid #333;" />
                                         {/if}
-                                      <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDelete(file)}>Delete</button>
+                                      <button class="btn btn-ghost btn-xs {markedForDeletion.has(file.id) ? 'text-yellow-500' : 'text-red-500'}" onclick={() => handleDelete(file)}>{markedForDeletion.has(file.id) ? 'Unmark' : 'Delete'}</button>
                                     </div>
                         </div>
                       {/each}
@@ -1203,8 +1282,8 @@
                         <div 
                           role="button"
                           tabindex="0"
-                          class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'mobile')) ? 'selected' : ''}"
-                          style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'mobile')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}"
+                          class="panel-item {getPanelStatus(file)} {isPanelOverride(file, item.title) ? 'override-unpublished' : ''} {selectedItems.has(getFileKey(file, item.title, 'mobile')) ? 'selected' : ''} {markedForDeletion.has(file.id) ? 'marked-for-deletion' : ''}"
+                          style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;cursor:pointer;transition:background-color 0.15s;user-select:none;{selectedItems.has(getFileKey(file, item.title, 'mobile')) ? 'background-color:rgba(59, 130, 246, 0.2);' : ''}{markedForDeletion.has(file.id) ? 'opacity:0.5;text-decoration:line-through;background-color:rgba(239, 68, 68, 0.1);' : ''}"
                           onclick={(e) => handleRowClick(file, item.title, 'mobile', fileIndex, e)}
                           onkeydown={(e) => handleRowKeyDown(file, item.title, 'mobile', fileIndex, e)}
                         >
