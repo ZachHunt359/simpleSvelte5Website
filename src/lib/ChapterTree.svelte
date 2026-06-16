@@ -11,14 +11,23 @@
     newFiles = [],
     conflicts = { duplicates: [], missing: [], errors: [] },
     orderMap = {},
-    debug = false
+    debug = false,
+    externalSaveTrigger = 0
   }: {
     existingFiles?: Array<{ name: string; webkitRelativePath: string; size?: number; type?: string }>;
     newFiles?: Array<{ name: string; webkitRelativePath: string; size?: number; type?: string; id?: string }>;
     conflicts?: { duplicates: string[], missing: string[], errors: string[] };
     orderMap?: Record<string, any>;
     debug?: boolean;
+    externalSaveTrigger?: number;
   } = $props();
+  
+  // Watch for external save trigger
+  $effect(() => {
+    if (externalSaveTrigger > 0) {
+      saveFullOrder();
+    }
+  });
 
   // Multi-select state (Phase 1.5)
   let selectedItems = $state(new Set<string>()); // Stores file IDs
@@ -166,10 +175,7 @@
   async function handleBatchDelete() {
     if (selectedItems.size === 0) return;
     
-    const count = selectedItems.size;
-    if (!confirm(`Mark ${count} selected panel${count !== 1 ? 's' : ''} for deletion?`)) return;
-    
-    // Mark selected items for deletion
+    // Mark selected items for deletion (no confirmation)
     for (const id of selectedItems) {
       markedForDeletion.add(id);
     }
@@ -710,8 +716,8 @@
       // Mark for deletion
       markedForDeletion.add(file.id);
     }
-    // Trigger reactivity
-    markedForDeletion = markedForDeletion;
+    // Trigger reactivity by creating new Set
+    markedForDeletion = new Set(markedForDeletion);
   }
   
   // Process marked deletions with lock validation
@@ -753,7 +759,7 @@
   // Clear all deletion marks
   function clearDeletionMarks() {
     markedForDeletion.clear();
-    markedForDeletion = markedForDeletion;
+    markedForDeletion = new Set(markedForDeletion);
   }
 
   function handleTogglePublish(file: any) {
@@ -926,7 +932,7 @@
     <h3 class="text-white font-medium mb-4">Current Comic File Tree</h3>
     <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;">
       <button class="btn btn-ghost btn-xs text-slate-300" onclick={saveFullOrder}>
-        {markedForDeletion.size > 0 ? `Save changes (${markedForDeletion.size} deletion${markedForDeletion.size !== 1 ? 's' : ''})` : 'Save order'}
+        {markedForDeletion.size > 0 ? `Save changes (${markedForDeletion.size} deletion${markedForDeletion.size !== 1 ? 's' : ''})` : 'Save changes'}
       </button>
       <span class="text-xs text-slate-400">(Saves file order{markedForDeletion.size > 0 ? ' and deletes marked files' : ' only - does not upload files'})</span>
       {#if markedForDeletion.size > 0}
@@ -1116,10 +1122,10 @@
                           </div>
                           <div style="display:flex;gap:0.5rem;align-items:center;">
                             {#if file.type === 'youtube' && (file.youtubeId || file.id)}
-                              <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId || file.id}`, '_blank')}>Preview</button>
+                              <button class="btn btn-ghost btn-xs text-blue-400" onclick={(e) => { e.stopPropagation(); window.open(`https://youtube.com/watch?v=${file.youtubeId || file.id}`, '_blank'); }}>Preview</button>
                             {/if}
-                            <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
-                            <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDelete(file)}>Delete</button>
+                            <button class="btn btn-ghost btn-xs text-slate-300" onclick={(e) => { e.stopPropagation(); handleTogglePublish(file); }} disabled={isChapterLocked(item.title)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
+                            <button class="btn btn-ghost btn-xs {markedForDeletion.has(file.id) ? 'text-yellow-500' : 'text-red-500'}" onclick={(e) => { e.stopPropagation(); handleDelete(file); }}>{markedForDeletion.has(file.id) ? 'Unmark' : 'Delete'}</button>
                           </div>
                         </div>
                       {/each}
@@ -1222,14 +1228,16 @@
                           </div>
                                     <div style="display:flex;gap:0.5rem;align-items:center;">
                                       {#if file.type === 'youtube' && (file.youtubeId || file.id)}
-                                        <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId || file.id}`, '_blank')}>Preview</button>
+                                        <button class="btn btn-ghost btn-xs text-blue-400" onclick={(e) => { e.stopPropagation(); window.open(`https://youtube.com/watch?v=${file.youtubeId || file.id}`, '_blank'); }}>Preview</button>
                                       {/if}
-                                      <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
-                                      <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => openSchedulePicker(file, item.title)}>Schedule</button>
+                                      <button class="btn btn-ghost btn-xs text-slate-300" onclick={(e) => { e.stopPropagation(); handleTogglePublish(file); }} disabled={isChapterLocked(item.title)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
+                                      {#if !getEffectivePublished(file, item.title)}
+                                        <button class="btn btn-ghost btn-xs text-slate-300" onclick={(e) => { e.stopPropagation(); openSchedulePicker(file, item.title); }}>Schedule</button>
                                         {#if openPickerId === file.id}
                                           <input data-picker-id={file.id} class="picker-input" placeholder="YYYY-MM-DD HH:mm" style="margin-left:0.5rem;padding:0.15rem 0.4rem;border-radius:4px;background:#111;color:#fff;border:1px solid #333;" />
                                         {/if}
-                                      <button class="btn btn-ghost btn-xs {markedForDeletion.has(file.id) ? 'text-yellow-500' : 'text-red-500'}" onclick={() => handleDelete(file)}>{markedForDeletion.has(file.id) ? 'Unmark' : 'Delete'}</button>
+                                      {/if}
+                                      <button class="btn btn-ghost btn-xs {markedForDeletion.has(file.id) ? 'text-yellow-500' : 'text-red-500'}" onclick={(e) => { e.stopPropagation(); handleDelete(file); }}>{markedForDeletion.has(file.id) ? 'Unmark' : 'Delete'}</button>
                                     </div>
                         </div>
                       {/each}
@@ -1332,10 +1340,10 @@
                           </div>
                           <div style="display:flex;gap:0.5rem;align-items:center;">
                             {#if file.type === 'youtube' && (file.youtubeId || file.id)}
-                              <button class="btn btn-ghost btn-xs text-blue-400" onclick={() => window.open(`https://youtube.com/watch?v=${file.youtubeId || file.id}`, '_blank')}>Preview</button>
+                              <button class="btn btn-ghost btn-xs text-blue-400" onclick={(e) => { e.stopPropagation(); window.open(`https://youtube.com/watch?v=${file.youtubeId || file.id}`, '_blank'); }}>Preview</button>
                             {/if}
-                            <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublish(file)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
-                            <button class="btn btn-ghost btn-xs text-red-500" onclick={() => handleDelete(file)}>Delete</button>
+                            <button class="btn btn-ghost btn-xs text-slate-300" onclick={(e) => { e.stopPropagation(); handleTogglePublish(file); }} disabled={isChapterLocked(item.title)}>{getEffectivePublished(file, item.title) ? 'Unpublish' : 'Publish'}</button>
+                            <button class="btn btn-ghost btn-xs {markedForDeletion.has(file.id) ? 'text-yellow-500' : 'text-red-500'}" onclick={(e) => { e.stopPropagation(); handleDelete(file); }}>{markedForDeletion.has(file.id) ? 'Unmark' : 'Delete'}</button>
                           </div>
                         </div>
                       {/each}

@@ -53,6 +53,7 @@
   let inferredChapters: string[] = [];
   // Local debug toggle to control tree/component debug output
   let treeDebug = false;
+  let saveTrigger = 0; // Increment to trigger ChapterTree save
   
   // File removal state
   let selectedFilesForRemoval: Set<number> = new Set();
@@ -2304,6 +2305,15 @@
           Upload All Files to Server
         {/if}
       </button>
+      <button 
+        type="button" 
+        class="btn btn-primary" 
+        style="margin-left:0.5rem" 
+        on:click={() => saveTrigger++}
+        disabled={uploading || regenerating}
+      >
+        Save changes
+      </button>
       <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={regeneratePanels} disabled={regenerating || ensuringYouTube}>
         {regenerating ? 'Processing...' : 'Regenerate panels'}
       </button>
@@ -2331,6 +2341,7 @@
       orderMap={panelsOrderMap}
       conflicts={conflicts}
       debug={treeDebug}
+      externalSaveTrigger={saveTrigger}
       on:delete={e => handleTreeDelete(e.detail.file)}
       on:batchDelete={e => handleTreeBatchDelete(e.detail.files)}
       on:togglePublish={e => handleTreeTogglePublish(e.detail.file)}
