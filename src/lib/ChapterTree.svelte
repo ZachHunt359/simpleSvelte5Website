@@ -429,7 +429,7 @@
     if (shadowIndex === -1) {
       // FINALIZE: Dragged item is back in the array, reconstruct with all selected items together
       // Find where the dragged item ended up
-      const draggedItemIndex = items.findIndex(it => {
+      let draggedItemIndex = items.findIndex(it => {
         const baseId = it.id.replace(/-\d+$/, '');
         return baseId === baseDraggedId || it.id === draggedId;
       });
@@ -439,23 +439,24 @@
         return items;
       }
       
-      // Get the dragged item
-      const draggedItem = items[draggedItemIndex];
-      
       // Remove ALL selected items from the array (including dragged item)
       const unselectedItems = items.filter(it => {
         const baseId = it.id.replace(/-\d+$/, '');
         return !selectedIds.has(it.id) && !selectedIds.has(baseId);
       });
       
-      // Calculate where to insert: count unselected items before where dragged item was
+      // Calculate where to insert by finding position of dragged item AMONG unselected items
+      // Count how many unselected items come before the dragged item's original position
       let insertPosition = 0;
       for (let i = 0; i < draggedItemIndex; i++) {
         const baseId = items[i].id.replace(/-\d+$/, '');
+        // Only count if this item is NOT selected (i.e., it's in unselectedItems)
         if (!selectedIds.has(items[i].id) && !selectedIds.has(baseId)) {
           insertPosition++;
         }
       }
+      
+      console.log(`🎯 [MULTI-SELECT] Finalize: draggedItemIndex=${draggedItemIndex}, insertPosition=${insertPosition}, selectedCount=${selectedItemsSnapshot.length}, unselectedCount=${unselectedItems.length}`);
       
       // Rebuild array with ALL selected items at the drop position, in original order
       const finalArray = [
@@ -1115,6 +1116,27 @@
                                 />
                               {/if}
                               <div>{file.name || file.webkitRelativePath || '[Unknown]'}</div>
+                            {:else if /\.(webm|mp4|mov|avi)$/i.test(file.name)}
+                              {#if file._isNew && file.preview}
+                                <video 
+                                  src={file.preview} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" 
+                                  loop
+                                  autoplay
+                                  muted
+                                ></video>
+                              {:else}
+                                <video 
+                                  src={"/panels/" + file.webkitRelativePath} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" 
+                                  loop
+                                  autoplay
+                                  muted
+                                ></video>
+                              {/if}
+                              <div>{file.name || file.webkitRelativePath || '[Unknown]'}</div>
                             {:else}
                               <span class="file-icon" style="display:inline-block;width:48px;height:48px;background:#222;border-radius:4px;margin-right:0.5rem;text-align:center;line-height:48px;font-size:1.5em;color:#888;">📄</span>
                               <div>{file.name || file.webkitRelativePath || '[Unknown]'}</div>
@@ -1217,6 +1239,27 @@
                                   onmouseenter={() => showImagePreview("/panels/" + file.webkitRelativePath, file.name)}
                                   onmouseleave={() => hideImagePreview()}
                                 />
+                              {/if}
+                              <span>{file.name}</span>
+                            {:else if /\.(webm|mp4|mov|avi)$/i.test(file.name)}
+                              {#if file._isNew && file.preview}
+                                <video 
+                                  src={file.preview} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" 
+                                  loop
+                                  autoplay
+                                  muted
+                                ></video>
+                              {:else}
+                                <video 
+                                  src={"/panels/" + file.webkitRelativePath} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" 
+                                  loop
+                                  autoplay
+                                  muted
+                                ></video>
                               {/if}
                               <span>{file.name}</span>
                             {:else}
@@ -1329,6 +1372,27 @@
                                   onmouseenter={() => showImagePreview("/panels/" + file.webkitRelativePath, file.name)}
                                   onmouseleave={() => hideImagePreview()}
                                 />
+                              {/if}
+                              <span>{file.name}</span>
+                            {:else if /\.(webm|mp4|mov|avi)$/i.test(file.name)}
+                              {#if file._isNew && file.preview}
+                                <video 
+                                  src={file.preview} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" 
+                                  loop
+                                  autoplay
+                                  muted
+                                ></video>
+                              {:else}
+                                <video 
+                                  src={"/panels/" + file.webkitRelativePath} 
+                                  class="panel-thumb" 
+                                  style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" 
+                                  loop
+                                  autoplay
+                                  muted
+                                ></video>
                               {/if}
                               <span>{file.name}</span>
                             {:else}

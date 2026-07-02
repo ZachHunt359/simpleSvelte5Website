@@ -100,13 +100,28 @@
   }
 
   // Merge helpers: handle array entries that may be strings or metadata objects { path: '...' }
-  function entryPath(e: string | { path?: string }) {
-    return typeof e === 'string' ? e : (e && (e as any).path) || '';
+  function normalizePath(p: string): string {
+    let normalized = String(p || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    if (normalized.startsWith('panels/')) {
+      normalized = normalized.slice(7);
+    }
+    return normalized;
+  }
+
+  function entryPath(e: string | { path?: string }): string {
+    if (typeof e === 'string') return normalizePath(e);
+    if (!e) return '';
+    // Handle YouTube entries
+    if ((e as any).type === 'youtube' && (e as any).id) {
+      return `youtube:${(e as any).id}`;
+    }
+    return normalizePath(String((e as any).path || ''));
   }
 
   function mergeInsertExisting(existing: (string|any)[], newItems: string[], naturalCompareFn: (a: string, b: string) => number) {
     const existingPaths = existing.map(entryPath);
-    const filteredNew = newItems.filter(n => !existingPaths.includes(n));
+    const normalizedNewItems = newItems.map(normalizePath);
+    const filteredNew = normalizedNewItems.filter(n => !existingPaths.includes(n));
     if (filteredNew.length === 0) return existing.slice();
 
     const sortedNew = filteredNew.slice().sort(naturalCompareFn);
