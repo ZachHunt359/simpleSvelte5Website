@@ -4,6 +4,10 @@
   import ChapterTree from '$lib/ChapterTree.svelte';
   import ConflictResolutionModal from '$lib/ConflictResolutionModal.svelte';
   import { analyzeConflicts, getExistingPanels, preprocessFiles, type ConflictAnalysis } from '$lib/uploadValidation';
+  import { env } from '$env/dynamic/public';
+  
+  // Asset base path - use environment variable or default to /panels
+  const ASSET_BASE = env.PUBLIC_STATIC_ASSET_BASE || '/panels';
   
   let selectedFiles: File[] = [];
   let filesToUpload: any[] = [];
@@ -328,9 +332,11 @@
   async function fetchPanelsFiles() {
     console.log('[fetchPanelsFiles] Starting fetch...');
     // Fetch file list and _order.json (if present) then reorder files according to _order.json
+    const orderJsonUrl = `${ASSET_BASE}/_order.json`;
+    console.log('[fetchPanelsFiles] Fetching _order.json from:', orderJsonUrl);
     const [listRes, orderRes] = await Promise.all([
       fetch('/api/panels/list', { credentials: 'same-origin' }).catch(() => null),
-      fetch('/panels/_order.json', { credentials: 'same-origin' }).catch(() => null)
+      fetch(orderJsonUrl, { credentials: 'same-origin' }).catch(() => null)
     ]);
     if (!listRes || !listRes.ok) return;
     const fileList: string[]  = await listRes.json();

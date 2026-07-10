@@ -1,7 +1,11 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { env } from '$env/dynamic/public';
   
   const dispatch = createEventDispatcher();
+  
+  // Asset base path - use environment variable or default to /panels
+  const ASSET_BASE = env.PUBLIC_STATIC_ASSET_BASE || '/panels';
   
   export let conflicts: Array<{
     file: File;
@@ -51,7 +55,7 @@
         const ext = c.existingPath.split('.').pop()?.toLowerCase();
         if (ext && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
           // Add timestamp to bust browser cache
-          existingFilePreviews[key] = `/panels/${c.existingPath}?t=${Date.now()}`;
+          existingFilePreviews[key] = `${ASSET_BASE}/${c.existingPath}?t=${Date.now()}`;
         }
       });
     }
