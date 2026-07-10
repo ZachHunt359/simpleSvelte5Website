@@ -33,7 +33,7 @@
             preloading = false;
         } else {
             const url = entry;
-            if (/\.(webm)$/i.test(url)) {
+            if (/\.(webm)(\?.*)?$/i.test(url)) {
                 // For video, swap immediately (preloading is unreliable for videos)
                 displayedPanelIndex = currentPanel;
                 preloading = false;
@@ -74,7 +74,7 @@
             const entry = panels[i];
             if (typeof entry === 'object') continue; // nothing to preload for structured entries
                 const url = entry;
-            if (/\.(webm)$/i.test(url)) {
+            if (/\.(webm)(\?.*)?$/i.test(url)) {
                 // Preload video (not always effective, but doesn't hurt)
                 const video = document.createElement('video');
                 video.src = url;
@@ -193,7 +193,7 @@
                     <iconify-icon icon="icon-park-outline:right-two" style="font-size: 2rem; color: #ffd700;"></iconify-icon>
                 </div>
             </div>
-        {:else if /\.(webm)$/i.test(panels[displayedPanelIndex])}
+        {:else if /\.(webm)(\?.*)?$/i.test(panels[displayedPanelIndex])}
             <!-- decorative animated panel: mark as non-interactive for assistive tech -->
             <video
                 src={panels[displayedPanelIndex]}
