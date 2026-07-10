@@ -9,6 +9,10 @@ import { generatePanelsJson } from './generate-panels-json.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Use PANELS_DIR env var if set, otherwise default to static/panels
+const PANELS_BASE = process.env.PANELS_DIR || 'static/panels';
+const PANELS_DIR = path.join(__dirname, '..', PANELS_BASE);
+
 const app = express();
 app.use(cors({ origin: 'http://localhost:5173' })); // Allow communication from the SvelteKit dev server
 
@@ -24,7 +28,7 @@ app.post('/api/panels/upload', upload.any(), (req, res) => {
         req.files.forEach((file, idx) => {
             // Use the relative path for the destination
             const relPath = relPathsArr[idx] || file.originalname;
-            const dest = path.join(__dirname, '../static/panels', relPath);
+            const dest = path.join(PANELS_DIR, relPath);
             fs.mkdirSync(path.dirname(dest), { recursive: true });
             fs.renameSync(file.path, dest);
         });
@@ -61,8 +65,7 @@ function walk(dir, base = '') {
 }
 
 app.get('/api/panels/list', (req, res) => {
-    const panelsDir = path.join(__dirname, '../static/panels');
-    const files = walk(panelsDir);
+    const files = walk(PANELS_DIR);
     res.json(files);
 });
 
