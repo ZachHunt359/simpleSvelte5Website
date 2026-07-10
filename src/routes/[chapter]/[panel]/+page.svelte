@@ -166,6 +166,18 @@
 
     
     function next() {
+        console.log('[next] Called. isLastPanelOfLastChapter:', isLastPanelOfLastChapter, 'showInquiryModal:', showInquiryModal);
+        console.log('[next] currentChapter:', currentChapter, 'chapters.length:', chapters.length, 'currentPanel:', currentPanel, 'panels.length:', panels.length);
+        
+        // If we're at the last panel of the last chapter, show inquiry modal instead of navigating
+        if (isLastPanelOfLastChapter) {
+            console.log('[next] At last panel - opening inquiry modal');
+            if (!showInquiryModal) {
+                showInquiryModal = true;
+                hasAutoOpenedInquiry = true;
+            }
+            return true; // Return true so nav timer shows (indicates action was taken)
+        }
         // Use the fallback-merged panels array length
         if (currentPanel < panels.length - 1) {
             lastScroll = window.scrollY;
@@ -179,11 +191,6 @@
             lastScroll = 0; // Scroll to top at beginning of new chapter. TODO: beginning of new PAGE, separate from chapter
             blurActiveElement();
             return true;
-        }
-        // If we're at the last panel of the last chapter, show inquiry modal
-        if (isLastPanelOfLastChapter && !showInquiryModal) {
-            showInquiryModal = true;
-            hasAutoOpenedInquiry = true;
         }
         return false;
     }
@@ -274,9 +281,14 @@
 
     // Check if we're at the last panel using the fallback-merged panels array
     $: {
+        const wasLast = isLastPanelOfLastChapter;
         isLastPanelOfLastChapter = 
             currentChapter === chapters.length - 1 &&
             currentPanel === panels.length - 1;
+        if (wasLast !== isLastPanelOfLastChapter) {
+            console.log('[isLastPanel] Changed:', wasLast, '→', isLastPanelOfLastChapter, 
+                '(chapter:', currentChapter, '/', chapters.length, ', panel:', currentPanel, '/', panels.length, ')');
+        }
     }
 
     $: canGoForward = !isLastPanelOfLastChapter;
@@ -404,16 +416,26 @@
     let showEmailPrompt = false;
     let lastInquiryId: string | null = null;
     let hasAutoOpenedInquiry = false; // Track if we've already auto-opened on this session
+    let autoOpenTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Auto-open inquiry modal after a few seconds on final panel
     $: if (browser && !hasAutoOpenedInquiry && isLastPanelOfLastChapter) {
+        // Clear any existing timer to prevent duplicates
+        if (autoOpenTimer) {
+            clearTimeout(autoOpenTimer);
+        }
         // Give them 3 seconds to look at the final panel before showing the modal
-        setTimeout(() => {
+        autoOpenTimer = setTimeout(() => {
             if (isLastPanelOfLastChapter && !showInquiryModal) {
                 showInquiryModal = true;
                 hasAutoOpenedInquiry = true;
             }
+            autoOpenTimer = null;
         }, 3000);
+    } else if (autoOpenTimer && (!isLastPanelOfLastChapter || hasAutoOpenedInquiry)) {
+        // Clear timer if user navigates away from last panel or modal already opened
+        clearTimeout(autoOpenTimer);
+        autoOpenTimer = null;
     }
 
     async function submitInquiry() {
