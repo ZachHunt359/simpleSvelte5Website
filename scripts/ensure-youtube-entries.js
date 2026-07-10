@@ -18,7 +18,9 @@ const __dirname = path.dirname(__filename);
 // Use PROJECT_ROOT env var in production, fallback to __dirname for local development
 const PROJECT_ROOT = process.env.PROJECT_ROOT || path.join(__dirname, '..');
 
-// Use PANELS_DIR env var if set, otherwise default to static/panels
+// PANELS_DIR determines both where to read panel files and where to write _order.json
+// - Production: PANELS_DIR=static/panels (default)
+// - Staging: PANELS_DIR=static/panels-staging
 const PANELS_BASE = process.env.PANELS_DIR || 'static/panels';
 const PANELS_DIR = path.join(PROJECT_ROOT, PANELS_BASE);
 const ORDER_FILE = path.join(PANELS_DIR, '_order.json');
@@ -40,13 +42,13 @@ const YOUTUBE_ENTRIES = [
     {
         chapter: 'chapter-1',
         device: 'mobile',
-        beforePanel: 'Spread22.1.1.png', // Insert before this panel
+        beforePanel: 'Spread19.1.png', // Insert before this panel
         entry: {
             type: 'youtube',
             id: '9t9IHg2DQ3I',
             title: 'The Wolf Who Cried'
         },
-        description: 'Video immediately before Spread 22'
+        description: 'Video immediately before Spread 19 (mobile)'
     },
     // Desktop entries
     {
