@@ -1991,13 +1991,59 @@
         const chapterData = grouped[slug];
         for (const device of ['desktop', 'mobile', 'other']) {
           const files = chapterData[device] || [];
-          // Sort files by their path using natural sort
-          files.sort((a, b) => {
+          
+          // Separate YouTube entries from regular files, tracking what panel comes after each
+          const youtubeEntries: Array<{file: any, beforePanel: string | null}> = [];
+          const regularFiles: any[] = [];
+          
+          files.forEach((file, index) => {
+            if (file.type === 'youtube' || (file.webkitRelativePath && file.webkitRelativePath.startsWith('youtube:'))) {
+              // Find the next regular file after this YouTube entry
+              let beforePanel: string | null = null;
+              for (let j = index + 1; j < files.length; j++) {
+                const nextFile = files[j];
+                if (nextFile.type !== 'youtube' && !nextFile.webkitRelativePath?.startsWith('youtube:')) {
+                  beforePanel = nextFile.webkitRelativePath || nextFile.name;
+                  break;
+                }
+              }
+              youtubeEntries.push({ file, beforePanel });
+            } else {
+              regularFiles.push(file);
+            }
+          });
+          
+          // Sort only regular files by their path using natural sort
+          regularFiles.sort((a, b) => {
             const pathA = normalizePath(a.webkitRelativePath || a.name);
             const pathB = normalizePath(b.webkitRelativePath || b.name);
             return naturalCompare(pathA, pathB);
           });
-          sorted.push(...files);
+          
+          // Re-insert YouTube entries before their anchor panels
+          const merged: any[] = [...regularFiles];
+          
+          for (const ytEntry of youtubeEntries) {
+            if (ytEntry.beforePanel) {
+              // Find the anchor panel in the sorted list
+              const anchorIndex = merged.findIndex(f => 
+                (f.webkitRelativePath || f.name) === ytEntry.beforePanel
+              );
+              
+              if (anchorIndex !== -1) {
+                // Insert before the anchor panel
+                merged.splice(anchorIndex, 0, ytEntry.file);
+              } else {
+                // Anchor panel not found (maybe deleted?) - append to end
+                merged.push(ytEntry.file);
+              }
+            } else {
+              // No anchor panel (was at end) - append to end
+              merged.push(ytEntry.file);
+            }
+          }
+          
+          sorted.push(...merged);
         }
       }
       
