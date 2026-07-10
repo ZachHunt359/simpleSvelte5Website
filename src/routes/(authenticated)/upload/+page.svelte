@@ -1949,6 +1949,74 @@
       ensuringYouTube = false;
     }
   }
+
+  // Sort all files using natural sort algorithm
+  let sorting = false;
+  async function sortAllFiles() {
+    if (!confirm('This will re-sort ALL files in the tree using the natural sort algorithm. Manual ordering will be lost. Continue?')) {
+      return;
+    }
+    
+    sorting = true;
+    regenerateStatus = 'Sorting files...';
+    
+    try {
+      // Group files by chapter and device
+      const grouped: Record<string, Record<string, any[]>> = {};
+      
+      for (const file of panelsFiles) {
+        const chapter = file._chapter || extractChapter(file.webkitRelativePath || file.name);
+        const device = file._device || 'other';
+        const slug = slugifyChapterKey(chapter);
+        
+        if (!grouped[slug]) {
+          grouped[slug] = { desktop: [], mobile: [], other: [] };
+        }
+        grouped[slug][device] = grouped[slug][device] || [];
+        grouped[slug][device].push(file);
+      }
+      
+      // Sort each group using natural sort
+      const sorted: any[] = [];
+      const chapterKeys = Object.keys(grouped).sort((a, b) => {
+        const aMatch = a.match(/chapter-(\d+)/i);
+        const bMatch = b.match(/chapter-(\d+)/i);
+        if (aMatch && bMatch) {
+          return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+        }
+        return a.localeCompare(b);
+      });
+      
+      for (const slug of chapterKeys) {
+        const chapterData = grouped[slug];
+        for (const device of ['desktop', 'mobile', 'other']) {
+          const files = chapterData[device] || [];
+          // Sort files by their path using natural sort
+          files.sort((a, b) => {
+            const pathA = normalizePath(a.webkitRelativePath || a.name);
+            const pathB = normalizePath(b.webkitRelativePath || b.name);
+            return naturalCompare(pathA, pathB);
+          });
+          sorted.push(...files);
+        }
+      }
+      
+      // Update panelsFiles with sorted order
+      panelsFiles = sorted;
+      panelsFiles = [...panelsFiles]; // Force reactivity
+      
+      regenerateStatus = 'Files sorted successfully. Click "Save changes" to persist the new order.';
+      
+      // Auto-save the sorted order
+      saveTrigger++;
+      
+    } catch (err: any) {
+      regenerateStatus = `Sort error: ${err?.message || String(err)}`;
+      console.error('[sortAllFiles] Error:', err);
+    } finally {
+      sorting = false;
+    }
+  }
   
   // Handle conflict resolution from modal
   async function handleConflictResolution(event: CustomEvent) {
@@ -2331,6 +2399,9 @@
       </button>
       <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={regeneratePanels} disabled={regenerating || ensuringYouTube}>
         {regenerating ? 'Processing...' : 'Regenerate panels'}
+      </button>
+      <button type="button" class="btn btn-secondary" style="margin-left:0.5rem" on:click={sortAllFiles} disabled={sorting || uploading || regenerating}>
+        {sorting ? 'Sorting...' : 'Sort All Files'}
       </button>
     </div>
     {#if filesToUpload.length > 0 && !uploading}
