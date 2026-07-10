@@ -120,6 +120,17 @@
         
         return preferredArr.length > 0 ? preferredArr : fallbackArr;
     }
+    
+    // Find the last chapter that has any content
+    function findLastNonEmptyChapter(desktopMode: boolean): number {
+        for (let i = chapters.length - 1; i >= 0; i--) {
+            const panelsInChapter = buildPanelsForChapter(i, desktopMode);
+            if (panelsInChapter.length > 0) {
+                return i;
+            }
+        }
+        return 0; // Default to first chapter if all are empty
+    }
 
     function basenameNoExt(item: any): string | undefined {
         if (!item) return undefined;
@@ -186,13 +197,28 @@
             return true;
         }
         if (currentChapter < chapters.length - 1) {
-            currentChapter += 1;
-            currentPanel = 0;
-            lastScroll = 0; // Scroll to top at beginning of new chapter. TODO: beginning of new PAGE, separate from chapter
-            blurActiveElement();
-            return true;
+            // Check if the next chapter has any panels before navigating
+            const nextChapterPanels = buildPanelsForChapter(currentChapter + 1, isDesktop);
+            console.log('[next] Checking next chapter. nextChapterPanels.length:', nextChapterPanels.length);
+            
+            if (nextChapterPanels.length > 0) {
+                currentChapter += 1;
+                currentPanel = 0;
+                lastScroll = 0; // Scroll to top at beginning of new chapter. TODO: beginning of new PAGE, separate from chapter
+                blurActiveElement();
+                return true;
+            }
+            // Next chapter is empty, fall through to show inquiry modal
+            console.log('[next] Next chapter is empty - treating as end of comic');
         }
-        return false;
+        
+        // We're at the end of all content - show inquiry modal
+        console.log('[next] At end of all content - opening inquiry modal');
+        if (!showInquiryModal) {
+            showInquiryModal = true;
+            hasAutoOpenedInquiry = true;
+        }
+        return true; // Return true so nav timer shows
     }
     function prev() {
         if (currentPanel > 0) {
@@ -282,12 +308,13 @@
     // Check if we're at the last panel using the fallback-merged panels array
     $: {
         const wasLast = isLastPanelOfLastChapter;
+        const lastNonEmptyChapter = findLastNonEmptyChapter(isDesktop);
         isLastPanelOfLastChapter = 
-            currentChapter === chapters.length - 1 &&
+            currentChapter === lastNonEmptyChapter &&
             currentPanel === panels.length - 1;
         if (wasLast !== isLastPanelOfLastChapter) {
             console.log('[isLastPanel] Changed:', wasLast, '→', isLastPanelOfLastChapter, 
-                '(chapter:', currentChapter, '/', chapters.length, ', panel:', currentPanel, '/', panels.length, ')');
+                '(chapter:', currentChapter, '/', lastNonEmptyChapter, ', panel:', currentPanel, '/', panels.length, ')');
         }
     }
 
