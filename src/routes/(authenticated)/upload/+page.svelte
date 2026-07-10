@@ -1972,14 +1972,7 @@
   // Sort all files using natural sort algorithm
   let sorting = false;
   async function sortAllFiles() {
-    // Check if there are any YouTube entries
-    const hasYouTube = panelsFiles.some(f => 
-      f.type === 'youtube' || (f.webkitRelativePath && f.webkitRelativePath.startsWith('youtube:'))
-    );
-    
-    const confirmMsg = hasYouTube 
-      ? 'This will re-sort ALL files in the tree using the natural sort algorithm. YouTube entries will be temporarily removed and then restored to their correct positions. Continue?'
-      : 'This will re-sort ALL files in the tree using the natural sort algorithm. Manual ordering will be lost. Continue?';
+    const confirmMsg = 'This will re-sort ALL files in the tree using the natural sort algorithm. YouTube entries will be preserved in their current positions. Continue?';
     
     if (!confirm(confirmMsg)) {
       return;
@@ -2059,7 +2052,7 @@
         return path;
       }
       
-      // Build the order map (without YouTube entries)
+      // Build the order map (preserving YouTube entries from existing order)
       const orders: Record<string, any> = {};
       for (const slug of chapterKeys) {
         const chapterData = grouped[slug];
@@ -2084,6 +2077,15 @@
           orders[slug].locked = existingChapter.locked;
         }
         
+        // Extract YouTube entries from existing order
+        const youtubeEntries: Record<string, any[]> = { desktop: [], mobile: [], other: [] };
+        for (const device of ['desktop', 'mobile', 'other']) {
+          const existingArray = existingChapter[device] || [];
+          youtubeEntries[device] = existingArray.filter((entry: any) => 
+            typeof entry === 'object' && entry.type === 'youtube'
+          );
+        }
+        
         for (const device of ['desktop', 'mobile', 'other']) {
           const files = chapterData[device] || [];
           
@@ -2095,7 +2097,10 @@
           });
           
           // Map to order entries
-          orders[slug][device] = files.map(mapFileToOrderEntry);
+          const sortedFileEntries = files.map(mapFileToOrderEntry);
+          
+          // Prepend YouTube entries (they should stay at the top)
+          orders[slug][device] = [...youtubeEntries[device], ...sortedFileEntries];
         }
       }
       
@@ -2111,17 +2116,10 @@
       
       // Reload from filesystem to match files against our sorted _order.json
       regenerateStatus = 'Reloading sorted files...';
-      await fetchPanelsFiles(); // This will match filesystem files against our sorted _order.json
-      console.log('[sortAllFiles] After reload, panelsFiles has', panelsFiles.length, 'files in sorted order');
+      await fetchPanelsFiles(); // This will match filesystem files against our sorted _order.json (with preserved YouTube entries)
+      console.log('[sortAllFiles] After reload, panelsFiles has', panelsFiles.length, 'files in sorted order (including YouTube)');
       
-      // If there were YouTube entries, restore them using ensure-youtube
-      if (hasYouTube) {
-        regenerateStatus = 'Restoring YouTube entries to correct positions...';
-        await ensureYouTubeEntries(false); // Not silent - show status (this will add YouTube and refresh again)
-        console.log('[sortAllFiles] After ensureYouTube, panelsFiles has', panelsFiles.length, 'files (including YouTube)');
-      } else {
-        regenerateStatus = 'Files sorted successfully.';
-      }
+      regenerateStatus = 'Files sorted successfully.';
       
       // Force ChapterTree to rebuild one final time
       panelsFilesKey = panelsFiles.length > 0
@@ -2134,7 +2132,7 @@
       await regeneratePanels();
       
       console.log('[sortAllFiles] Complete! Final panelsFiles count:', panelsFiles.length);
-      regenerateStatus = hasYouTube ? 'Sort complete! YouTube entries restored.' : 'Sort complete!';
+      regenerateStatus = 'Sort complete!';
       
     } catch (err: any) {
       regenerateStatus = `Sort error: ${err?.message || String(err)}`;
