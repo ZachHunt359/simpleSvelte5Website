@@ -2056,18 +2056,40 @@
       // Save the sorted order directly (without updating panelsFiles yet)
       regenerateStatus = 'Saving sorted order...';
       console.log('[sortAllFiles] Saving sorted order (without YouTube):', orders);
+      console.log('[sortAllFiles] Order has', Object.keys(orders).length, 'chapters');
+      for (const slug of Object.keys(orders)) {
+        console.log(`[sortAllFiles] Chapter ${slug}: desktop=${orders[slug].desktop?.length || 0}, mobile=${orders[slug].mobile?.length || 0}, other=${orders[slug].other?.length || 0}`);
+      }
       await saveFullOrder(orders, true, false); // replace=true to ensure clean save
+      console.log('[sortAllFiles] Save completed');
+      
+      // Wait for save to complete
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // If there were YouTube entries, restore them using ensure-youtube
       if (hasYouTube) {
         regenerateStatus = 'Restoring YouTube entries to correct positions...';
         await ensureYouTubeEntries(false); // Not silent - show status (this will refresh panelsFiles)
+        console.log('[sortAllFiles] After ensureYouTube, panelsFiles has', panelsFiles.length, 'files');
       } else {
         // No YouTube entries, just refresh to show sorted order
         regenerateStatus = 'Refreshing...';
         await fetchPanelsFiles();
+        console.log('[sortAllFiles] After fetchPanelsFiles, panelsFiles has', panelsFiles.length, 'files');
         regenerateStatus = 'Files sorted successfully.';
       }
+      
+      // Force ChapterTree to rebuild by updating key
+      panelsFilesKey = panelsFiles.length > 0
+        ? panelsFiles.map(f => f.webkitRelativePath || f.name || '').join('|')
+        : 'empty';
+      
+      // Regenerate panels.json so readers see the sorted order
+      regenerateStatus = 'Regenerating panels.json...';
+      await regeneratePanels();
+      
+      console.log('[sortAllFiles] Complete! Final panelsFiles count:', panelsFiles.length);
+      regenerateStatus = hasYouTube ? 'Sort complete! YouTube entries restored.' : 'Sort complete!';
       
     } catch (err: any) {
       regenerateStatus = `Sort error: ${err?.message || String(err)}`;
