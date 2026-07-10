@@ -41,12 +41,13 @@
                 // For images, preload before swapping
                 const img = new window.Image();
                 
-                // Timeout fallback: if image doesn't load within 3 seconds, show it anyway
+                // Timeout fallback: if image doesn't load within 8 seconds, show it anyway
+                // (webp files can be large)
                 const timeoutId = setTimeout(() => {
                     console.warn(`[ComicPanel] Image load timeout for: ${url}`);
                     displayedPanelIndex = currentPanel;
                     preloading = false;
-                }, 3000);
+                }, 8000);
                 
                 img.onload = () => {
                     clearTimeout(timeoutId);
@@ -67,13 +68,25 @@
         }
     }
 
-    // Preload images/videos for the next panels (1 behind, 3 ahead)
+    // Preload images/videos in priority order: next 3 forward, then 1 backward
     function preloadImages(currentPanel) {
         if (!browser || panels.length === 0) return;
-        for (let i = currentPanel - 1; i < currentPanel + 3 && i < panels.length; i++) {
-            const entry = panels[i];
+        
+        // Priority order: next panel first, then 2nd and 3rd ahead, then 1 behind
+        const preloadOrder = [
+            currentPanel + 1,  // Next panel (highest priority)
+            currentPanel + 2,  // Second ahead
+            currentPanel + 3,  // Third ahead
+            currentPanel - 1   // One behind (for going backwards)
+        ];
+        
+        for (const index of preloadOrder) {
+            if (index < 0 || index >= panels.length) continue;
+            
+            const entry = panels[index];
             if (typeof entry === 'object') continue; // nothing to preload for structured entries
-                const url = entry;
+            
+            const url = entry;
             if (/\.(webm)(\?.*)?$/i.test(url)) {
                 // Preload video (not always effective, but doesn't hurt)
                 const video = document.createElement('video');
