@@ -1980,21 +1980,37 @@
     }
     
     sorting = true;
-    regenerateStatus = 'Sorting files...';
     
     try {
+      // First, reload from server to get fresh filesystem data with correct extensions
+      regenerateStatus = 'Loading files from server...';
+      const listRes = await fetch('/api/panels/list', { credentials: 'same-origin' });
+      if (!listRes || !listRes.ok) {
+        throw new Error('Failed to fetch file list from server');
+      }
+      const fileList: string[] = await listRes.json();
+      console.log('[sortAllFiles] Loaded', fileList.length, 'files from server');
+      
+      // Build file objects from filesystem list (these have correct extensions)
+      const filesystemFiles = fileList.map(p => {
+        const rel = p.replace(/\\/g, '/');
+        return {
+          name: rel.split('/').pop() || rel,
+          webkitRelativePath: rel,
+          size: 0,
+          type: ''
+        };
+      });
+      
+      regenerateStatus = 'Sorting files...';
+      
       // Group files by chapter and device, filtering out YouTube entries
       const grouped: Record<string, Record<string, any[]>> = {};
       
-      for (const file of panelsFiles) {
-        // Skip YouTube entries - they'll be restored by ensure-youtube script
-        if (file.type === 'youtube' || (file.webkitRelativePath && file.webkitRelativePath.startsWith('youtube:'))) {
-          continue;
-        }
-        
-        const chapter = file._chapter || extractChapter(file.webkitRelativePath || file.name);
+      for (const file of filesystemFiles) {
+        const chapter = extractChapter(file.webkitRelativePath || file.name);
         const path = file.webkitRelativePath || file.name || '';
-        const device = file._device || extractDevice(path);
+        const device = extractDevice(path);
         const slug = slugifyChapterKey(chapter);
         
         if (!grouped[slug]) {
@@ -2073,53 +2089,35 @@
         }
       }
       
-      // Build sorted panelsFiles array (without YouTube - they'll be added back by ensure-youtube)
-      const sortedFiles: any[] = [];
-      for (const slug of chapterKeys) {
-        for (const device of ['desktop', 'mobile', 'other']) {
-          const files = grouped[slug][device] || [];
-          sortedFiles.push(...files);
-        }
-      }
-      
-      console.log('[sortAllFiles] Built sorted array with', sortedFiles.length, 'files (no YouTube yet)');
-      
-      // Save the sorted order to _order.json
+      // Save the sorted order to _order.json (with correct extensions from filesystem)
       regenerateStatus = 'Saving sorted order...';
-      console.log('[sortAllFiles] Saving sorted order (without YouTube):', orders);
+      console.log('[sortAllFiles] Saving sorted order with correct file extensions:', orders);
       console.log('[sortAllFiles] Order has', Object.keys(orders).length, 'chapters');
       for (const slug of Object.keys(orders)) {
         console.log(`[sortAllFiles] Chapter ${slug}: desktop=${orders[slug].desktop?.length || 0}, mobile=${orders[slug].mobile?.length || 0}, other=${orders[slug].other?.length || 0}`);
       }
       await saveFullOrder(orders, true, false); // replace=true to ensure clean save
-      console.log('[sortAllFiles] Save completed');
+      console.log('[sortAllFiles] Save completed with', Object.keys(orders).reduce((sum, slug) => sum + (orders[slug].desktop?.length || 0) + (orders[slug].mobile?.length || 0) + (orders[slug].other?.length || 0), 0), 'files');
       
-      // Update panelsFiles with sorted order (this will trigger tree rebuild)
-      panelsFiles = sortedFiles;
-      console.log('[sortAllFiles] Updated panelsFiles array, now has', panelsFiles.length, 'files');
-      
-      // Force ChapterTree to rebuild immediately with sorted order (without YouTube yet)
-      panelsFilesKey = panelsFiles.length > 0
-        ? panelsFiles.map(f => f.webkitRelativePath || f.name || '').join('|')
-        : 'empty';
-      console.log('[sortAllFiles] Updated panelsFilesKey to force tree rebuild');
-      
-      // Wait for UI to update
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Reload from filesystem to match files against our sorted _order.json
+      regenerateStatus = 'Reloading sorted files...';
+      await fetchPanelsFiles(); // This will match filesystem files against our sorted _order.json
+      console.log('[sortAllFiles] After reload, panelsFiles has', panelsFiles.length, 'files in sorted order');
       
       // If there were YouTube entries, restore them using ensure-youtube
       if (hasYouTube) {
         regenerateStatus = 'Restoring YouTube entries to correct positions...';
-        await ensureYouTubeEntries(false); // Not silent - show status (this will refresh panelsFiles and add YouTube back)
-        console.log('[sortAllFiles] After ensureYouTube, panelsFiles has', panelsFiles.length, 'files');
+        await ensureYouTubeEntries(false); // Not silent - show status (this will add YouTube and refresh again)
+        console.log('[sortAllFiles] After ensureYouTube, panelsFiles has', panelsFiles.length, 'files (including YouTube)');
       } else {
         regenerateStatus = 'Files sorted successfully.';
       }
       
-      // Force ChapterTree to rebuild one final time with YouTube included
+      // Force ChapterTree to rebuild one final time
       panelsFilesKey = panelsFiles.length > 0
         ? panelsFiles.map(f => f.webkitRelativePath || f.name || '').join('|')
         : 'empty';
+      console.log('[sortAllFiles] Final panelsFilesKey update');
       
       // Regenerate panels.json so readers see the sorted order
       regenerateStatus = 'Regenerating panels.json...';
