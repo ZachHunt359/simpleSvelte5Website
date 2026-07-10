@@ -17,8 +17,11 @@ const __dirname = path.dirname(__filename);
 
 // Use PROJECT_ROOT env var in production, fallback to __dirname for local development
 const PROJECT_ROOT = process.env.PROJECT_ROOT || path.join(__dirname, '..');
-const ORDER_FILE = path.join(PROJECT_ROOT, 'static', 'panels', '_order.json');
-const PANELS_DIR = path.join(PROJECT_ROOT, 'static', 'panels');
+
+// Use PANELS_DIR env var if set, otherwise default to static/panels
+const PANELS_BASE = process.env.PANELS_DIR || 'static/panels';
+const PANELS_DIR = path.join(PROJECT_ROOT, PANELS_BASE);
+const ORDER_FILE = path.join(PANELS_DIR, '_order.json');
 
 // Define the YouTube entries to ensure
 const YOUTUBE_ENTRIES = [
