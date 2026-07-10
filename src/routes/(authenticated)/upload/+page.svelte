@@ -382,13 +382,13 @@
             // Handle YouTube entries (objects with type='youtube' and id)
             if (typeof item === 'object' && item && item.type === 'youtube' && item.id) {
               const youtubeEntry = {
+                ...item, // Spread item first to get title, published, etc.
                 name: `YouTube: ${item.id}`,
                 webkitRelativePath: `youtube:${item.id}`,
-                id: `youtube-${item.id}`,
                 size: 0,
-                type: 'youtube',
                 youtubeId: item.id,
-                ...item, // Spread item first to get title, etc.
+                type: 'youtube', // Must be after spread to preserve type
+                id: `youtube-${item.id}`, // Must be after spread to preserve dnd id
                 _device: dev, // Then explicitly set device (overrides any _device from item)
                 _chapter: chapterName // Then explicitly set chapter (overrides any _chapter from item)
               };
@@ -411,14 +411,14 @@
               }
               
               const youtubeEntry: any = {
-                name: `YouTube: ${videoId}`,
-                webkitRelativePath: rel,
-                id: `youtube-${videoId}`,
-                size: 0,
-                type: 'youtube',
-                youtubeId: videoId,
                 // Preserve metadata if item is an object
                 ...(typeof item === 'object' && item ? item : {}),
+                name: `YouTube: ${videoId}`,
+                webkitRelativePath: rel,
+                size: 0,
+                youtubeId: videoId,
+                type: 'youtube', // Must be after spread to preserve type
+                id: `youtube-${videoId}`, // Must be after spread to preserve dnd id
                 _device: dev, // Then explicitly set device (overrides any _device from item)
                 _chapter: chapterName // Then explicitly set chapter (overrides any _chapter from item)
               };
@@ -1953,7 +1953,16 @@
   // Sort all files using natural sort algorithm
   let sorting = false;
   async function sortAllFiles() {
-    if (!confirm('This will re-sort ALL files in the tree using the natural sort algorithm. Manual ordering will be lost. Continue?')) {
+    // Check if there are any YouTube entries
+    const hasYouTube = panelsFiles.some(f => 
+      f.type === 'youtube' || (f.webkitRelativePath && f.webkitRelativePath.startsWith('youtube:'))
+    );
+    
+    const confirmMsg = hasYouTube 
+      ? 'This will re-sort ALL files in the tree using the natural sort algorithm. YouTube entries will be temporarily removed and then restored to their correct positions. Continue?'
+      : 'This will re-sort ALL files in the tree using the natural sort algorithm. Manual ordering will be lost. Continue?';
+    
+    if (!confirm(confirmMsg)) {
       return;
     }
     
@@ -1961,10 +1970,15 @@
     regenerateStatus = 'Sorting files...';
     
     try {
-      // Group files by chapter and device
+      // Group files by chapter and device, filtering out YouTube entries
       const grouped: Record<string, Record<string, any[]>> = {};
       
       for (const file of panelsFiles) {
+        // Skip YouTube entries - they'll be restored by ensure-youtube script
+        if (file.type === 'youtube' || (file.webkitRelativePath && file.webkitRelativePath.startsWith('youtube:'))) {
+          continue;
+        }
+        
         const chapter = file._chapter || extractChapter(file.webkitRelativePath || file.name);
         const device = file._device || 'other';
         const slug = slugifyChapterKey(chapter);
@@ -1992,69 +2006,35 @@
         for (const device of ['desktop', 'mobile', 'other']) {
           const files = chapterData[device] || [];
           
-          // Separate YouTube entries from regular files, tracking what panel comes after each
-          const youtubeEntries: Array<{file: any, beforePanel: string | null}> = [];
-          const regularFiles: any[] = [];
-          
-          files.forEach((file, index) => {
-            if (file.type === 'youtube' || (file.webkitRelativePath && file.webkitRelativePath.startsWith('youtube:'))) {
-              // Find the next regular file after this YouTube entry
-              let beforePanel: string | null = null;
-              for (let j = index + 1; j < files.length; j++) {
-                const nextFile = files[j];
-                if (nextFile.type !== 'youtube' && !nextFile.webkitRelativePath?.startsWith('youtube:')) {
-                  beforePanel = nextFile.webkitRelativePath || nextFile.name;
-                  break;
-                }
-              }
-              youtubeEntries.push({ file, beforePanel });
-            } else {
-              regularFiles.push(file);
-            }
-          });
-          
-          // Sort only regular files by their path using natural sort
-          regularFiles.sort((a, b) => {
+          // Sort files by their path using natural sort
+          files.sort((a, b) => {
             const pathA = normalizePath(a.webkitRelativePath || a.name);
             const pathB = normalizePath(b.webkitRelativePath || b.name);
             return naturalCompare(pathA, pathB);
           });
           
-          // Re-insert YouTube entries before their anchor panels
-          const merged: any[] = [...regularFiles];
-          
-          for (const ytEntry of youtubeEntries) {
-            if (ytEntry.beforePanel) {
-              // Find the anchor panel in the sorted list
-              const anchorIndex = merged.findIndex(f => 
-                (f.webkitRelativePath || f.name) === ytEntry.beforePanel
-              );
-              
-              if (anchorIndex !== -1) {
-                // Insert before the anchor panel
-                merged.splice(anchorIndex, 0, ytEntry.file);
-              } else {
-                // Anchor panel not found (maybe deleted?) - append to end
-                merged.push(ytEntry.file);
-              }
-            } else {
-              // No anchor panel (was at end) - append to end
-              merged.push(ytEntry.file);
-            }
-          }
-          
-          sorted.push(...merged);
+          sorted.push(...files);
         }
       }
       
-      // Update panelsFiles with sorted order
+      // Update panelsFiles with sorted order (without YouTube entries)
       panelsFiles = sorted;
       panelsFiles = [...panelsFiles]; // Force reactivity
       
-      regenerateStatus = 'Files sorted successfully. Click "Save changes" to persist the new order.';
-      
       // Auto-save the sorted order
+      regenerateStatus = 'Saving sorted order...';
       saveTrigger++;
+      
+      // Wait a bit for save to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // If there were YouTube entries, restore them using ensure-youtube
+      if (hasYouTube) {
+        regenerateStatus = 'Restoring YouTube entries to correct positions...';
+        await ensureYouTubeEntries(false); // Not silent - show status
+      } else {
+        regenerateStatus = 'Files sorted successfully.';
+      }
       
     } catch (err: any) {
       regenerateStatus = `Sort error: ${err?.message || String(err)}`;
