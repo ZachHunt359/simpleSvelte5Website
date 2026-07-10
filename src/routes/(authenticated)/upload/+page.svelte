@@ -1990,8 +1990,7 @@
         grouped[slug][device].push(file);
       }
       
-      // Sort each group using natural sort
-      const sorted: any[] = [];
+      // Sort each group using natural sort and build order map directly
       const chapterKeys = Object.keys(grouped).sort((a, b) => {
         const aMatch = a.match(/chapter-(\d+)/i);
         const bMatch = b.match(/chapter-(\d+)/i);
@@ -2001,8 +2000,44 @@
         return a.localeCompare(b);
       });
       
+      // Helper to map file to order entry (same logic as ChapterTree)
+      function mapFileToOrderEntry(f: any) {
+        let path = (f.webkitRelativePath || f.name || '').toString();
+        // Strip panels/ prefix if present
+        path = path.replace(/^panels\//, '').replace(/\?v=.*$/, '');
+        
+        // Check if there's any metadata to preserve
+        const hasMeta = ('published' in f) || ('publishDate' in f);
+        if (hasMeta) {
+          const out: any = { path };
+          if ('published' in f) out.published = !!f.published;
+          if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
+          return out;
+        }
+        
+        // Otherwise save as string
+        return path;
+      }
+      
+      // Build the order map (without YouTube entries)
+      const orders: Record<string, any> = {};
       for (const slug of chapterKeys) {
         const chapterData = grouped[slug];
+        orders[slug] = {
+          desktop: [],
+          mobile: [],
+          other: []
+        };
+        
+        // Preserve chapter-level metadata from existing orderMap
+        const existingChapter = (panelsOrderMap && panelsOrderMap[slug]) || {};
+        if ('published' in existingChapter) {
+          orders[slug].published = existingChapter.published;
+        }
+        if ('locked' in existingChapter) {
+          orders[slug].locked = existingChapter.locked;
+        }
+        
         for (const device of ['desktop', 'mobile', 'other']) {
           const files = chapterData[device] || [];
           
@@ -2013,26 +2048,24 @@
             return naturalCompare(pathA, pathB);
           });
           
-          sorted.push(...files);
+          // Map to order entries
+          orders[slug][device] = files.map(mapFileToOrderEntry);
         }
       }
       
-      // Update panelsFiles with sorted order (without YouTube entries)
-      panelsFiles = sorted;
-      panelsFiles = [...panelsFiles]; // Force reactivity
-      
-      // Auto-save the sorted order
+      // Save the sorted order directly (without updating panelsFiles yet)
       regenerateStatus = 'Saving sorted order...';
-      saveTrigger++;
-      
-      // Wait a bit for save to complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('[sortAllFiles] Saving sorted order (without YouTube):', orders);
+      await saveFullOrder(orders, true, false); // replace=true to ensure clean save
       
       // If there were YouTube entries, restore them using ensure-youtube
       if (hasYouTube) {
         regenerateStatus = 'Restoring YouTube entries to correct positions...';
-        await ensureYouTubeEntries(false); // Not silent - show status
+        await ensureYouTubeEntries(false); // Not silent - show status (this will refresh panelsFiles)
       } else {
+        // No YouTube entries, just refresh to show sorted order
+        regenerateStatus = 'Refreshing...';
+        await fetchPanelsFiles();
         regenerateStatus = 'Files sorted successfully.';
       }
       
