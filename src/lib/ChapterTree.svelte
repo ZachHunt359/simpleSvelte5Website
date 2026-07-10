@@ -3,7 +3,12 @@
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   // flatpickr styles (importing CSS so Vite bundles it)
   import 'flatpickr/dist/flatpickr.min.css';
+  import { env } from '$env/dynamic/public';
+  
   type DeviceType = 'desktop' | 'mobile' | 'other';
+  
+  // Asset base path - use environment variable or default to /panels
+  const ASSET_BASE = env.PUBLIC_STATIC_ASSET_BASE || '/panels';
   
   // Props using Svelte 5 $props() rune
   let {
@@ -1107,11 +1112,11 @@
                                 />
                               {:else}
                                 <img 
-                                  src={"/panels/" + file.webkitRelativePath} 
+                                  src={ASSET_BASE + "/" + file.webkitRelativePath} 
                                   alt={file.name} 
                                   class="panel-thumb" 
                                   style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;cursor:zoom-in;" 
-                                  onmouseenter={() => showImagePreview("/panels/" + file.webkitRelativePath, file.name)}
+                                  onmouseenter={() => showImagePreview(ASSET_BASE + "/" + file.webkitRelativePath, file.name)}
                                   onmouseleave={() => hideImagePreview()}
                                 />
                               {/if}
@@ -1128,7 +1133,7 @@
                                 ></video>
                               {:else}
                                 <video 
-                                  src={"/panels/" + file.webkitRelativePath} 
+                                  src={ASSET_BASE + "/" + file.webkitRelativePath} 
                                   class="panel-thumb" 
                                   style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" 
                                   loop
@@ -1232,11 +1237,11 @@
                                 />
                               {:else}
                                 <img 
-                                  src={"/panels/" + file.webkitRelativePath} 
+                                  src={ASSET_BASE + "/" + file.webkitRelativePath} 
                                   alt={file.name} 
                                   class="panel-thumb" 
                                   style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;cursor:zoom-in;" 
-                                  onmouseenter={() => showImagePreview("/panels/" + file.webkitRelativePath, file.name)}
+                                  onmouseenter={() => showImagePreview(ASSET_BASE + "/" + file.webkitRelativePath, file.name)}
                                   onmouseleave={() => hideImagePreview()}
                                 />
                               {/if}
@@ -1253,7 +1258,7 @@
                                 ></video>
                               {:else}
                                 <video 
-                                  src={"/panels/" + file.webkitRelativePath} 
+                                  src={ASSET_BASE + "/" + file.webkitRelativePath} 
                                   class="panel-thumb" 
                                   style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" 
                                   loop
@@ -1365,11 +1370,11 @@
                                 />
                               {:else}
                                 <img 
-                                  src={"/panels/" + file.webkitRelativePath} 
+                                  src={ASSET_BASE + "/" + file.webkitRelativePath} 
                                   alt={file.name} 
                                   class="panel-thumb" 
                                   style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;cursor:zoom-in;" 
-                                  onmouseenter={() => showImagePreview("/panels/" + file.webkitRelativePath, file.name)}
+                                  onmouseenter={() => showImagePreview(ASSET_BASE + "/" + file.webkitRelativePath, file.name)}
                                   onmouseleave={() => hideImagePreview()}
                                 />
                               {/if}
@@ -1386,7 +1391,7 @@
                                 ></video>
                               {:else}
                                 <video 
-                                  src={"/panels/" + file.webkitRelativePath} 
+                                  src={ASSET_BASE + "/" + file.webkitRelativePath} 
                                   class="panel-thumb" 
                                   style="max-width:48px;max-height:48px;margin-right:0.5rem;border-radius:4px;object-fit:cover;vertical-align:middle;" 
                                   loop
@@ -1527,4 +1532,5 @@
   color: #fff;
 }
 </style>
+
 
