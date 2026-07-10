@@ -2073,7 +2073,18 @@
         }
       }
       
-      // Save the sorted order directly (without updating panelsFiles yet)
+      // Build sorted panelsFiles array (without YouTube - they'll be added back by ensure-youtube)
+      const sortedFiles: any[] = [];
+      for (const slug of chapterKeys) {
+        for (const device of ['desktop', 'mobile', 'other']) {
+          const files = grouped[slug][device] || [];
+          sortedFiles.push(...files);
+        }
+      }
+      
+      console.log('[sortAllFiles] Built sorted array with', sortedFiles.length, 'files (no YouTube yet)');
+      
+      // Save the sorted order to _order.json
       regenerateStatus = 'Saving sorted order...';
       console.log('[sortAllFiles] Saving sorted order (without YouTube):', orders);
       console.log('[sortAllFiles] Order has', Object.keys(orders).length, 'chapters');
@@ -2083,23 +2094,29 @@
       await saveFullOrder(orders, true, false); // replace=true to ensure clean save
       console.log('[sortAllFiles] Save completed');
       
-      // Wait for save to complete
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Update panelsFiles with sorted order (this will trigger tree rebuild)
+      panelsFiles = sortedFiles;
+      console.log('[sortAllFiles] Updated panelsFiles array, now has', panelsFiles.length, 'files');
+      
+      // Force ChapterTree to rebuild immediately with sorted order (without YouTube yet)
+      panelsFilesKey = panelsFiles.length > 0
+        ? panelsFiles.map(f => f.webkitRelativePath || f.name || '').join('|')
+        : 'empty';
+      console.log('[sortAllFiles] Updated panelsFilesKey to force tree rebuild');
+      
+      // Wait for UI to update
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // If there were YouTube entries, restore them using ensure-youtube
       if (hasYouTube) {
         regenerateStatus = 'Restoring YouTube entries to correct positions...';
-        await ensureYouTubeEntries(false); // Not silent - show status (this will refresh panelsFiles)
+        await ensureYouTubeEntries(false); // Not silent - show status (this will refresh panelsFiles and add YouTube back)
         console.log('[sortAllFiles] After ensureYouTube, panelsFiles has', panelsFiles.length, 'files');
       } else {
-        // No YouTube entries, just refresh to show sorted order
-        regenerateStatus = 'Refreshing...';
-        await fetchPanelsFiles();
-        console.log('[sortAllFiles] After fetchPanelsFiles, panelsFiles has', panelsFiles.length, 'files');
         regenerateStatus = 'Files sorted successfully.';
       }
       
-      // Force ChapterTree to rebuild by updating key
+      // Force ChapterTree to rebuild one final time with YouTube included
       panelsFilesKey = panelsFiles.length > 0
         ? panelsFiles.map(f => f.webkitRelativePath || f.name || '').join('|')
         : 'empty';
