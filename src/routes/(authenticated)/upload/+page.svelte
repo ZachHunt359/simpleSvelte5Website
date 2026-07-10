@@ -303,6 +303,19 @@
     return result;
   }
 
+  // Extract device (desktop/mobile/other) from a file path
+  function extractDevice(path: string): 'desktop' | 'mobile' | 'other' {
+    // Normalize path: strip leading slash and 'panels/' prefix
+    const normalizedPath = path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/^panels\//, '');
+    const parts = normalizedPath.split(/\\|\//);
+    // Device should be the second part: chapter-1/desktop/... or chapter-1/mobile/...
+    if (parts.length > 1) {
+      const device = parts[1].toLowerCase();
+      if (device === 'desktop' || device === 'mobile') return device as 'desktop' | 'mobile';
+    }
+    return 'other';
+  }
+
   // Convert chapter slug (e.g., "chapter-1") to formatted name (e.g., "Chapter 1")
   function slugToChapterName(slug: string): string {
     const match = slug.match(/chapter-(\d+)/i);
@@ -1980,7 +1993,8 @@
         }
         
         const chapter = file._chapter || extractChapter(file.webkitRelativePath || file.name);
-        const device = file._device || 'other';
+        const path = file.webkitRelativePath || file.name || '';
+        const device = file._device || extractDevice(path);
         const slug = slugifyChapterKey(chapter);
         
         if (!grouped[slug]) {
@@ -2028,6 +2042,12 @@
           mobile: [],
           other: []
         };
+        
+        console.log(`[sortAllFiles] Processing chapter ${slug}:`, {
+          desktopFiles: chapterData.desktop?.length || 0,
+          mobileFiles: chapterData.mobile?.length || 0,
+          otherFiles: chapterData.other?.length || 0
+        });
         
         // Preserve chapter-level metadata from existing orderMap
         const existingChapter = (panelsOrderMap && panelsOrderMap[slug]) || {};
