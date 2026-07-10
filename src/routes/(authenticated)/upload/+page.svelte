@@ -1991,6 +1991,10 @@
       const fileList: string[] = await listRes.json();
       console.log('[sortAllFiles] Loaded', fileList.length, 'files from server');
       
+      // Debug: Check if Spread02.3 is in the list and what extension it has
+      const spread023Files = fileList.filter(p => p.includes('Spread02.3') || p.includes('Spread 02') && p.includes('02.3'));
+      console.log('[sortAllFiles] Spread02.3 files found in server list:', spread023Files);
+      
       // Build file objects from filesystem list (these have correct extensions)
       const filesystemFiles = fileList.map(p => {
         const rel = p.replace(/\\/g, '/');
