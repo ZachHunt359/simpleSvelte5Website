@@ -11,6 +11,7 @@
     {#if data.isAdmin}
       <a href="/admin/logs">Logs</a>
       <a href="/admin/invite">Invite</a>
+      <a href="/admin/settings">Settings</a>
     {/if}
   </div>
   <div class="user">
