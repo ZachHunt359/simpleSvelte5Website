@@ -169,6 +169,89 @@
         console.log('[basenameNoExt] Unknown item type:', typeof item, item);
         return undefined;
     }
+    
+    // Normalize panel name for fuzzy matching (e.g., "Spread02.3" → "spread2.3")
+    function normalizeSpreadName(name: string): string {
+        return name
+            .toLowerCase()
+            .replace(/spread0*(\d+)/g, 'spread$1') // Remove leading zeros: Spread02 → spread2
+            .replace(/\.0*(\d+)/g, '.$1');          // Remove leading zeros in decimals: .03 → .3
+    }
+    
+    // Extract spread number from panel name (e.g., "Spread27.10" → 27.10)
+    function extractSpreadNumber(name: string): number | null {
+        const match = name.match(/spread(\d+)(?:\.(\d+))?/i);
+        if (!match) return null;
+        const major = parseInt(match[1], 10);
+        const minor = match[2] ? parseInt(match[2], 10) / 100 : 0; // Convert .10 to 0.10
+        return major + minor;
+    }
+    
+    // Find the best matching panel in an array, using multiple strategies
+    function findBestPanelMatch(panels: any[], targetName: string, fallbackIndex: number): number {
+        // Strategy 1: Exact match (including YouTube videos)
+        const exactIdx = panels.findIndex(p => {
+            if (typeof p === 'string') {
+                const basename = basenameNoExt(p);
+                return basename === targetName;
+            }
+            // For YouTube entries, match either the video ID directly or with youtube- prefix
+            if (typeof p === 'object' && p.type === 'youtube') {
+                return p.id === targetName || `youtube-${p.id}` === targetName;
+            }
+            return false;
+        });
+        if (exactIdx !== -1) {
+            console.log('[findBestMatch] Exact match found at index', exactIdx);
+            return exactIdx;
+        }
+        
+        // Strategy 2: Fuzzy match (normalized names) - only for image panels
+        const normalizedTarget = normalizeSpreadName(targetName);
+        const fuzzyIdx = panels.findIndex(p => {
+            if (typeof p === 'string') {
+                const basename = basenameNoExt(p);
+                return basename && normalizeSpreadName(basename) === normalizedTarget;
+            }
+            return false;
+        });
+        if (fuzzyIdx !== -1) {
+            console.log('[findBestMatch] Fuzzy match found at index', fuzzyIdx, '(normalized:', normalizedTarget, ')');
+            return fuzzyIdx;
+        }
+        
+        // Strategy 3: Find closest Spread number - only for image panels
+        const targetSpread = extractSpreadNumber(targetName);
+        if (targetSpread !== null) {
+            let closestIdx = -1;
+            let closestDiff = Infinity;
+            
+            panels.forEach((p, idx) => {
+                if (typeof p === 'string') {
+                    const basename = basenameNoExt(p);
+                    if (!basename) return;
+                    const panelSpread = extractSpreadNumber(basename);
+                    if (panelSpread !== null) {
+                        const diff = Math.abs(panelSpread - targetSpread);
+                        if (diff < closestDiff) {
+                            closestDiff = diff;
+                            closestIdx = idx;
+                        }
+                    }
+                }
+            });
+            
+            if (closestIdx !== -1) {
+                console.log('[findBestMatch] Closest Spread match found at index', closestIdx, '(diff:', closestDiff, ')');
+                return closestIdx;
+            }
+        }
+        
+        // Strategy 4: Use fallback index (clamped to valid range)
+        const clampedIdx = Math.max(0, Math.min(fallbackIndex, panels.length - 1));
+        console.log('[findBestMatch] No match found, using fallback index', clampedIdx, '(requested:', fallbackIndex, ')');
+        return clampedIdx;
+    }
 
     $: panels = chapters.length > 0 ? buildPanelsForChapter(currentChapter, effectiveIsDesktop) : [];
     //$: console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
@@ -392,6 +475,7 @@
     }
     // Handle manually entered URL, waiting until chapters and panels are loaded
     let lastParams: { chapter: string | null; panel: string | null } = { chapter: null, panel: null };
+    let lastPanelIndex = 0; // Track last panel index for fallback when switching modes
 
     $: if (
         chapters.length > 0 &&
@@ -409,24 +493,18 @@
             if (chapterIdx !== -1) {
                 currentChapter = chapterIdx;
                 const newPanels = buildPanelsForChapter(chapterIdx, effectiveIsDesktop);
-                const panelIdx = newPanels.findIndex(p => {
-                    if (typeof p === 'string') {
-                        // Extract basename without extension from the panel path
-                        const panelBasename = basenameNoExt(p);
-                        // Use exact match, not includes, to avoid matching Spread7.3.b when looking for Spread7.3
-                        return panelBasename === panelFile;
-                    }
-                    // For YouTube entries, match either the video ID directly or with youtube- prefix
-                    if (typeof p === 'object' && p.type === 'youtube') {
-                        return p.id === panelFile || `youtube-${p.id}` === panelFile;
-                    }
-                    return false;
-                });
-                if (panelIdx !== -1) {
-                    currentPanel = panelIdx;
-                }
+                
+                // Use smart matching with fallback to last known position
+                const panelIdx = findBestPanelMatch(newPanels, panelFile, lastPanelIndex);
+                currentPanel = panelIdx;
+                lastPanelIndex = panelIdx; // Remember for next switch
             }
         lastParams = { chapter: chapterSlug, panel: panelFile };
+    }
+    
+    // Also track panel index whenever it changes normally
+    $: if (currentPanel >= 0) {
+        lastPanelIndex = currentPanel;
     }
 
     /* $: if (chapters.length > 0 && panels.length > 0) {
