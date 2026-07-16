@@ -71,6 +71,13 @@ CREATE TABLE Migrations (
   AppliedAt INT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- SiteSettings for global configuration
+CREATE TABLE SiteSettings (
+  SettingKey VARCHAR(255) PRIMARY KEY,
+  SettingValue TEXT NOT NULL,
+  UpdatedAt INT NOT NULL DEFAULT (UNIX_TIMESTAMP())
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Seed admin user (update password hash if desired)
 INSERT INTO AdminUsers (Id,Email,PasswordHash,CreatedAt) VALUES
   (1,'zachdhunt@gmail.com','$2b$10$p/gKNYNmv8hdmlx7NhI2UOS/UywoCCqindqaj4KiOij3aa0CGTPrC',1758491873);
@@ -81,5 +88,9 @@ INSERT INTO InviteCodes (Code,Used,CreatedAt,UseBy,UsedAt,AdminUsed) VALUES
   ('4603d201',0,1758490773,1758577173,NULL,NULL),
   ('56c43b3e',0,1758490849,1758577249,NULL,NULL),
   ('a1f67045',0,1758491400,1758577800,NULL,NULL);
+
+-- Seed default site settings
+INSERT INTO SiteSettings (SettingKey, SettingValue) VALUES ('imageServingMode', 'auto')
+ON DUPLICATE KEY UPDATE SettingKey = SettingKey;
 
 -- You can insert initial Migration rows if you want to mark existing migrations as applied.

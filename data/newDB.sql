@@ -68,6 +68,13 @@ CREATE TABLE IF NOT EXISTS Migrations (
   AppliedAt INTEGER
 );
 
+-- SiteSettings for global configuration
+CREATE TABLE IF NOT EXISTS SiteSettings (
+  SettingKey TEXT PRIMARY KEY,
+  SettingValue TEXT NOT NULL,
+  UpdatedAt INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
 -- Seed admin users (example)
 INSERT INTO AdminUsers (Id,Email,PasswordHash,CreatedAt) VALUES
   (1,'zachdhunt@gmail.com','$2b$10$p/gKNYNmv8hdmlx7NhI2UOS/UywoCCqindqaj4KiOij3aa0CGTPrC',1758491873);
@@ -78,6 +85,9 @@ INSERT INTO InviteCodes (Code,Used,CreatedAt,UseBy,UsedAt,AdminUsed) VALUES
   ('4603d201',0,1758490773,1758490773 + 86400,NULL,NULL),
   ('56c43b3e',0,1758490849,1758490849 + 86400,NULL,NULL),
   ('a1f67045',0,1758491400,1758491400 + 86400,NULL,NULL);
+
+-- Seed default site settings
+INSERT INTO SiteSettings (SettingKey, SettingValue) VALUES ('imageServingMode', 'auto');
 
 COMMIT;
 

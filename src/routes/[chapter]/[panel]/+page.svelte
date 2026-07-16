@@ -17,6 +17,10 @@
     let isPointerDesktop: boolean = false; // For nav behavior
     let isSaved: boolean = false;
     let isLastPanelOfLastChapter: boolean = false;
+    
+    // Image serving mode from admin settings
+    let imageServingMode: 'auto' | 'desktop-only' | 'mobile-only' = 'auto';
+    let effectiveIsDesktop: boolean = false; // The actual value used after applying admin override
 
     let lastScroll = 0;
 
@@ -51,6 +55,21 @@
 
     // Fetch panels from the server
     onMount(() => {
+        // Fetch image serving mode from admin settings
+        (async () => {
+            try {
+                const res = await fetch('/api/settings');
+                if (res.ok) {
+                    const data = await res.json();
+                    imageServingMode = data.imageServingMode || 'auto';
+                    console.log('[Comic Reader] Image serving mode:', imageServingMode);
+                }
+            } catch (e) {
+                console.error('[Comic Reader] Failed to fetch image serving mode:', e);
+                // Default to 'auto' on error
+            }
+        })();
+        
         // Device detection
         updateIsDesktop();
         window.addEventListener('resize', updateIsDesktop);
@@ -151,7 +170,7 @@
         return undefined;
     }
 
-    $: panels = chapters.length > 0 ? buildPanelsForChapter(currentChapter, isDesktop) : [];
+    $: panels = chapters.length > 0 ? buildPanelsForChapter(currentChapter, effectiveIsDesktop) : [];
     //$: console.log('Panels:', panels, 'CurrentPanel:', currentPanel);
 
     //Clamp currentPanel to valid range when switching between desktop/mobile modes
@@ -173,6 +192,19 @@
     }
     function updateIsPointerDesktop() {
         isPointerDesktop = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches;
+    }
+    
+    // Compute effective desktop mode based on admin setting and device detection
+    $: {
+        if (imageServingMode === 'desktop-only') {
+            effectiveIsDesktop = true;
+        } else if (imageServingMode === 'mobile-only') {
+            effectiveIsDesktop = false;
+        } else {
+            // 'auto' - use device detection
+            effectiveIsDesktop = isDesktop;
+        }
+        console.log('[effectiveIsDesktop]', effectiveIsDesktop, '(mode:', imageServingMode, ', device:', isDesktop, ')');
     }
 
     
@@ -198,7 +230,7 @@
         }
         if (currentChapter < chapters.length - 1) {
             // Check if the next chapter has any panels before navigating
-            const nextChapterPanels = buildPanelsForChapter(currentChapter + 1, isDesktop);
+            const nextChapterPanels = buildPanelsForChapter(currentChapter + 1, effectiveIsDesktop);
             console.log('[next] Checking next chapter. nextChapterPanels.length:', nextChapterPanels.length);
             
             if (nextChapterPanels.length > 0) {
@@ -230,7 +262,7 @@
             if (currentChapter > 0) {
             currentChapter -= 1;
             // Use fallback-merged panels array - it will be rebuilt when currentChapter changes
-            const prevChapterPanels = buildPanelsForChapter(currentChapter, isDesktop);
+            const prevChapterPanels = buildPanelsForChapter(currentChapter, effectiveIsDesktop);
             currentPanel = prevChapterPanels.length - 1;
             lastScroll = 0; // Scroll to top at beginning of new chapter. TODO: beginning of new PAGE, separate from chapter
             blurActiveElement();
@@ -308,7 +340,7 @@
     // Check if we're at the last panel using the fallback-merged panels array
     $: {
         const wasLast = isLastPanelOfLastChapter;
-        const lastNonEmptyChapter = findLastNonEmptyChapter(isDesktop);
+        const lastNonEmptyChapter = findLastNonEmptyChapter(effectiveIsDesktop);
         isLastPanelOfLastChapter = 
             currentChapter === lastNonEmptyChapter &&
             currentPanel === panels.length - 1;
@@ -376,7 +408,7 @@
             const chapterIdx = chapters.findIndex((c: any) => c.slug === chapterSlug);
             if (chapterIdx !== -1) {
                 currentChapter = chapterIdx;
-                const newPanels = buildPanelsForChapter(chapterIdx, isDesktop);
+                const newPanels = buildPanelsForChapter(chapterIdx, effectiveIsDesktop);
                 const panelIdx = newPanels.findIndex(p => {
                     if (typeof p === 'string') {
                         // Extract basename without extension from the panel path
