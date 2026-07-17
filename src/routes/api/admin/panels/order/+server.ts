@@ -299,8 +299,25 @@ export const POST = async ({ request }) => {
 
     // Write atomically: write to a tmp file then rename
     const tmpFile = orderFile + '.tmp';
-    await fs.writeFile(tmpFile, outJson, 'utf8');
-    await fs.rename(tmpFile, orderFile);
+    try {
+      console.log('[API] Creating tmp file:', tmpFile);
+      await fs.writeFile(tmpFile, outJson, 'utf8');
+      console.log('[API] Tmp file written, size:', outJson.length, 'bytes');
+      console.log('[API] Renaming tmp file to:', orderFile);
+      await fs.rename(tmpFile, orderFile);
+      console.log('[API] Rename successful');
+    } catch (atomicErr) {
+      console.error('[API] Atomic write failed, trying direct write:', atomicErr);
+      // Fallback to direct write if atomic fails
+      await fs.writeFile(orderFile, outJson, 'utf8');
+      console.log('[API] Direct write successful');
+      // Clean up tmp file if it exists
+      try {
+        await fs.unlink(tmpFile);
+      } catch (cleanupErr) {
+        // Ignore cleanup errors
+      }
+    }
 
     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'content-type': 'application/json' } });
   } catch (err) {
