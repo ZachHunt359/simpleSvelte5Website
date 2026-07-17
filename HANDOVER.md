@@ -468,8 +468,21 @@ YouTube videos can be embedded at any point in the comic timeline.
 3. In the Chapter Tree, click "Insert YouTube" button next to the chapter
 4. Paste YouTube URL or video ID (e.g., `dQw4w9WgXcQ` or `https://www.youtube.com/watch?v=dQw4w9WgXcQ`)
 5. Video title is fetched automatically (uses YouTube Data API if `YOUTUBE_API_KEY` is set, otherwise falls back to oEmbed)
-6. Video appears in "Other Files" section and can be dragged to reorder
-7. Videos are preserved when chapter is locked/unlocked
+6. **Initial state:** Video appears in "Other Files" section in an **Unpublished** state
+7. **For Desktop:** Drag the video from "Other Files" into the "Desktop Panels" group at the desired position
+8. **Publish Desktop:** Click the video's publish toggle to mark it as published
+9. **For Mobile:** Insert the **same video again** (repeat steps 3-4) - it will appear in "Other Files" again
+10. **Position Mobile:** Drag the second instance into the "Mobile Panels" group (typically at a different position than desktop)
+11. **Publish Mobile:** Click the publish toggle on the mobile instance
+12. **Save:** Click "Save Changes" button to persist the order
+13. **Regenerate:** Click "Regenerate Panels" to update `panels.json` so readers see the videos
+
+**Important Notes:**
+- Each video needs to be inserted **twice** - once for desktop, once for mobile
+- Desktop and mobile versions can be positioned independently (they usually appear at different points in the reading order)
+- Videos remain **unpublished** until you explicitly toggle them
+- Videos are preserved when using "Sort All Files" - they stay at their anchored positions relative to image files
+- Videos are preserved when chapter is locked/unlocked
 
 **Getting YouTube Data API Key (Optional but Recommended):**
 1. Go to https://console.cloud.google.com/apis/credentials
