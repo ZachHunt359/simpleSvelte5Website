@@ -214,69 +214,86 @@
   // Merge files by chapter/device, marking new files
   // Ensure newFiles have unique id for dndzone
   let newFilesWithId = $derived(newFiles.map((f, i) => ({ ...f, id: f.id || `${f.webkitRelativePath || f.name}-${i}` })));
-  let chapterMap = $derived.by(() => {
-    console.log('🔄 [TREE] chapterMap recalculating...', {
+  type ChapterMap = Record<string, { desktop: any[]; mobile: any[]; other: any[] }>;
+  
+  // Use $state instead of $derived to allow direct mutation during drag operations
+  let chapterMap = $state<ChapterMap>({});
+  
+  // Rebuild chapterMap when input files change
+  function rebuildChapterMap() {
+    console.log('🔄 [TREE] chapterMap rebuilding...', {
       existingFilesCount: existingFiles.length,
       newFilesCount: newFiles.length
     });
     
-    type ChapterMap = Record<string, { desktop: any[]; mobile: any[]; other: any[] }>;
     const allFiles = [
       ...existingFiles.map(f => ({ ...f, _isNew: false })),
       ...newFilesWithId.map(f => ({ ...f, _isNew: true }))
     ];
-    if (allFiles.length > 0) {
-      const newChapterMap: ChapterMap = {};
-      allFiles.forEach((file: any, idx: number) => {
-        let path = (file.webkitRelativePath ?? file.name ?? '').toString();
-        path = path.replace(/\\/g, '/');
-        // Respect explicit chapter placement (e.g., from _order.json), otherwise infer from path
-        const chapter = file._chapter || extractChapter(path);
-        // Respect explicit device placement (e.g., from _order.json), otherwise infer from path
-        let device: DeviceType = file._device || 'other';
-        if (!file._device) {
-          // Look for "desktop" or "mobile" as whole words anywhere in path (case-insensitive)
-          // This handles nested folders like "Chapter-1/Desktop/SUBFOLDER/Spread01/..."
-          if (/\bdesktop\b/i.test(path)) device = 'desktop';
-          else if (/\bmobile\b/i.test(path)) device = 'mobile';
-        }
-        let fileObj: any;
-        if (device === 'other') {
-          // Always copy all file properties for 'other' files
-          fileObj = {
-            name: file.name ?? path ?? `[Unknown file ${idx+1}]`,
-            webkitRelativePath: file.webkitRelativePath ?? path ?? `[Unknown file ${idx+1}]`,
-            id: file.id || `${path}-${idx}`,
-            _isNew: file._isNew ?? false,
-            size: file.size ?? 0,
-            type: file.type ?? '',
-            // Copy any additional properties
-            ...file
-          };
-        } else {
-          fileObj = {
-            name: file.name,
-            webkitRelativePath: file.webkitRelativePath,
-            id: file.id || `${path}-${idx}`,
-            _isNew: file._isNew ?? false,
-            size: file.size ?? 0,
-            type: file.type ?? '',
-            ...file
-          };
-        }
-        if (debug) console.log('[ChapterTree] file:', { path, chapter, device, fileObj });
-        if (!newChapterMap[chapter]) newChapterMap[chapter] = { desktop: [], mobile: [], other: [] };
-        (newChapterMap[chapter][device] as any[]).push(fileObj);
-      });
-      
-      console.log('✅ [TREE] chapterMap recalculated:', {
-        chapters: Object.keys(newChapterMap),
-        totalFiles: allFiles.length
-      });
-      
-      return newChapterMap;
+    
+    if (allFiles.length === 0) {
+      chapterMap = {};
+      return;
     }
-    return {};
+    
+    const newChapterMap: ChapterMap = {};
+    allFiles.forEach((file: any, idx: number) => {
+      let path = (file.webkitRelativePath ?? file.name ?? '').toString();
+      path = path.replace(/\\/g, '/');
+      // Respect explicit chapter placement (e.g., from _order.json), otherwise infer from path
+      const chapter = file._chapter || extractChapter(path);
+      // Respect explicit device placement (e.g., from _order.json), otherwise infer from path
+      let device: DeviceType = file._device || 'other';
+      if (!file._device) {
+        // Look for "desktop" or "mobile" as whole words anywhere in path (case-insensitive)
+        // This handles nested folders like "Chapter-1/Desktop/SUBFOLDER/Spread01/..."
+        if (/\bdesktop\b/i.test(path)) device = 'desktop';
+        else if (/\bmobile\b/i.test(path)) device = 'mobile';
+      }
+      let fileObj: any;
+      if (device === 'other') {
+        // Always copy all file properties for 'other' files
+        fileObj = {
+          name: file.name ?? path ?? `[Unknown file ${idx+1}]`,
+          webkitRelativePath: file.webkitRelativePath ?? path ?? `[Unknown file ${idx+1}]`,
+          id: file.id || `${path}-${idx}`,
+          _isNew: file._isNew ?? false,
+          size: file.size ?? 0,
+          type: file.type ?? '',
+          // Copy any additional properties
+          ...file
+        };
+      } else {
+        fileObj = {
+          name: file.name,
+          webkitRelativePath: file.webkitRelativePath,
+          id: file.id || `${path}-${idx}`,
+          _isNew: file._isNew ?? false,
+          size: file.size ?? 0,
+          type: file.type ?? '',
+          ...file
+        };
+      }
+      if (debug) console.log('[ChapterTree] file:', { path, chapter, device, fileObj });
+      if (!newChapterMap[chapter]) newChapterMap[chapter] = { desktop: [], mobile: [], other: [] };
+      (newChapterMap[chapter][device] as any[]).push(fileObj);
+    });
+    
+    console.log('✅ [TREE] chapterMap rebuilt:', {
+      chapters: Object.keys(newChapterMap),
+      totalFiles: allFiles.length
+    });
+    
+    chapterMap = newChapterMap;
+  }
+  
+  // Watch for changes to input files and rebuild chapterMap
+  $effect(() => {
+    // Track dependencies
+    existingFiles.length;
+    newFiles.length;
+    // Rebuild when files change
+    rebuildChapterMap();
   });
 
   // Maintain an ordered list of chapters for dnd operations
