@@ -998,7 +998,7 @@
               <div style="display:flex;gap:0.5rem;align-items:center;">
                 <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => handleTogglePublishChapter(item.title)}>{getEffectiveChapterPublished(item.title) ? 'Unpublish Chapter' : 'Publish Chapter'}</button>
                 <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => openSchedulePickerChapter(item.title)}>Schedule Chapter</button>
-                <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => dispatch('insertYouTube', { chapter: item.title })}>Insert YouTube</button>
+                <button class="btn btn-ghost btn-xs text-slate-300" onclick={() => dispatch('insertYouTube', { chapter: item.title })} disabled={isChapterLocked(item.title)} title={isChapterLocked(item.title) ? 'Cannot insert YouTube videos in locked chapters' : 'Insert a YouTube video into this chapter'}>Insert YouTube</button>
                 <button 
                   class="btn btn-ghost btn-xs {isChapterLocked(item.title) ? 'text-yellow-500' : 'text-slate-300'}" 
                   onclick={() => handleToggleLock(item.title)}

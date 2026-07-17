@@ -39,6 +39,9 @@ Thumbs.db
 # Keep the example env in the repo
 !.env.example
 
+# Handover credentials - NEVER commit
+CREDENTIALS.md
+
 # Static panels (media) - keep to avoid committing large assets
 static/panels/
 static/panels/_order.json

@@ -1847,17 +1847,28 @@
   }
 
   async function handleInsertYouTube(chapter: string) {
+    // Check if chapter is locked before allowing insertion
+    const slug = slugifyChapterKey(chapter);
+    const existingChapter = (panelsOrderMap && panelsOrderMap[slug]) || {};
+    if (existingChapter.locked === true) {
+      window.alert(`Cannot insert YouTube videos: "${chapter}" is locked. Unlock the chapter first.`);
+      return;
+    }
+    
     const url = window.prompt('YouTube URL or video ID to insert into ' + chapter + ':');
     if (!url) return;
     const id = extractYouTubeId(url);
+    if (!id) {
+      window.alert('Invalid YouTube URL or video ID');
+      return;
+    }
     
     console.log('[handleInsertYouTube] Starting insertion:', { chapter, url, id });
     
-    // Fetch video title from YouTube
+    // Fetch video title from server endpoint (handles CORS and optional YouTube Data API)
     let videoTitle = `YouTube: ${id}`;
     try {
-      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`;
-      const response = await fetch(oembedUrl);
+      const response = await fetch(`/api/youtube/title?id=${encodeURIComponent(id)}`);
       if (response.ok) {
         const data = await response.json();
         if (data.title) {
@@ -1871,15 +1882,13 @@
     
     console.log('[handleInsertYouTube] Video title fetched:', videoTitle);
     
-    const slug = slugifyChapterKey(chapter);
-    
     console.log('[handleInsertYouTube] Chapter slug:', slug);
     console.log('[handleInsertYouTube] Current panelsOrderMap for this chapter:', panelsOrderMap && panelsOrderMap[slug]);
     
     // Save to _order.json with the fetched title
-    const existingChapter = (panelsOrderMap && panelsOrderMap[slug]) || {};
+    // existingChapter already retrieved at top of function (includes locked check)
     const updatedChapterOrders: any = { 
-      ...existingChapter,
+      ...existingChapter,  // Preserves locked, published, publishDate, etc.
       other: [
         ...(Array.isArray(existingChapter.other) ? existingChapter.other : []),
         {
@@ -1892,6 +1901,7 @@
     };
     
     console.log('[handleInsertYouTube] Updated chapter orders:', updatedChapterOrders);
+    console.log('[handleInsertYouTube] Preserved locked status:', updatedChapterOrders.locked);
     console.log('[handleInsertYouTube] Updated "other" array:', updatedChapterOrders.other);
     
     try {
@@ -2011,7 +2021,7 @@
       const grouped: Record<string, Record<string, any[]>> = {};
       
       for (const file of filesystemFiles) {
-        const chapter = extractChapter(file.webkitRelativePath || file.name);
+        const chapter = extractChapter(file.webkitRelativePath || file.name) || 'uncategorized';
         const path = file.webkitRelativePath || file.name || '';
         const device = extractDevice(path);
         const slug = slugifyChapterKey(chapter);
