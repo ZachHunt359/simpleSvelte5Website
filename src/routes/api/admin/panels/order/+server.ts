@@ -291,8 +291,11 @@ export const POST = async ({ request }) => {
       published: normalizedExisting[slug].published,
       publishDate: normalizedExisting[slug].publishDate,
       desktopCount: normalizedExisting[slug].desktop?.length || 0,
-      mobileCount: normalizedExisting[slug].mobile?.length || 0
+      mobileCount: normalizedExisting[slug].mobile?.length || 0,
+      otherCount: normalizedExisting[slug].other?.length || 0,
+      otherItems: normalizedExisting[slug].other?.slice(0, 3).map((i: any) => typeof i === 'object' && i.type === 'youtube' ? `YT:${i.id}` : i)
     })));
+    console.log('[API] Writing to file:', orderFile);
 
     // Write atomically: write to a tmp file then rename
     const tmpFile = orderFile + '.tmp';
