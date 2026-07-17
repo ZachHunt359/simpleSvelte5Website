@@ -837,7 +837,7 @@ ALTER TABLE Panels ADD COLUMN IsLocked BOOLEAN DEFAULT FALSE;
 
 ## Contact for Questions
 
-**Previous Developer:** [Your contact info]  
+**Previous Developer:** zachhunt359 on Discord, or ZachDHunt(at)gmail(dot)com
 **Repository Issues:** https://github.com/ZachHunt359/simpleSvelte5Website/issues
 
 ---
