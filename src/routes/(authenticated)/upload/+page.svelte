@@ -1903,6 +1903,8 @@
     console.log('[handleInsertYouTube] Updated chapter orders:', updatedChapterOrders);
     console.log('[handleInsertYouTube] Preserved locked status:', updatedChapterOrders.locked);
     console.log('[handleInsertYouTube] Updated "other" array:', updatedChapterOrders.other);
+    console.log('[handleInsertYouTube] Desktop array present?', !!updatedChapterOrders.desktop, 'count:', updatedChapterOrders.desktop?.length || 0);
+    console.log('[handleInsertYouTube] Mobile array present?', !!updatedChapterOrders.mobile, 'count:', updatedChapterOrders.mobile?.length || 0);
     
     try {
       console.log('[handleInsertYouTube] Calling saveFullOrder with:', { [slug]: updatedChapterOrders });
