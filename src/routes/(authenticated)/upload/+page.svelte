@@ -332,11 +332,13 @@
   async function fetchPanelsFiles() {
     console.log('[fetchPanelsFiles] Starting fetch...');
     // Fetch file list and _order.json (if present) then reorder files according to _order.json
-    const orderJsonUrl = `${ASSET_BASE}/_order.json`;
+    // Add cache-busting timestamp to ensure fresh data
+    const cacheBuster = Date.now();
+    const orderJsonUrl = `${ASSET_BASE}/_order.json?v=${cacheBuster}`;
     console.log('[fetchPanelsFiles] Fetching _order.json from:', orderJsonUrl);
     const [listRes, orderRes] = await Promise.all([
       fetch('/api/panels/list', { credentials: 'same-origin' }).catch(() => null),
-      fetch(orderJsonUrl, { credentials: 'same-origin' }).catch(() => null)
+      fetch(orderJsonUrl, { credentials: 'same-origin', cache: 'no-store' }).catch(() => null)
     ]);
     if (!listRes || !listRes.ok) return;
     const fileList: string[]  = await listRes.json();
