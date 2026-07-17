@@ -2096,13 +2096,37 @@
           orders[slug].locked = existingChapter.locked;
         }
         
-        // Extract YouTube entries from existing order
-        const youtubeEntries: Record<string, any[]> = { desktop: [], mobile: [], other: [] };
+        // Extract YouTube entries with their "anchor" (next image file after them)
+        const youtubeEntriesWithAnchors: Record<string, Array<{ entry: any; afterPath: string | null }>> = { 
+          desktop: [], mobile: [], other: [] 
+        };
+        
         for (const device of ['desktop', 'mobile', 'other']) {
           const existingArray = existingChapter[device] || [];
-          youtubeEntries[device] = existingArray.filter((entry: any) => 
-            typeof entry === 'object' && entry.type === 'youtube'
-          );
+          
+          for (let i = 0; i < existingArray.length; i++) {
+            const item = existingArray[i];
+            if (typeof item === 'object' && item.type === 'youtube') {
+              // Find the next image file after this YouTube entry (our anchor)
+              let afterPath: string | null = null;
+              for (let j = i + 1; j < existingArray.length; j++) {
+                const nextItem = existingArray[j];
+                const nextPath = typeof nextItem === 'string' 
+                  ? nextItem 
+                  : (nextItem.path || null);
+                if (nextPath && typeof nextPath === 'string') {
+                  afterPath = nextPath.replace(/^panels\//, '').replace(/\?v=.*$/, '');
+                  break;
+                }
+              }
+              console.log(`[sortAllFiles] YouTube entry in ${slug}/${device}:`, {
+                id: item.id,
+                title: item.title,
+                afterPath: afterPath || '(at end)'
+              });
+              youtubeEntriesWithAnchors[device].push({ entry: item, afterPath });
+            }
+          }
         }
         
         for (const device of ['desktop', 'mobile', 'other']) {
@@ -2118,8 +2142,44 @@
           // Map to order entries
           const sortedFileEntries = files.map(mapFileToOrderEntry);
           
-          // Prepend YouTube entries (they should stay at the top)
-          orders[slug][device] = [...youtubeEntries[device], ...sortedFileEntries];
+          // Re-insert YouTube entries at their anchored positions
+          const finalArray: any[] = [];
+          const ytEntries = youtubeEntriesWithAnchors[device];
+          let ytIndex = 0;
+          
+          for (const fileEntry of sortedFileEntries) {
+            const filePath = typeof fileEntry === 'string' 
+              ? fileEntry 
+              : fileEntry.path;
+            
+            // Insert any YouTube entries that should come before this file
+            while (ytIndex < ytEntries.length) {
+              const ytItem = ytEntries[ytIndex];
+              
+              // If this YouTube entry's anchor matches this file, insert the YT entry now
+              if (ytItem.afterPath === filePath) {
+                console.log(`[sortAllFiles] Inserting YouTube ${ytItem.entry.id} before anchor:`, filePath);
+                finalArray.push(ytItem.entry);
+                ytIndex++;
+              } else {
+                break;
+              }
+            }
+            
+            // Add the image file
+            finalArray.push(fileEntry);
+          }
+          
+          // Add any remaining YouTube entries (those at the end with no anchor)
+          while (ytIndex < ytEntries.length) {
+            const ytItem = ytEntries[ytIndex];
+            console.log(`[sortAllFiles] Adding YouTube ${ytItem.entry.id} at end (no anchor found)`);
+            finalArray.push(ytEntries[ytIndex].entry);
+            ytIndex++;
+          }
+          
+          console.log(`[sortAllFiles] Final ${slug}/${device} count:`, finalArray.length, '(', ytEntries.length, 'YouTube +', sortedFileEntries.length, 'images)');
+          orders[slug][device] = finalArray;
         }
       }
       
