@@ -1995,6 +1995,11 @@
     sorting = true;
     
     try {
+      // CRITICAL: Refresh panelsOrderMap first to get latest YouTube positions from any drag operations
+      regenerateStatus = 'Refreshing current order...';
+      await fetchPanelsFiles(); // Load latest _order.json to ensure panelsOrderMap is fresh
+      console.log('[sortAllFiles] Refreshed panelsOrderMap before extracting YouTube entries');
+      
       // First, reload from server to get fresh filesystem data with correct extensions
       regenerateStatus = 'Loading files from server...';
       const listRes = await fetch('/api/panels/list', { credentials: 'same-origin' });
