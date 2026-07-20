@@ -797,9 +797,9 @@ ALTER TABLE Panels ADD COLUMN IsLocked BOOLEAN DEFAULT FALSE;
 
 **Panel Publishing/Scheduling**:
 - Currently all uploaded panels are immediately visible
-- Consider adding `is_published`, `publish_date` fields
-- Allow admins to schedule future releases
-- See `.github/instructions/memory.instruction.md` "Migration reminder" for details
+- Consider migrating publish/scheduling metadata from `_order.json` to database
+- Proposed fields: `is_published` (BOOLEAN), `publish_date` (DATETIME), `scheduled_by`, `updated_by`
+- Migration would require: database columns, backfill script from `_order.json`, update generator to read from DB, admin UI for editing
 
 **Automated Backups**:
 - Set up cron job for daily database backups
