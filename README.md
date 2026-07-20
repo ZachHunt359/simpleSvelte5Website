@@ -142,12 +142,3 @@ node scripts/show-migrations-status.cjs
 ```
 
  - Admin UI: sign in as an admin and visit `/(authenticated)/admin/migrations` to view migration status in the admin UI.
-
-7) Security checklist
-
- - Rotate SMTP and AUTH secrets if they were ever committed.
- - Use a dedicated SMTP account for sending. Avoid using personal accounts.
-
-If you'd like, I can also add a short `deploy.sh`/PowerShell script that runs the common steps (backup DB, run migrations, set permissions, regenerate panels). Tell me which platform your production host uses and I'll draft it.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
