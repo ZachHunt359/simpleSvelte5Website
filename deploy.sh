@@ -254,6 +254,13 @@ set -e
 
 # Start the specific app from ecosystem config
 $PM2_BIN start ecosystem.config.cjs --only "$APP_NAME"
+
+# IMPORTANT: Since both staging and production share the same build/ directory,
+# we must restart ALL apps after any build to ensure they load the new chunks.
+# Otherwise, the other app will crash with ERR_MODULE_NOT_FOUND.
+log "Restarting all PM2 apps to load fresh build chunks"
+$PM2_BIN restart all
+
 $PM2_BIN save
 
 # Optional smoke test
