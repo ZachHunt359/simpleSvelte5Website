@@ -681,11 +681,16 @@
       path = path.replace(/^\/panels\//, '').replace(/\?v=.*$/, '');
     }
     
-    // Check if there's any metadata to preserve
-    const hasMeta = ('published' in f) || ('publishDate' in f);
+    // Check if there's any metadata to preserve (including _isNew for unpublished default)
+    const hasMeta = ('published' in f) || ('publishDate' in f) || f._isNew;
     if (hasMeta) {
       const out: any = { path };
-      if ('published' in f) out.published = !!f.published;
+      // Explicitly set published: false for new files unless overridden
+      if ('published' in f) {
+        out.published = !!f.published;
+      } else if (f._isNew) {
+        out.published = false;
+      }
       if ('publishDate' in f && f.publishDate) out.publishDate = f.publishDate;
       return out;
     }
