@@ -71,6 +71,78 @@ sudo systemctl status nginx
 sudo systemctl status mariadb
 ```
 
+### Nginx Configuration (CRITICAL)
+
+**⚠️ IMPORTANT:** Production HTTPS is served by `/etc/nginx/sites-available/simplesvelte5app-ssl`, NOT by the `paranoidcomic.com` file (which only has HTTP/80 redirects).
+
+**Configuration File Locations:**
+- **Production HTTPS**: `/etc/nginx/sites-available/simplesvelte5app-ssl` (deployed from `nginx-production.conf` in repo)
+- **Staging**: `/etc/nginx/sites-available/paranoid-comic-staging` (deployed from `nginx-staging.conf` in repo)
+- **Old HTTP file**: `/etc/nginx/sites-available/paranoidcomic.com` (HTTP/80 redirects only, managed by Certbot)
+
+**Version-Controlled Configuration:**
+Both nginx configs are in the git repo:
+- `nginx-production.conf` → production HTTPS config
+- `nginx-staging.conf` → staging config
+
+**Deploying Nginx Config Changes:**
+```bash
+# 1. Edit nginx-production.conf or nginx-staging.conf locally
+# 2. Commit and push changes
+git add nginx-production.conf
+git commit -m "Update nginx config"
+git push
+
+# 3. On server
+ssh deploy@23.187.248.222
+cd ~/simpleSvelte5Website
+git pull
+
+# 4. Copy to nginx directory
+sudo cp nginx-production.conf /etc/nginx/sites-available/simplesvelte5app-ssl
+# OR for staging:
+sudo cp nginx-staging.conf /etc/nginx/sites-available/paranoid-comic-staging
+
+# 5. Test configuration
+sudo nginx -t
+
+# 6. If test passes, reload nginx
+sudo systemctl reload nginx
+```
+
+**Critical Configuration Elements:**
+
+1. **Client max body size** - Allows large file uploads:
+   ```nginx
+   client_max_body_size 100M;
+   ```
+
+2. **Direct static file serving** - Uploads visible immediately without rebuild:
+   ```nginx
+   location /panels/ {
+       alias /home/deploy/simpleSvelte5Website/static/panels/;
+       expires 1y;
+       add_header Cache-Control "public";
+       try_files $uri =404;
+   }
+   ```
+
+3. **No-cache for dynamic JSON** - Prevents stale panel ordering:
+   ```nginx
+   location /panels/_order.json {
+       alias /home/deploy/simpleSvelte5Website/static/panels/_order.json;
+       add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+       add_header Pragma "no-cache" always;
+       add_header Expires "0" always;
+       try_files $uri =404;
+   }
+   ```
+
+**Why This Matters:**
+- Without `/panels/` location block: Files only visible after rebuild (bad UX for admins)
+- Without no-cache headers: Browsers cache stale ordering data
+- Without `client_max_body_size`: Large uploads fail with 413 errors
+
 ---
 
 ## Access & Credentials
@@ -219,9 +291,16 @@ cd ~/simpleSvelte5Website
 1. Pulls latest from git
 2. Runs `npm ci` (clean install)
 3. Generates `panels.json`
-4. Builds with Vite
-5. Restarts PM2 process
-6. Optional smoke test
+4. Builds with Vite (shared `build/` directory for both environments)
+5. Restarts specific PM2 process
+6. **Restarts ALL PM2 processes** (prevents chunk mismatch errors)
+7. Optional smoke test
+
+**⚠️ CRITICAL:** Both production and staging run from the **same `build/` directory**. When either environment deploys:
+- Vite generates new chunk files with new hashes
+- Old chunks are deleted
+- Both environments MUST restart to load new chunks
+- `deploy.sh` automatically runs `pm2 restart all` to handle this
 
 **Deployment flags:**
 ```bash
@@ -230,6 +309,12 @@ cd ~/simpleSvelte5Website
 ./deploy.sh --no-pull            # Skip git pull
 ./deploy.sh --no-smoke           # Skip smoke test
 ```
+
+**Deployment Best Practices:**
+1. Always deploy to staging first
+2. Test staging thoroughly before deploying production
+3. Expect BOTH environments to restart (shared build directory)
+4. If one environment shows "Failed to fetch dynamically imported module" errors, redeploy it
 
 ### Manual PM2 Management
 ```bash
@@ -436,18 +521,28 @@ node -e "console.log(require('bcrypt').hashSync('yourpassword', 10))"
 
 ### Uploading New Comic Pages
 
-**Via Admin Panel (Recommended):**
+**Via Admin Panel (Recommended - NO REBUILD REQUIRED):**
 1. Login at `/login`
 2. Navigate to `/upload`
 3. Use file picker to select images
-4. Organize files by dragging them into correct chapters
-5. Save order - `panels.json` regenerates automatically
+4. Files automatically organized by chapter/device in ChapterTree
+5. **NEW UPLOADS DEFAULT TO UNPUBLISHED** - click "Publish" button to make visible to readers
+6. Drag to reorder panels (supports multi-select)
+7. Click "Save Changes" - updates `_order.json`
+8. **Files are IMMEDIATELY visible** on the site (no rebuild/deploy needed)
+9. Click "Regenerate Panels" to update `panels.json` for comic reader
 
-**Via SFTP/SCP:**
+**Why No Rebuild Is Needed:**
+- Nginx serves `/panels/` directly from `static/panels/` directory
+- Uploads go directly to `static/panels/`
+- No build process involved for static files
+- Admin can upload and publish content without SSH access
+
+**Via SFTP/SCP (Legacy - Not Recommended):**
 1. Upload files to `static/panels/` or `static/panels-staging/`
 2. SSH to server
 3. Run: `npm run generate:panels`
-4. Restart PM2: `pm2 restart paranoid-comic-prod`
+4. Files immediately visible (no restart needed)
 
 ### Changing Image Serving Mode
 1. Login as admin
@@ -602,6 +697,104 @@ SELECT * FROM SendAttempts ORDER BY AttemptedAt DESC LIMIT 10;
 # 4. Verify Gmail App Password is valid
 # May need to regenerate if Google revoked it
 ```
+
+### Uploaded Files Not Visible (404 Errors)
+**Symptoms:** Admin uploads files, they appear in ChapterTree, but images show broken/404 on site.
+
+**Diagnosis:**
+```bash
+# 1. Check if files exist in static/panels
+ssh deploy@23.187.248.222
+ls -la ~/simpleSvelte5Website/static/panels/chapter-X/
+
+# 2. Files exist? Check nginx config
+cat /etc/nginx/sites-available/simplesvelte5app-ssl | grep "location /panels"
+
+# 3. Should see location block serving from static/panels/
+# If missing, nginx is proxying to Node.js which serves from build/client/panels
+```
+
+**Fix:**
+- Ensure nginx has `/panels/` location block (see nginx section above)
+- If missing, update `nginx-production.conf` and redeploy
+- Files should be immediately visible after nginx reload
+
+### 413 Payload Too Large Errors During Upload
+**Symptoms:** Large file uploads fail at ~1MB with "413 Request Entity Too Large" error.
+
+**Cause:** Nginx `client_max_body_size` defaults to 1MB.
+
+**Fix:**
+```bash
+# 1. Check nginx config
+grep -r "client_max_body_size" /etc/nginx/sites-available/
+
+# 2. Should see "client_max_body_size 100M;" in:
+#    - Server block
+#    - /api/ location block
+#    - / location block
+
+# 3. If missing, update nginx-production.conf and redeploy
+```
+
+### Hard Refresh Needed to See Updated Chapter Order
+**Symptoms:** After uploading/reordering panels, changes only visible after Ctrl+Shift+R.
+
+**Cause:** Browser caching `_order.json` with long TTL.
+
+**Fix:**
+- Ensure nginx has specific `/panels/_order.json` location with no-cache headers
+- See nginx configuration section above
+
+### "Failed to fetch dynamically imported module" Errors
+**Symptoms:** After deploying one environment, the OTHER environment shows JavaScript module errors.
+
+**Cause:** Both environments share `build/` directory. When one deploys:
+1. Vite generates new chunk files (e.g., `DhwQ3g9h.js` → `NewHash.js`)
+2. Old chunks deleted
+3. Other environment's HTML still references old chunks
+4. Browser tries to load deleted chunks → 404
+
+**Fix:**
+```bash
+# Already fixed in deploy.sh - it runs "pm2 restart all"
+# If issue persists, manually restart both:
+pm2 restart paranoid-comic-prod
+pm2 restart paranoid-comic-staging
+```
+
+**Prevention:** Always deployed via `deploy.sh` which handles this automatically.
+
+### Nginx Configuration Test Failures
+**Common Errors:**
+
+**1. Duplicate SSL directives:**
+```
+[emerg] "ssl_ciphers" directive is duplicate
+```
+**Cause:** SSL settings defined both in config AND in Certbot's include file.
+**Fix:** Remove explicit `ssl_protocols` and `ssl_ciphers` lines, rely on `include /etc/letsencrypt/options-ssl-nginx.conf;`
+
+**2. Escaped quotes syntax error:**
+```
+[emerg] unknown directive "mode=block""
+```
+**Cause:** Using `\"` instead of `"` in nginx config.
+**Fix:** Use plain double quotes in nginx configs (no escaping needed).
+
+**3. Conflicting server names (warning only):**
+```
+[warn] conflicting server name "paranoidcomic.com" on 0.0.0.0:80
+```
+**Cause:** Multiple server blocks handling same domain on port 80 (old `paranoidcomic.com` file + new config).
+**Fix:** This is harmless - nginx picks the first match. Can clean up old `paranoidcomic.com` file if desired.
+
+### New Uploads Show Wrong Publish State
+**Symptoms:** New uploads show "Unpublish" button but clicking once marks as Published (inverted).
+
+**Status:** FIXED in July 2026 (commit: "fix: new uploads default to unpublished state")
+
+**If issue recurs:** Check `src/lib/ChapterTree.svelte` `mapOrderEntry()` function - should explicitly set `published: false` for files with `_isNew` flag.
 
 ---
 
